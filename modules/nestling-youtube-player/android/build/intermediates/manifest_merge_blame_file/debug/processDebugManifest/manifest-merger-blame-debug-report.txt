@@ -5,11 +5,11 @@
 5    <uses-sdk android:minSdkVersion="24" />
 6
 7    <uses-permission android:name="android.permission.INTERNET" />
-7-->/Users/suraj/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:2:3-65
-7-->/Users/suraj/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:2:20-62
+7-->/Users/suraj.maharjan/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:2:3-65
+7-->/Users/suraj.maharjan/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:2:20-62
 8    <!-- ExoPlayer wake mode: the screen/CPU must not sleep mid-video on tablets and Android TV. -->
 9    <uses-permission android:name="android.permission.WAKE_LOCK" />
-9-->/Users/suraj/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:4:3-66
-9-->/Users/suraj/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:4:20-63
+9-->/Users/suraj.maharjan/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:4:3-66
+9-->/Users/suraj.maharjan/Projects/kidTube/modules/nestling-youtube-player/android/src/main/AndroidManifest.xml:4:20-63
 10
 11</manifest>

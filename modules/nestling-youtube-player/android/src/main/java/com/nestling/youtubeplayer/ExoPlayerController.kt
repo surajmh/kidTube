@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -14,6 +15,8 @@ import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.ui.PlayerView
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -216,7 +219,9 @@ class ExoPlayerController(
   fun startProgressTicking() {
     if (destroyed || ticking) return
     ticking = true
-    progressTick()
+    // The first tick is posted rather than run inline: attach() is reached from the view's own
+    // constructor, and emitting an event before the view is mounted fails view creation outright.
+    mainHandler.post { progressTick() }
   }
 
   fun release() {
@@ -246,6 +251,7 @@ class ExoPlayerController(
         result
           .onSuccess { info -> prepare(info, startPositionMs, autoplay) }
           .onFailure { error ->
+            Log.w("NestlingResolver", "resolveAndPrepare($videoId) threw", error)
             val code = (error as? PlaybackException)?.code ?: PlaybackCodes.RESOLVER_UNAVAILABLE
             handlePlaybackFailure(code)
           }
@@ -253,19 +259,19 @@ class ExoPlayerController(
     }
     try {
       resolverExecutor.execute(task)
-    } catch (_: RejectedExecutionException) {
-      // The controller was released while resolving.
+    } catch (rejected: RejectedExecutionException) {
+      Log.w("NestlingResolver", "executor rejected id=$videoId", rejected)
     }
   }
 
   private fun prepare(info: PlaybackInfo, startPositionMs: Long, autoplay: Boolean) {
-    val mediaItem = createMediaItem(info)
-    if (mediaItem == null) {
+    val source = createMediaSource(info)
+    if (source == null) {
       emitError(PlaybackCodes.UNSUPPORTED_FORMAT)
       return
     }
     // A fresh MediaSource is always created: stream URLs are short-lived and never reused.
-    player.setMediaItem(mediaItem, startPositionMs.coerceAtLeast(0L))
+    player.setMediaSource(source, startPositionMs.coerceAtLeast(0L))
     player.prepare()
     player.playWhenReady = autoplay
   }
@@ -341,12 +347,29 @@ class ExoPlayerController(
     else -> PlaybackCodes.PLAYBACK_FAILURE
   }
 
-  private fun createMediaItem(info: PlaybackInfo): MediaItem? {
-    val source = info.manifestUrl ?: info.videoUrl ?: info.audioUrl ?: return null
+  private fun createMediaSource(info: PlaybackInfo): MediaSource? {
+    val factory = DefaultMediaSourceFactory(context)
+    val videoUrl = info.videoUrl
+    val audioUrl = info.audioUrl
+
+    // Anything above 360p is delivered as separate video-only and audio-only streams, which
+    // ExoPlayer plays as one by merging them.
+    if (info.manifestUrl == null && videoUrl != null && audioUrl != null) {
+      return MergingMediaSource(
+        factory.createMediaSource(mediaItem(info.videoId, videoUrl, info.mimeType)),
+        factory.createMediaSource(mediaItem(info.videoId, audioUrl, null)),
+      )
+    }
+
+    val single = info.manifestUrl ?: videoUrl ?: audioUrl ?: return null
+    return factory.createMediaSource(mediaItem(info.videoId, single, info.mimeType))
+  }
+
+  private fun mediaItem(videoId: String, uri: String, mimeType: String?): MediaItem {
     val builder = MediaItem.Builder()
-      .setMediaId(info.videoId)
-      .setUri(source)
-    info.mimeType?.let { builder.setMimeType(it) }
+      .setMediaId(videoId)
+      .setUri(uri)
+    mimeType?.let { builder.setMimeType(it) }
     return builder.build()
   }
 

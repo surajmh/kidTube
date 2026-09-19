@@ -25,4 +25,13 @@ dependencies {
   implementation 'androidx.media3:media3-exoplayer-dash:1.11.0'
   implementation 'androidx.media3:media3-ui:1.11.0'
   implementation 'androidx.media3:media3-ui-leanback:1.11.0'
+
+  // Stream resolution for approved videos. GPLv3: fine for a private family build,
+  // but it makes the whole app GPLv3 if it is ever distributed.
+  // ponytail: JitPack is declared in the generated android/build.gradle, which
+  // `expo prebuild --clean` would regenerate; move it into app.plugin.js if that bites.
+  implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.26.5'
+  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+  testImplementation 'junit:junit:4.13.2'
 }

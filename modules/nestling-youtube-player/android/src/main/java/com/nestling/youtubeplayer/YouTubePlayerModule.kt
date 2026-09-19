@@ -16,6 +16,13 @@ class YouTubePlayerModule : Module() {
    */
   private var allowedVideoIds: Set<String> = emptySet()
 
+  /**
+   * A play() that arrives before the view has mounted is held here until it does.
+   * Fabric mounts the view asynchronously, so the JS effect that starts playback regularly runs
+   * before the view registers itself, and the request would otherwise be lost.
+   */
+  private var pendingPlayVideoId: String? = null
+
   override fun definition() = ModuleDefinition {
     Name("NestlingYouTubePlayer")
 
@@ -37,7 +44,12 @@ class YouTubePlayerModule : Module() {
 
     AsyncFunction("play") { videoId: String ->
       if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
-      requireView().controller.play(videoId, true)
+      val view = activeView?.get()
+      if (view == null) {
+        pendingPlayVideoId = videoId
+        return@AsyncFunction mapOf<String, Any?>("accepted" to true, "pending" to true)
+      }
+      view.controller.play(videoId, true)
       mapOf<String, Any?>("accepted" to true)
     }
 
@@ -77,11 +89,11 @@ class YouTubePlayerModule : Module() {
 
       // Props are not re-sent when they did not change, so the mounted view is also registered here.
       OnViewDidUpdateProps { view ->
-        activeView = WeakReference(view)
+        registerView(view)
       }
 
       Prop("videoId") { view: YouTubePlayerView, videoId: String? ->
-        activeView = WeakReference(view)
+        registerView(view)
         view.setVideo(videoId)
       }
 
@@ -94,6 +106,14 @@ class YouTubePlayerModule : Module() {
         if (activeView?.get() === view) activeView = null
       }
     }
+  }
+
+  /** Registers the mounted view and starts any play request that arrived before it existed. */
+  private fun registerView(view: YouTubePlayerView) {
+    activeView = WeakReference(view)
+    val pending = pendingPlayVideoId ?: return
+    pendingPlayVideoId = null
+    if (allowedVideoIds.contains(pending)) view.controller.play(pending, true)
   }
 
   private fun requireView(): YouTubePlayerView =
