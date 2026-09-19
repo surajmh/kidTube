@@ -1,0 +1,28 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.nestling.youtubeplayer'
+version = '1.0.0'
+
+android {
+  namespace 'com.nestling.youtubeplayer'
+
+  // expo-module-gradle-plugin only skips its publishing configuration when the
+  // module explicitly opts out, so a local module still needs publication
+  // coordinates. Without these the whole Gradle configuration fails with
+  // "'android.defaultConfig.versionName' is not defined".
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // Media3 1.11.0 is the current stable release as of August 2026.
+  implementation 'androidx.media3:media3-exoplayer:1.11.0'
+  implementation 'androidx.media3:media3-exoplayer-dash:1.11.0'
+  implementation 'androidx.media3:media3-ui:1.11.0'
+  implementation 'androidx.media3:media3-ui-leanback:1.11.0'
+}

@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Expo / native build output
+.expo/
+android/app/build/
+android/build/
+ios/build/
+ios/Pods/
+
+# Local proxy secrets — never commit the YouTube API key
+server/youtube-proxy/.dev.vars
+server/youtube-proxy/.wrangler/
+
+# Compiled test output (see tsconfig.test.json)
+.tmp-tests/
+
+# Local environment
+.env
+.env.local

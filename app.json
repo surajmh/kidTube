@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Nestling",
+    "slug": "nestling",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "scheme": "nestling",
+    "plugins": [
+      "./app.plugin.js"
+    ],
+    "android": {
+      "package": "com.family.nestling",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF7ED"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.family.nestling"
+    }
+  }
+}

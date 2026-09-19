@@ -1,0 +1,14 @@
+name = "nestling-youtube-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# The YouTube Data API key is a secret, never a plain var:
+#   npx wrangler secret put YOUTUBE_API_KEY
+#
+# Optional: require callers to send `Authorization: Bearer <token>`.
+#   npx wrangler secret put PROXY_TOKEN
+#
+# No bindings, no database. This Worker only reads public metadata.
+
+[observability]
+enabled = true

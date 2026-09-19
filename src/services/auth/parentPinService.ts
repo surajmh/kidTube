@@ -1,0 +1,165 @@
+import * as SecureStore from 'expo-secure-store';
+import { PinRecord, createPinRecord, isPinRecord, verifyPinRecord } from './pinHash';
+
+/**
+ * Parent PIN storage.
+ *
+ * Hardening rules, all enforced here so no caller can bypass them:
+ *   - the raw PIN is never stored and never returned by this module;
+ *   - only a salted PBKDF2 digest lives in the OS keystore (Android Keystore / iOS Keychain);
+ *   - repeated failures lock the PIN entry for an escalating, temporary window;
+ *   - nothing in this file logs the PIN, the digest or the salt.
+ */
+
+const pinKey = 'nestling.parent.pin'; // legacy plaintext slot (migrated, then deleted)
+const pinRecordKey = 'nestling.parent.pin.v2';
+const attemptKey = 'nestling.parent.pin.attempts';
+
+/** Failures before the first lockout, and the (temporary) delay each further failure adds. */
+const failureThreshold = 5;
+const lockoutLadderMs = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000];
+
+export const pinPattern = /^\d{4}$/;
+
+export type PinAttemptState = {
+  failures: number;
+  lockedUntil: number;
+};
+
+export type PinCheckResult =
+  | { ok: true }
+  | { ok: false; reason: 'not-set' }
+  | { ok: false; reason: 'mismatch'; attemptsRemaining: number }
+  | { ok: false; reason: 'locked'; retryAfterMs: number };
+
+export type PinLockState = {
+  locked: boolean;
+  retryAfterMs: number;
+  attemptsRemaining: number;
+};
+
+async function readAttempts(): Promise<PinAttemptState> {
+  try {
+    const raw = await SecureStore.getItemAsync(attemptKey);
+    if (!raw) return { failures: 0, lockedUntil: 0 };
+    const parsed = JSON.parse(raw) as Partial<PinAttemptState> | null;
+    const failures = typeof parsed?.failures === 'number' && Number.isFinite(parsed.failures) ? Math.max(0, Math.floor(parsed.failures)) : 0;
+    const lockedUntil = typeof parsed?.lockedUntil === 'number' && Number.isFinite(parsed.lockedUntil) ? parsed.lockedUntil : 0;
+    return { failures, lockedUntil };
+  } catch {
+    return { failures: 0, lockedUntil: 0 };
+  }
+}
+
+async function writeAttempts(state: PinAttemptState) {
+  try {
+    await SecureStore.setItemAsync(attemptKey, JSON.stringify(state));
+  } catch {
+    // A failed write only weakens throttling; it must never break PIN entry.
+  }
+}
+
+function lockoutDelayFor(failures: number): number {
+  if (failures < failureThreshold) return 0;
+  const step = Math.min(failures - failureThreshold, lockoutLadderMs.length - 1);
+  return lockoutLadderMs[step];
+}
+
+function describeLock(state: PinAttemptState, now: number): PinLockState {
+  const retryAfterMs = state.lockedUntil > now ? state.lockedUntil - now : 0;
+  return {
+    locked: retryAfterMs > 0,
+    retryAfterMs,
+    attemptsRemaining: Math.max(0, failureThreshold - state.failures),
+  };
+}
+
+async function readRecord(): Promise<PinRecord | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(pinRecordKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isPinRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export const parentPinService = {
+  async hasPin(): Promise<boolean> {
+    if (await readRecord()) return true;
+    // Legacy installs stored the raw PIN; treat that as "a PIN exists" until it is migrated.
+    try {
+      return Boolean(await SecureStore.getItemAsync(pinKey));
+    } catch {
+      return false;
+    }
+  },
+
+  async lockState(): Promise<PinLockState> {
+    const state = await readAttempts();
+    const now = Date.now();
+    if (state.lockedUntil && state.lockedUntil <= now && state.failures >= failureThreshold) {
+      // The window elapsed; the failure count stays until the lockout actually clears it.
+      return describeLock({ ...state, lockedUntil: 0 }, now);
+    }
+    return describeLock(state, now);
+  },
+
+  /** Validates, hashes and stores a new PIN. The plaintext is not retained anywhere. */
+  async setPin(pin: string): Promise<void> {
+    if (!pinPattern.test(pin)) throw new Error('The parent PIN must be exactly 4 digits.');
+    const record = createPinRecord(pin);
+    await SecureStore.setItemAsync(pinRecordKey, JSON.stringify(record));
+    await SecureStore.deleteItemAsync(pinKey).catch(() => undefined);
+    await writeAttempts({ failures: 0, lockedUntil: 0 });
+  },
+
+  async verify(pin: string): Promise<PinCheckResult> {
+    const state = await readAttempts();
+    const now = Date.now();
+    if (state.lockedUntil > now) {
+      return { ok: false, reason: 'locked', retryAfterMs: state.lockedUntil - now };
+    }
+
+    const record = await readRecord();
+    if (record) {
+      if (verifyPinRecord(record, pin)) {
+        await writeAttempts({ failures: 0, lockedUntil: 0 });
+        return { ok: true };
+      }
+      return registerFailure(state);
+    }
+
+    // Legacy plaintext PIN: verify once, then replace it with a digest.
+    let legacy: string | null = null;
+    try {
+      legacy = await SecureStore.getItemAsync(pinKey);
+    } catch {
+      legacy = null;
+    }
+    if (!legacy) return { ok: false, reason: 'not-set' };
+
+    if (legacy !== pin) return registerFailure(state);
+
+    await parentPinService.setPin(pin);
+    return { ok: true };
+  },
+
+  /** Only the destructive reset path may call this. */
+  async clearPin(): Promise<void> {
+    await SecureStore.deleteItemAsync(pinRecordKey).catch(() => undefined);
+    await SecureStore.deleteItemAsync(pinKey).catch(() => undefined);
+    await writeAttempts({ failures: 0, lockedUntil: 0 });
+  },
+};
+
+async function registerFailure(state: PinAttemptState): Promise<PinCheckResult> {
+  const failures = state.failures + 1;
+  const delay = lockoutDelayFor(failures);
+  const lockedUntil = delay > 0 ? Date.now() + delay : 0;
+  await writeAttempts({ failures, lockedUntil });
+
+  if (lockedUntil) return { ok: false, reason: 'locked', retryAfterMs: delay };
+  return { ok: false, reason: 'mismatch', attemptsRemaining: Math.max(0, failureThreshold - failures) };
+}
