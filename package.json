@@ -9,7 +9,6 @@
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit",
     "test": "rm -rf .tmp-tests && tsc -p tsconfig.test.json && node --test .tmp-tests/tests/*.test.js",
-    "test:worker": "tsc -p server/youtube-proxy/tsconfig.json",
     "ios": "expo run:ios"
   },
   "dependencies": {

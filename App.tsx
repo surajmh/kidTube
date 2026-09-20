@@ -28,12 +28,6 @@ import {
 } from './src/repositories/phase4Repository';
 import { channelSyncRepository, ChannelSyncMap } from './src/repositories/channelSyncRepository';
 import { channelSyncService } from './src/services/channelSyncService';
-import {
-  ContentProviderSettings,
-  emptyProviderSettings,
-  providerSettingsRepository,
-  validateEndpoint,
-} from './src/services/content/providerSettings';
 import { SyncMode } from './src/services/content/channelSyncRules';
 import { parentPinService } from './src/services/auth/parentPinService';
 import { ParentSession, parentSessionService } from './src/services/auth/parentSession';
@@ -85,7 +79,6 @@ import {
 } from './src/services/playbackRecovery';
 import { sponsorBlockService, SponsorSegment } from './src/services/sponsorBlockService';
 import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
-import { ParentProviderSettings } from './src/components/ParentProviderSettings';
 import { KidHomeScreen, KidTab } from './src/components/KidHomeScreen';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ContentTab } from './src/components/ParentContentPanel';
@@ -141,7 +134,6 @@ function App() {
   const [profilePolicies, setProfilePolicies] = useState<Record<string, ProfilePolicyOverrides>>({});
   const [overrides, setOverrides] = useState<PlaybackOverride[]>([]);
   const [channelSyncStates, setChannelSyncStates] = useState<ChannelSyncMap>({});
-  const [providerSettings, setProviderSettings] = useState<ContentProviderSettings>(emptyProviderSettings);
   const [busyChannelIds, setBusyChannelIds] = useState<string[]>([]);
   const [parentSession, setParentSession] = useState<ParentSession | null>(null);
   const [activeProfileId, setActiveProfileId] = useState('');
@@ -205,7 +197,6 @@ function App() {
         storedPolicies,
         storedOverrides,
         storedChannelSync,
-        storedProvider,
       ] = await Promise.all([
         channelRepository.getAll(),
         videoRepository.getAll(),
@@ -219,7 +210,6 @@ function App() {
         profilePolicyRepository.getAll(),
         overrideRepository.getAll(),
         channelSyncRepository.getAll(),
-        providerSettingsRepository.get(),
       ]);
       if (cancelled) return;
 
@@ -247,7 +237,7 @@ function App() {
       childRulesService.hydrate(snapshot.childRules);
       profilePolicyService.hydrate(snapshot.profilePolicies);
       playbackOverrideService.hydrate(snapshot.overrides);
-      channelSyncService.hydrate({ states: snapshot.channelSync, settings: storedProvider });
+      channelSyncService.hydrate({ states: snapshot.channelSync });
       playbackPolicy.hydrate({
         settings: snapshot.settings,
         screenTime: snapshot.screenTime,
@@ -285,7 +275,6 @@ function App() {
       setProfilePolicies(snapshot.profilePolicies);
       setOverrides(snapshot.overrides);
       setChannelSyncStates(snapshot.channelSync);
-      setProviderSettings(storedProvider);
     }
 
     void hydrateEssential();
@@ -357,7 +346,6 @@ function App() {
     profilePolicies,
     overrides,
     channelSyncStates,
-    providerSettings,
   ];
   if (accessHydrationRef.current.length !== accessInputs.length || accessInputs.some((value, index) => value !== accessHydrationRef.current[index])) {
     accessHydrationRef.current = accessInputs;
@@ -369,7 +357,6 @@ function App() {
     profilePolicyService.hydrate(profilePolicies);
     playbackOverrideService.hydrate(overrides);
     channelSyncService.setStates(channelSyncStates);
-    channelSyncService.setProvider(providerSettings);
   }
 
   useEffect(() => {
@@ -917,30 +904,6 @@ function App() {
     await syncChannel(channel, 'initial');
   }
 
-  async function saveProviderSettings(endpointUrl: string, token: string): Promise<string | null> {
-    if (!parentSession) return 'Parent mode is required.';
-    const validation = validateEndpoint(endpointUrl, token);
-    if (!validation.ok) return validation.error;
-    await providerSettingsRepository.save(validation.settings);
-    setProviderSettings(validation.settings);
-    channelSyncService.setProvider(validation.settings);
-    // A newly connected provider should not wait for the user to press Refresh.
-    const approved = channels.filter((item) => item.approved);
-    if (approved.length) {
-      const synced = await channelSyncService.syncMissing(parentSession, { channels, videos });
-      if (synced.synced > 0) await publishLibrary(synced.videos, synced.channels);
-      else setChannelSyncStates(channelSyncService.allStates());
-    }
-    return null;
-  }
-
-  async function disconnectProvider() {
-    if (!parentSession) return;
-    await providerSettingsRepository.save(emptyProviderSettings);
-    setProviderSettings(emptyProviderSettings);
-    channelSyncService.setProvider(emptyProviderSettings);
-  }
-
   async function toggleVideoCategory(video: ApprovedVideo, categoryId: string, assigned: boolean) {
     if (!parentSession) return;
     const next = assigned
@@ -1181,13 +1144,6 @@ function App() {
                 setActiveProfileId={setActiveProfileId}
                 onChange={saveProfiles}
                 onDelete={deleteProfile}
-              />
-            }
-            providerSlot={
-              <ParentProviderSettings
-                settings={providerSettings}
-                onSave={saveProviderSettings}
-                onDisconnect={disconnectProvider}
               />
             }
             settingsSlot={

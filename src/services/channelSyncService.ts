@@ -22,11 +22,7 @@ import {
   providerErrorMessage,
 } from './content/youtubeContentProvider';
 import { fetchChannelPage } from './content/channelPageFetcher';
-import {
-  ContentProviderSettings,
-  providerFor,
-  unconfiguredContentProvider,
-} from './content/providerSettings';
+import { nativeYouTubeContentProvider } from './content/nativeYouTubeContentProvider';
 
 /**
  * ChannelSyncService.
@@ -72,17 +68,16 @@ export type ChannelSyncResult = {
 };
 
 export class ChannelSyncService {
-  private provider: YouTubeContentProvider = unconfiguredContentProvider;
+  /**
+   * Metadata comes from the on-device extractor. There is nothing to configure, and it refuses
+   * with NOT_CONFIGURED on a build without the native module, so this still fails closed.
+   */
+  private provider: YouTubeContentProvider = nativeYouTubeContentProvider;
   private states: ChannelSyncMap = {};
   private readonly inFlight = new Map<string, Promise<ChannelSyncResult>>();
 
-  hydrate(input: { states?: ChannelSyncMap; settings?: ContentProviderSettings }) {
+  hydrate(input: { states?: ChannelSyncMap }) {
     this.states = { ...(input.states ?? {}) };
-    this.provider = providerFor(input.settings);
-  }
-
-  setProvider(settings: ContentProviderSettings | undefined) {
-    this.provider = providerFor(settings);
   }
 
   setStates(states: ChannelSyncMap) {

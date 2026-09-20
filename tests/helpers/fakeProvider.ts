@@ -7,7 +7,6 @@ import {
   YouTubeVideo,
   YouTubeVideoPage,
 } from '../../src/services/content/youtubeContentProvider';
-import { FetchLike } from '../../src/services/content/remoteYouTubeContentProvider';
 
 /** A channel id that satisfies the canonical `UC` + 22 character rule. */
 export const channelA = 'UCaaaaaaaaaaaaaaaaaaaaaa';
@@ -103,27 +102,5 @@ export function approvedVideo(videoId: string, channelId = channelB): ApprovedVi
     title: `Approved ${videoId}`,
     channelId,
     approved: true,
-  };
-}
-
-/** A fetch double for the remote provider. */
-export function fakeFetch(handler: (url: string, init?: { headers?: Record<string, string> }) => {
-  status?: number;
-  body?: unknown;
-  throws?: Error;
-  invalidJson?: boolean;
-}): FetchLike {
-  return async (url, init) => {
-    const result = handler(url, init);
-    if (result.throws) throw result.throws;
-    const status = result.status ?? 200;
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      json: async () => {
-        if (result.invalidJson) throw new SyntaxError('Unexpected token < in JSON');
-        return result.body ?? {};
-      },
-    };
   };
 }

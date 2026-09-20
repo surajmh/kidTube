@@ -96,7 +96,6 @@ export function ParentShell({
   profilesSlot,
   settingsSlot,
   manualAddSlot,
-  providerSlot,
   notice,
 }: {
   data: ParentShellData;
@@ -109,7 +108,6 @@ export function ParentShell({
   settingsSlot?: React.ReactNode;
   manualAddSlot?: React.ReactNode;
   /** Metadata provider configuration, shown above the playback settings. */
-  providerSlot?: React.ReactNode;
   /** Startup repair summary, shown only to the parent. */
   notice?: string;
 }) {
@@ -248,12 +246,7 @@ export function ParentShell({
         />
       ) : null}
 
-      {section === 'settings' ? (
-        <>
-          {providerSlot}
-          {settingsSlot}
-        </>
-      ) : null}
+      {section === 'settings' ? settingsSlot : null}
 
       <View style={styles.bottomSpace} />
     </ScrollView>
