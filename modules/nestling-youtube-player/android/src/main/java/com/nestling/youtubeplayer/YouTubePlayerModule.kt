@@ -47,11 +47,19 @@ class YouTubePlayerModule : Module() {
      * ask about any id, because knowing a video's title grants no access to playing it.
      */
     AsyncFunction("getVideoMetadata") { videoId: String ->
-      try {
-        NewPipeMetadata.video(videoId)
-      } catch (error: MetadataException) {
-        mapOf<String, Any?>("failed" to true, "code" to error.code, "message" to error.message)
-      }
+      metadataCall { NewPipeMetadata.video(videoId) }
+    }
+
+    AsyncFunction("resolveChannelId") { reference: String ->
+      metadataCall { mapOf<String, Any?>("youtubeChannelId" to NewPipeChannels.resolveChannelId(reference)) }
+    }
+
+    AsyncFunction("getChannel") { reference: String ->
+      metadataCall { NewPipeChannels.channel(reference) }
+    }
+
+    AsyncFunction("getChannelVideos") { channelId: String, pageToken: String? ->
+      metadataCall { NewPipeChannels.channelVideos(channelId, pageToken) }
     }
 
     AsyncFunction("play") { videoId: String ->
@@ -118,6 +126,13 @@ class YouTubePlayerModule : Module() {
         if (activeView?.get() === view) activeView = null
       }
     }
+  }
+
+  /** Metadata failures cross the bridge as data, not exceptions, so JS can classify them. */
+  private inline fun metadataCall(body: () -> Map<String, Any?>): Map<String, Any?> = try {
+    body()
+  } catch (error: MetadataException) {
+    mapOf("failed" to true, "code" to error.code, "message" to error.message)
   }
 
   /** Registers the mounted view and starts any play request that arrived before it existed. */

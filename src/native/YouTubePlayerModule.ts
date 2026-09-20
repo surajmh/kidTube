@@ -37,9 +37,31 @@ export type NativeVideoMetadata = {
   message?: string;
 };
 
+export type NativeChannelMetadata = {
+  youtubeChannelId?: string;
+  name?: string;
+  thumbnailUrl?: string;
+  description?: string;
+  failed?: boolean;
+  code?: string;
+  message?: string;
+};
+
+export type NativeChannelVideoPage = {
+  channelId?: string;
+  videos?: NativeVideoMetadata[];
+  nextPageToken?: string | null;
+  failed?: boolean;
+  code?: string;
+  message?: string;
+};
+
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
   /** Metadata only — never resolves a stream and never approves anything. */
   getVideoMetadata(videoId: string): Promise<NativeVideoMetadata>;
+  resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
+  getChannel(reference: string): Promise<NativeChannelMetadata>;
+  getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
   /** Fail-closed allow list: native refuses ids that are not in it. */
   setAllowedVideoIds(videoIds: string[]): Promise<PlayerCommandResult>;
   play(videoId: string): Promise<PlayerCommandResult>;

@@ -1,6 +1,7 @@
 import { readJson, writeJson } from '../../repositories/storage';
 import { YouTubeContentProvider, YouTubeProviderError, providerErrorMessage } from './youtubeContentProvider';
 import { RemoteYouTubeContentProvider, RemoteProviderConfig } from './remoteYouTubeContentProvider';
+import { nativeYouTubeContentProvider } from './nativeYouTubeContentProvider';
 import {
   ContentProviderSettings,
   EndpointValidation,
@@ -57,10 +58,19 @@ export class UnconfiguredContentProvider implements YouTubeContentProvider {
 
 export const unconfiguredContentProvider = new UnconfiguredContentProvider();
 
+/**
+ * The on-device extractor needs no endpoint, key or quota, so it is the default whenever the
+ * native build is present. A configured endpoint still takes precedence, which keeps an existing
+ * proxy install working; that override goes away with the Worker itself.
+ */
 export function providerFor(settings: ContentProviderSettings | undefined): YouTubeContentProvider {
-  if (!settings?.endpointUrl) return unconfiguredContentProvider;
-  const config: RemoteProviderConfig = { endpointUrl: settings.endpointUrl, token: settings.token };
-  return new RemoteYouTubeContentProvider(config);
+  if (settings?.endpointUrl) {
+    const config: RemoteProviderConfig = { endpointUrl: settings.endpointUrl, token: settings.token };
+    return new RemoteYouTubeContentProvider(config);
+  }
+  // No endpoint means the extractor, which needs no configuration. It reports NOT_CONFIGURED
+  // itself on a build without the native module, so there is nothing to probe up front.
+  return nativeYouTubeContentProvider;
 }
 
 

@@ -168,9 +168,24 @@ describe('configuration boundary (§11)', () => {
   });
 
   it('builds a remote provider only when an endpoint is configured', () => {
-    assert.equal(providerFor(undefined).id, 'unconfigured');
-    assert.equal(providerFor({ endpointUrl: '' }).id, 'unconfigured');
+    // Without an endpoint the on-device extractor is used; it needs no configuration at all.
+    assert.equal(providerFor(undefined).id, 'native-extractor');
+    assert.equal(providerFor({ endpointUrl: '' }).id, 'native-extractor');
     assert.equal(providerFor({ endpointUrl }).id, 'remote');
+  });
+
+  it('still fails closed when neither an endpoint nor a native build is present', async () => {
+    // Nothing injects the native module here, which is the case on a JS-only build. Missing
+    // configuration must refuse loudly rather than quietly make content fetchable.
+    const provider = providerFor(undefined);
+    await assert.rejects(() => provider.getChannelVideos(channelA), (error: unknown) => {
+      assert.equal((error as YouTubeProviderError).code, 'NOT_CONFIGURED');
+      return true;
+    });
+    await assert.rejects(() => provider.resolveChannelId('@someone'), (error: unknown) => {
+      assert.equal((error as YouTubeProviderError).code, 'NOT_CONFIGURED');
+      return true;
+    });
   });
 
   it('classifies a raw Error without leaking its message', () => {

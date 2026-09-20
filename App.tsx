@@ -483,6 +483,15 @@ function App() {
     setChannels(next);
   }
 
+  /**
+   * Always-current view of the library for async work.
+   *
+   * Handlers that set state and then immediately kick off an await (approving a channel, then
+   * syncing it) would otherwise write back the arrays captured before that state change.
+   */
+  const libraryRef = useRef({ videos, channels });
+  libraryRef.current = { videos, channels };
+
   async function saveVideos(next: ApprovedVideo[]) {
     if (!parentSession) return;
     await parentContentService.replaceContent(parentSession, { videos: next, channels });
@@ -871,16 +880,24 @@ function App() {
     if (!parentSession) return;
     setBusyChannelIds((current) => (current.includes(channel.channelId) ? current : [...current, channel.channelId]));
     try {
-      const result = await channelSyncService.sync(parentSession, { channel, videos, mode });
+      const result = await channelSyncService.sync(parentSession, { channel, videos: libraryRef.current.videos, mode });
       // `fetched: false` means the cache was fresh or another sync was already
       // running; its caller publishes, so this one must not write a stale array back.
       if (!result.fetched) {
         setChannelSyncStates(channelSyncService.allStates());
         return;
       }
-      const nextChannels = channels.map((item) =>
-        item.channelId === channel.channelId ? result.channels[0] : item,
-      );
+      // Read the library *after* the fetch, never from the render that created this function:
+      // approving a channel sets state and syncs immediately, so the captured array would still
+      // be the one from before the channel existed.
+      const currentChannels = libraryRef.current.channels;
+      const synced = result.channels[0];
+      const known = currentChannels.some((item) => item.channelId === channel.channelId);
+      // Appending when it is missing is the safety net: publishing a channel list without the
+      // channel that was just synced would silently un-approve it.
+      const nextChannels = known
+        ? currentChannels.map((item) => (item.channelId === channel.channelId ? synced : item))
+        : [...currentChannels, synced ?? channel];
       await publishLibrary(result.videos, nextChannels);
     } finally {
       setBusyChannelIds((current) => current.filter((id) => id !== channel.channelId));
