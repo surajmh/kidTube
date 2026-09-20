@@ -71,6 +71,20 @@ class ExtractionSpikeTest {
     }
   }
 
+  @Test
+  fun readsMetadata() {
+    for ((id, label) in SAMPLES) {
+      val meta = NewPipeMetadata.video(id)
+      println("\n--- $label ---")
+      println("  title    : ${meta["title"]}")
+      println("  channel  : ${meta["channelName"]} (${meta["youtubeChannelId"]})")
+      println("  duration : ${meta["durationSeconds"]}s")
+      println("  published: ${meta["publishedAt"]}")
+      println("  thumb    : ${(meta["thumbnailUrl"] as? String)?.take(60)}")
+      assertTrue("no title for $id", (meta["title"] as? String).isNullOrBlank().not())
+    }
+  }
+
   private companion object {
     val SAMPLES = listOf(
       "jNQXAC9IVRw" to "Me at the zoo (oldest, low-res only)",

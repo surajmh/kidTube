@@ -42,6 +42,18 @@ class YouTubePlayerModule : Module() {
       mapOf<String, Any?>("accepted" to true, "count" to allowedVideoIds.size)
     }
 
+    /**
+     * Metadata only: no stream is resolved and nothing is approved by calling this. It is safe to
+     * ask about any id, because knowing a video's title grants no access to playing it.
+     */
+    AsyncFunction("getVideoMetadata") { videoId: String ->
+      try {
+        NewPipeMetadata.video(videoId)
+      } catch (error: MetadataException) {
+        mapOf<String, Any?>("failed" to true, "code" to error.code, "message" to error.message)
+      }
+    }
+
     AsyncFunction("play") { videoId: String ->
       if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
       val view = activeView?.get()

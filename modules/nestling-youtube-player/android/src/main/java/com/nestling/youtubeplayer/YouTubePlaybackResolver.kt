@@ -2,12 +2,9 @@ package com.nestling.youtubeplayer
 
 import android.util.Log
 import java.io.IOException
-import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
-import org.schabi.newpipe.extractor.localization.ContentCountry
-import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -40,7 +37,7 @@ class AuthorizedPlaybackResolver(
     if (videoId.isBlank()) {
       throw PlaybackException(PlaybackCodes.INVALID_VIDEO_ID, "No video was requested.")
     }
-    ensureInitialised()
+    NewPipeSession.ensureInitialised()
 
     val info = try {
       StreamInfo.getInfo(ServiceList.YouTube, WATCH_URL_PREFIX + videoId)
@@ -119,18 +116,6 @@ class AuthorizedPlaybackResolver(
     const val UNAVAILABLE_MESSAGE = "This video can't be played right now."
     const val RETRY_MESSAGE = "Couldn't reach the video. Trying again may help."
 
-    @Volatile
-    private var initialised = false
-
-    /** NewPipe keeps its downloader in a static, so this must happen once before any extraction. */
-    fun ensureInitialised() {
-      if (initialised) return
-      synchronized(this) {
-        if (initialised) return
-        NewPipe.init(NewPipeDownloader(), Localization("en", "AU"), ContentCountry("AU"))
-        initialised = true
-      }
-    }
   }
 }
 
