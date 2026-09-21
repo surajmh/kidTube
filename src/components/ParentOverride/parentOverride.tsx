@@ -66,7 +66,7 @@ export function ParentOverrideSheet({
                 style={[styles.scheduleToggle, scheduleAccess && styles.scheduleToggleActive]}
                 onPress={() => setScheduleAccess(!scheduleAccess)}
               >
-                <Feather name={scheduleAccess ? 'check-square' : 'square'} size={15} color={scheduleAccess ? colors.purple : colors.muted} />
+                <Feather name={scheduleAccess ? 'check-square' : 'square'} size={15} color={scheduleAccess ? colors.ink : colors.muted} />
                 <Text style={[styles.scheduleText, scheduleAccess && styles.scheduleTextActive]}>
                   Also allow outside allowed hours and bedtime
                 </Text>

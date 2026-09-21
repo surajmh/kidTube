@@ -226,7 +226,7 @@ export function ParentChildrenPanel({
           style={[styles.chip, scheduleAccess && styles.chipActive, styles.wideChip]}
           onPress={() => setScheduleAccess(!scheduleAccess)}
         >
-          <Feather name={scheduleAccess ? 'check-square' : 'square'} size={15} color={scheduleAccess ? colors.purple : colors.muted} />
+          <Feather name={scheduleAccess ? 'check-square' : 'square'} size={15} color={scheduleAccess ? colors.ink : colors.muted} />
           <Text style={[styles.chipText, scheduleAccess && styles.chipTextActive]}>Also allow outside allowed hours / bedtime</Text>
         </FocusablePressable>
       </View>
@@ -246,7 +246,7 @@ export function ParentChildrenPanel({
                 style={[styles.chip, !blocked && styles.chipActive]}
                 onPress={() => void onToggleCategory(profileId, category.id)}
               >
-                <Feather name={blocked ? 'square' : 'check-square'} size={15} color={blocked ? colors.muted : colors.purple} />
+                <Feather name={blocked ? 'square' : 'check-square'} size={15} color={blocked ? colors.muted : colors.ink} />
                 <Text style={[styles.chipText, !blocked && styles.chipTextActive]}>{category.name}</Text>
               </FocusablePressable>
             );
@@ -296,7 +296,7 @@ export function ParentChildrenPanel({
           style={[styles.chip, childRules.inheritGlobalApprovals && styles.chipActive, styles.wideChip]}
           onPress={() => void onToggleInherit(profileId, !childRules.inheritGlobalApprovals)}
         >
-          <Feather name={childRules.inheritGlobalApprovals ? 'check-square' : 'square'} size={15} color={childRules.inheritGlobalApprovals ? colors.purple : colors.muted} />
+          <Feather name={childRules.inheritGlobalApprovals ? 'check-square' : 'square'} size={15} color={childRules.inheritGlobalApprovals ? colors.ink : colors.muted} />
           <Text style={[styles.chipText, childRules.inheritGlobalApprovals && styles.chipTextActive]}>
             Use the family-wide library (uncheck to only allow this child’s own picks)
           </Text>

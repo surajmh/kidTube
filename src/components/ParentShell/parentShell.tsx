@@ -70,7 +70,7 @@ export function ParentShell({
 
       {notice ? (
         <View style={styles.notice} accessibilityLabel={notice}>
-          <Feather name="tool" size={14} color={colors.purpleDark} />
+          <Feather name="tool" size={14} color={colors.yellow} />
           <Text style={styles.noticeText}>{notice}</Text>
         </View>
       ) : null}
@@ -83,7 +83,7 @@ export function ParentShell({
             style={[styles.tab, section === item.id && styles.tabActive]}
             onPress={() => setSection(item.id)}
           >
-            <Feather name={item.icon} size={16} color={section === item.id ? colors.purple : colors.muted} />
+            <Feather name={item.icon} size={16} color={section === item.id ? yt.chipActiveText : colors.muted} />
             <Text style={[styles.tabText, section === item.id && styles.tabTextActive]}>{item.label}</Text>
             {item.id === 'requests' && pendingCount > 0 ? (
               <View style={styles.badge}><Text style={styles.badgeText}>{pendingCount}</Text></View>

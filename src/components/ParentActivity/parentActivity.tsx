@@ -112,7 +112,7 @@ export function ParentActivityPanel({
                   <Feather
                     name={request.status === 'pending' ? 'clock' : request.status === 'approved' ? 'check-circle' : 'x-circle'}
                     size={16}
-                    color={request.status === 'pending' ? colors.purple : request.status === 'approved' ? colors.mintDark : colors.danger}
+                    color={request.status === 'pending' ? colors.yellow : request.status === 'approved' ? colors.mintDark : colors.danger}
                   />
                   <View style={styles.historyInfo}>
                     <Text style={styles.usageLabel} numberOfLines={1}>{request.title ?? 'Request'}</Text>
