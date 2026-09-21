@@ -2,18 +2,13 @@
 node_modules/
 
 # Expo / native build output
+# Unanchored on purpose: a pattern with a slash in the middle (android/build/)
+# only matches at the repo root, which let the copy under modules/ stay tracked.
 .expo/
-android/app/build/
-android/build/
-ios/build/
+build/
+.gradle/
+.cxx/
 ios/Pods/
-
-# Local proxy secrets — never commit the YouTube API key
-server/youtube-proxy/.dev.vars
-server/youtube-proxy/.wrangler/
-
-# Compiled test output (see tsconfig.test.json)
-.tmp-tests/
 
 # Local environment
 .env
