@@ -7,6 +7,7 @@
  */
 module.exports = {
   preset: 'jest-expo',
+  setupFiles: ['<rootDir>/jest.setup.js'],
   // These ship untranspiled ESM and must go through Babel rather than be treated as CommonJS.
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|nativewind|react-native-css-interop|react-native-reanimated|react-native-worklets))',

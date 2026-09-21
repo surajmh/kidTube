@@ -1,30 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../types';
-import { Phase3Settings } from '../phase3Types';
-import {
-  ContentApproval,
-  ContentCategory,
-  PlaybackOverride,
-  ProfilePolicyOverrides,
-} from '../phase4Types';
-import { ChildRulesMap } from '../services/childRulesService';
-import { describeApprovalExpiry, describeApprovalTarget } from '../services/approvalRules';
-import { describeProfilePolicy } from '../services/profilePolicyService';
-import { OverridePreset, overridePresets } from '../services/playbackOverrideService';
-import { Avatar } from './Avatar';
-import { colors } from './theme';
-import { FocusablePressable } from './tv';
-
-const limitOptions = [15, 30, 45, 60, 90, 120];
-
-function minutesToTime(value: number) {
-  const hour = Math.floor(value / 60) % 24;
-  const minute = value % 60;
-  const suffix = hour >= 12 ? 'PM' : 'AM';
-  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${suffix}`;
-}
+import { describeApprovalExpiry, describeApprovalTarget } from '../../services/approvalRules';
+import { overridePresets } from '../../services/playbackOverrideService';
+import { Avatar } from '../Avatar';
+import { colors } from '../theme';
+import { FocusablePressable } from '../tv';
+import styles from './parentChildren.style';
+import { useParentChildren } from './parentChildren.hook';
+import { minutesToTime, shiftWindow, windowForDay } from './parentChildren.helper';
+import { DAY_LABELS, LIMIT_OPTIONS, PARENT_CHILDREN_COPY } from './parentChildren.constant';
+import { ParentChildrenProps } from './parentChildren.type';
 
 export function ParentChildrenPanel({
   profiles,
@@ -48,62 +34,41 @@ export function ParentChildrenPanel({
   onRevokeOverride,
   onRevokeApproval,
   profilesSlot,
-}: {
-  profiles: ChildProfile[];
-  initialProfileId: string;
-  channels: ApprovedChannel[];
-  videos: ApprovedVideo[];
-  categories: ContentCategory[];
-  approvals: ContentApproval[];
-  rules: ChildRulesMap;
-  policyOverrides: Record<string, ProfilePolicyOverrides>;
-  globalSettings: Phase3Settings;
-  overrides: PlaybackOverride[];
-  onSetPolicy: (profileId: string, patch: ProfilePolicyOverrides | null) => Promise<void>;
-  onToggleInherit: (profileId: string, inherit: boolean) => Promise<void>;
-  onToggleCategory: (profileId: string, categoryId: string) => Promise<void>;
-  onToggleGrantChannel: (profileId: string, channelId: string) => Promise<void>;
-  onToggleBlockChannel: (profileId: string, channelId: string) => Promise<void>;
-  onToggleGrantVideo: (profileId: string, videoId: string) => Promise<void>;
-  onToggleBlockVideo: (profileId: string, videoId: string) => Promise<void>;
-  onGrantOverride: (profileId: string, preset: OverridePreset, grantsScheduleAccess: boolean) => Promise<void>;
-  onRevokeOverride: (profileId: string) => Promise<void>;
-  onRevokeApproval: (approval: ContentApproval) => Promise<void>;
-  /** Existing Phase 1 profile manager, so profile editing stays in one place. */
-  profilesSlot?: React.ReactNode;
-}) {
-  const [selectedId, setSelectedId] = useState(initialProfileId || profiles[0]?.id || '');
-  const [scheduleAccess, setScheduleAccess] = useState(false);
-  const profile = profiles.find((item) => item.id === selectedId) ?? profiles[0];
-  const profileId = profile?.id ?? '';
-  const childRules = rules[profileId] ?? {
+}: ParentChildrenProps) {
+  const children = useParentChildren({
+    profiles,
+    initialProfileId,
+    rules,
+    policyOverrides,
+    globalSettings,
+    overrides,
+    approvals,
+    onSetPolicy,
+  });
+  const {
+    setSelectedId,
+    scheduleAccess,
+    setScheduleAccess,
+    profile,
     profileId,
-    inheritGlobalApprovals: true,
-    blockedCategoryIds: [],
-    grantedVideoIds: [],
-    grantedChannelIds: [],
-    blockedVideoIds: [],
-    blockedChannelIds: [],
-  };
-  const override = policyOverrides[profileId];
-  const summary = describeProfilePolicy(globalSettings, override);
-  const activeOverrides = overrides.filter((item) => item.profileId === profileId && new Date(item.expiresAt).getTime() > Date.now());
-  const childApprovals = approvals.filter((approval) => approval.profileId === profileId);
-
-  function patch(patchValue: ProfilePolicyOverrides) {
-    return onSetPolicy(profileId, patchValue);
-  }
+    childRules,
+    override,
+    summary,
+    activeOverrides,
+    childApprovals,
+    patch,
+  } = children;
 
   if (!profile) {
-    return <Text style={styles.helper}>Add a child profile first.</Text>;
+    return <Text style={styles.helper}>{PARENT_CHILDREN_COPY.noProfiles}</Text>;
   }
 
   return (
     <View>
       <View style={styles.intro}>
         <View>
-          <Text style={styles.title}>Children</Text>
-          <Text style={styles.subtitle}>Rules, limits and temporary permissions per child.</Text>
+          <Text style={styles.title}>{PARENT_CHILDREN_COPY.title}</Text>
+          <Text style={styles.subtitle}>{PARENT_CHILDREN_COPY.subtitle}</Text>
         </View>
         <Feather name="users" size={22} color={colors.purple} />
       </View>
@@ -139,7 +104,7 @@ export function ParentChildrenPanel({
 
         <Text style={styles.fieldLabel}>DAILY LIMIT</Text>
         <View style={styles.chipRow}>
-          {limitOptions.map((minutes) => (
+          {LIMIT_OPTIONS.map((minutes) => (
             <FocusablePressable
               key={minutes}
               accessibilityLabel={`${minutes} minutes`}
@@ -409,25 +374,23 @@ function AllowedWindowEditor({
   onChange: (schedules: Record<string, { startMinutes: number; endMinutes: number }[]>) => void;
 }) {
   const [day, setDay] = useState(new Date().getDay());
-  const windows = schedules[String(day)] ?? [];
-  const window = windows[0] ?? { startMinutes: 16 * 60, endMinutes: 19 * 60 };
+  const window = windowForDay(schedules, day);
 
   function shift(field: 'startMinutes' | 'endMinutes', deltaMinutes: number) {
-    const value = (window[field] + deltaMinutes + 24 * 60) % (24 * 60);
-    onChange({ ...schedules, [String(day)]: [{ ...window, [field]: value }] });
+    onChange(shiftWindow(schedules, day, field, deltaMinutes));
   }
 
   return (
     <View style={styles.windowEditor}>
       <View style={styles.chipRow}>
-        {[['0', 'Sun'], ['1', 'Mon'], ['2', 'Tue'], ['3', 'Wed'], ['4', 'Thu'], ['5', 'Fri'], ['6', 'Sat']].map(([value, label]) => (
+        {DAY_LABELS.map(({ value, label }) => (
           <FocusablePressable
             key={value}
             accessibilityLabel={label}
-            style={[styles.dayChip, day === Number(value) && styles.chipActive]}
-            onPress={() => setDay(Number(value))}
+            style={[styles.dayChip, day === value && styles.chipActive]}
+            onPress={() => setDay(value)}
           >
-            <Text style={[styles.chipText, day === Number(value) && styles.chipTextActive]}>{label}</Text>
+            <Text style={[styles.chipText, day === value && styles.chipTextActive]}>{label}</Text>
           </FocusablePressable>
         ))}
       </View>
@@ -461,43 +424,3 @@ function AllowedWindowEditor({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  profileRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 },
-  profileChip: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 15, flexDirection: 'row', gap: 8, minHeight: 50, padding: 5, paddingRight: 13 },
-  profileChipActive: { backgroundColor: colors.lavender },
-  profileChipText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  profileChipTextActive: { color: colors.purple },
-  card: { backgroundColor: colors.card, borderRadius: 18, marginTop: 16, padding: 15 },
-  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
-  helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 8 },
-  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 8, marginTop: 18 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', gap: 6, justifyContent: 'center', minHeight: 44, paddingHorizontal: 11 },
-  wideChip: { marginTop: 12 },
-  chipActive: { backgroundColor: colors.lavender },
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  chipTextActive: { color: colors.purple },
-  smallAction: { backgroundColor: colors.lavender, borderRadius: 10, justifyContent: 'center', minHeight: 40, paddingHorizontal: 10 },
-  smallActionText: { color: colors.purple, fontSize: 12, fontWeight: '800' },
-  overrideActive: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 14, flexDirection: 'row', gap: 9, marginTop: 12, minHeight: 52, padding: 10 },
-  overrideActiveText: { color: colors.mintDark, flex: 1, fontSize: 13, fontWeight: '800' },
-  ruleRow: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 13, flexDirection: 'row', gap: 8, marginTop: 10, minHeight: 62, padding: 8 },
-  ruleInfo: { flex: 1 },
-  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  rowMeta: { color: colors.muted, fontSize: 12, marginTop: 3 },
-  ruleToggle: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 11, height: 44, justifyContent: 'center', width: 46 },
-  ruleToggleGrant: { backgroundColor: colors.mintDark },
-  ruleToggleBlock: { backgroundColor: colors.danger },
-  windowEditor: { marginTop: 12 },
-  windowRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  windowField: { flex: 1 },
-  stepper: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', padding: 4 },
-  stepButton: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 10, height: 44, justifyContent: 'center', width: 44 },
-  stepValue: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  dayChip: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 11, justifyContent: 'center', minHeight: 42, paddingHorizontal: 10 },
-});

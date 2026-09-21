@@ -19,7 +19,7 @@ import { RequestDecisionInput } from './ParentRequestsPanel';
 import { ParentRequestsPanel } from './ParentRequestsPanel';
 import { ContentTab, ParentContentPanel } from './ParentContent';
 import { ParentActivityPanel } from './ParentActivityPanel';
-import { ParentChildrenPanel } from './ParentChildrenPanel';
+import { ParentChildrenPanel } from './ParentChildren';
 import { ParentCategoriesPanel } from './ParentCategoriesPanel';
 import { colors } from './theme';
 import { yt } from './youtube/theme';
