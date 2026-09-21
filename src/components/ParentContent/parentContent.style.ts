@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   approvalTag: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
   approvalTagText: { color: colors.mintDark, fontSize: 10, fontWeight: '800' },
   expiryTag: { backgroundColor: colors.peach, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 4 },
-  expiryTagText: { color: '#8A5340', fontSize: 10, fontWeight: '800' },
+  expiryTagText: { color: colors.coral, fontSize: 10, fontWeight: '800' },
   videoCountTag: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
   videoCountText: { color: colors.ink, fontSize: 10, fontWeight: '800' },
   pageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 14, paddingTop: 4 },

@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.ink, fontSize: 16, fontWeight: '800', marginBottom: 8 },
   toggleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
   rowLabel: { color: colors.ink, flex: 1, fontSize: 14, fontWeight: '700' },
-  toggle: { backgroundColor: '#DED9D1', borderRadius: 16, height: 30, justifyContent: 'center', padding: 3, width: 52 },
+  toggle: { backgroundColor: colors.line, borderRadius: 16, height: 30, justifyContent: 'center', padding: 3, width: 52 },
   toggleOn: { backgroundColor: colors.purple },
   toggleKnob: { backgroundColor: '#fff', borderRadius: 12, height: 24, width: 24 },
   toggleKnobOn: { alignSelf: 'flex-end' },

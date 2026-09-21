@@ -35,7 +35,7 @@ export function ParentCategoriesPanel({
           value={name}
           onChangeText={setName}
           placeholder="e.g. Bedtime calms"
-          placeholderTextColor="#B8B1AA"
+          placeholderTextColor={colors.muted}
           style={styles.input}
           maxLength={24}
         />

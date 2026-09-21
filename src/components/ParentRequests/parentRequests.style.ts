@@ -8,7 +8,7 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   pendingBadge: { alignItems: 'center', backgroundColor: colors.sky, borderRadius: 14, flexDirection: 'row', gap: 7, paddingHorizontal: 12, paddingVertical: 9 },
   pendingBadgeEmpty: { backgroundColor: colors.mint },
-  pendingDot: { backgroundColor: '#3B82F6', borderRadius: 5, height: 10, width: 10 },
+  pendingDot: { backgroundColor: colors.yellow, borderRadius: 5, height: 10, width: 10 },
   pendingDotEmpty: { backgroundColor: colors.mintDark },
   pendingText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
   pendingTextEmpty: { color: colors.mintDark },

@@ -2,8 +2,8 @@
  * Kid Mode design tokens.
  *
  * A video-app design language: near-black surfaces, one saturated accent, and almost no chrome
- * so thumbnails carry the screen. Parent Mode keeps its own light palette in `../theme`, which is
- * deliberate — the two surfaces are for different people and never appear together.
+ * so thumbnails carry the screen. Parent Mode's palette in `../theme` mirrors these values under
+ * its own token names, so the two halves of the app read as one product.
  */
 export const yt = {
   /** Page background. Near-black rather than pure black so elevated surfaces can still read. */

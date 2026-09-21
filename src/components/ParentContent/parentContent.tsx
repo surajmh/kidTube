@@ -329,7 +329,7 @@ export function ParentContentPanel({
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder={PARENT_CONTENT_COPY.searchPlaceholder}
-          placeholderTextColor="#B8B1AA"
+          placeholderTextColor={colors.muted}
           autoCapitalize="none"
           style={styles.input}
           accessibilityLabel="Paste a YouTube link to approve"

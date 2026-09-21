@@ -3,7 +3,7 @@ import { colors } from '../theme';
 
 /** Parent override sheet styles. */
 const styles = StyleSheet.create({
-  scrim: { alignItems: 'center', backgroundColor: 'rgba(36, 48, 71, 0.48)', flex: 1, justifyContent: 'center', padding: 20 },
+  scrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 },
   sheet: { backgroundColor: colors.card, borderRadius: 24, padding: 20, width: '100%' },
   header: { alignItems: 'center', flexDirection: 'row', gap: 13 },
   icon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 20, height: 42, justifyContent: 'center', width: 42 },

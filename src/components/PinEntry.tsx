@@ -36,7 +36,7 @@ export function PinEntry({
         secureTextEntry
         maxLength={4}
         placeholder="••••"
-        placeholderTextColor="#B8B1AA"
+        placeholderTextColor={colors.muted}
         style={[styles.input, error ? styles.inputError : null]}
         accessibilityLabel="Four digit parent PIN"
       />
