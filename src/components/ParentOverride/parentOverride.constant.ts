@@ -1,5 +1,6 @@
+import { PIN_FAILURE_COPY } from '../shared/pinFailure.helper';
+
 export const PARENT_OVERRIDE_COPY = {
-  noPinSet: 'No parent PIN is set on this device.',
-  lastTry: 'That PIN did not match. One more try before PIN entry locks.',
+  ...PIN_FAILURE_COPY,
   grantFailed: 'That override could not be saved.',
 } as const;

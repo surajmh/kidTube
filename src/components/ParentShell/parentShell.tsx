@@ -6,6 +6,7 @@ import { ParentContentPanel } from '../ParentContent';
 import { ParentActivityPanel } from '../ParentActivity';
 import { ParentChildrenPanel } from '../ParentChildren';
 import { ParentCategoriesPanel } from '../ParentCategories';
+import { ParentSecurityPanel } from '../ParentSecurity';
 import { colors } from '../theme';
 import { yt } from '../youtube/theme';
 import { FocusablePressable } from '../tv';
@@ -162,6 +163,8 @@ export function ParentShell({
       ) : null}
 
       {section === 'requests' ? requestsPanel : null}
+
+      {section === 'security' ? <ParentSecurityPanel /> : null}
 
       {section === 'children' ? (
         <ParentChildrenPanel

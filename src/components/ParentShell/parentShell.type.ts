@@ -24,7 +24,8 @@ export type ParentSection =
   | 'requests'
   | 'children'
   | 'activity'
-  | 'settings';
+  | 'settings'
+  | 'security';
 
 export type ParentShellData = {
   session: ParentSession | null;

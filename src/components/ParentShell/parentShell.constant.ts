@@ -14,6 +14,7 @@ export const SHORTCUTS: Array<{ id: ParentSection; label: string; hint: string; 
   { id: 'children', label: 'Children', hint: 'Profiles, limits and rules', icon: 'users' },
   { id: 'activity', label: 'Activity', hint: 'What has been watched', icon: 'bar-chart-2' },
   { id: 'settings', label: 'Playback', hint: 'Screen time and bedtime', icon: 'sliders' },
+  { id: 'security', label: 'Security', hint: 'Change the parent PIN', icon: 'lock' },
 ];
 
 /**

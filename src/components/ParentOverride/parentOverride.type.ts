@@ -11,9 +11,4 @@ export type ParentOverrideProps = {
   onGranted: (overrides: PlaybackOverride[]) => void;
 };
 
-/** The failure half of a PIN check, as the session service reports it. */
-export type PinFailure = {
-  reason: 'mismatch' | 'locked' | 'not-set';
-  attemptsRemaining: number;
-  retryAfterMs: number;
-};
+export type { PinFailure } from '../shared/pinFailure.helper';
