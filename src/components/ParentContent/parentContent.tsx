@@ -1,40 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { Image, StyleSheet, Text, TextInput, View } from 'react-native';
+import React from 'react';
+import { Image, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../types';
-import { ContentApproval, ContentCandidate, ContentCategory, resolvedCategoryIds } from '../phase4Types';
-import { describeApprovalExpiry } from '../services/approvalRules';
-import {
-  ChannelSyncState,
-  channelVideosFrom,
-  describeChannelSync,
-} from '../services/content/channelSyncRules';
-import { colors, cardTints } from './theme';
-import { FocusablePressable } from './tv';
-import {
-  ParentFilterButton,
-  ParentFilterDrawer,
-  ParentFilters,
-  emptyParentFilters,
-} from './ParentFilterDrawer';
-import { yt } from './youtube/theme';
-import { PagedGrid } from './PagedGrid';
-import { ChannelVideoList } from './ChannelVideoList';
+import { channelVideosFrom, describeChannelSync } from '../../services/content/channelSyncRules';
+import { colors, cardTints } from '../theme';
+import { FocusablePressable } from '../tv';
+import { ParentFilterButton, ParentFilterDrawer } from '../ParentFilter';
+import { PagedGrid } from '../PagedGrid';
+import { ChannelVideoList } from '../ChannelVideoList';
+import styles from './parentContent.style';
+import { useParentContent } from './parentContent.hook';
+import { approveLabelFor } from './parentContent.helper';
+import { PARENT_CONTENT_COPY, PARENT_CONTENT_TITLES } from './parentContent.constant';
+import { ContentTab, ParentContentMode, ParentContentProps } from './parentContent.type';
 
-export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';
-
-/** Which page of the parent experience this panel is rendering. */
-export type ParentContentMode = 'dashboard' | 'channels' | 'videos' | 'categories';
-
-
-function approveLabelFor(approvals: ContentApproval[], target: { videoId?: string; channelId?: string }) {
-  const matching = approvals.filter((approval) =>
-    approval.target.type === 'video'
-      ? Boolean(target.videoId) && approval.target.youtubeVideoId === target.videoId
-      : Boolean(target.channelId) && approval.target.youtubeChannelId === target.channelId,
-  );
-  return matching.map((approval) => describeApprovalExpiry(approval));
-}
+export type { ContentTab, ParentContentMode };
 
 export function ParentContentPanel({
   profiles,
@@ -61,108 +40,26 @@ export function ParentContentPanel({
   onSelectChannel,
   onRefreshChannel,
   onLoadMoreChannel,
-}: {
-  profiles: ChildProfile[];
-  categories: ContentCategory[];
-  channels: ApprovedChannel[];
-  videos: ApprovedVideo[];
-  approvals: ContentApproval[];
-  categoriesSlot?: React.ReactNode;
-  requestsSlot?: React.ReactNode;
-  manualAddSlot?: React.ReactNode;
-  accessFor: (profileId: string, target: { videoId?: string; channelId?: string }) => boolean;
-  onRemoveVideo: (video: ApprovedVideo) => Promise<void>;
-  onRemoveChannel: (channel: ApprovedChannel) => Promise<void>;
-  onToggleVideoCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => Promise<void>;
-  onToggleChannelCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => Promise<void>;
-  onSearch: (query: string) => Promise<ContentCandidate[]>;
-  onSaveCandidate: (candidate: ContentCandidate) => Promise<void>;
-  onApproveCandidate: (candidate: ContentCandidate) => Promise<void>;
-  /** Per-channel fetch state for approved-channel video discovery. */
-  syncStateFor: (channelId: string) => ChannelSyncState | undefined;
-  channelBusy: (channelId: string) => boolean;
-  /** Cache-respecting fetch, run when a parent opens a channel's videos (§7). */
-  onOpenChannelVideos: (channel: ApprovedChannel) => void;
-  /** Set while a channel's own page is open; the Channels tab otherwise lists channels only. */
-  mode: ParentContentMode;
-  selectedChannelId: string | null;
-  onSelectChannel: (channelId: string | null) => void;
-  onRefreshChannel: (channel: ApprovedChannel) => void;
-  onLoadMoreChannel: (channel: ApprovedChannel) => void;
-}) {
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [childFilter, setChildFilter] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<ContentCandidate[] | null>(null);
-  const [searchError, setSearchError] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [resultTitles, setResultTitles] = useState<Record<string, string>>({});
-
-  const filteredVideos = useMemo(
-    () =>
-      videos.filter((video) => {
-        if (query && !video.title.toLowerCase().includes(query.toLowerCase()) && !(video.channelName ?? '').toLowerCase().includes(query.toLowerCase())) {
-          return false;
-        }
-        if (categoryFilter && !resolvedCategoryIds(video.categoryIds).includes(categoryFilter)) return false;
-        if (childFilter && !accessFor(childFilter, { videoId: video.youtubeVideoId, channelId: video.channelId })) return false;
-        return true;
-      }),
-    [videos, query, categoryFilter, childFilter, accessFor],
-  );
-
-  const filteredChannels = useMemo(
-    () =>
-      channels.filter((channel) => {
-        if (query && !channel.name.toLowerCase().includes(query.toLowerCase()) && !channel.channelId.toLowerCase().includes(query.toLowerCase())) {
-          return false;
-        }
-        if (categoryFilter && !resolvedCategoryIds(channel.categoryIds).includes(categoryFilter)) return false;
-        if (childFilter && !accessFor(childFilter, { channelId: channel.channelId })) return false;
-        return true;
-      }),
-    [channels, query, categoryFilter, childFilter, accessFor],
-  );
-
-  // The nav decides the page; `tab` is kept because the filtering below is written in terms of it.
-  const tab: ContentTab = mode === 'videos' ? 'videos' : mode === 'categories' ? 'categories' : 'channels';
-  const filters: ParentFilters = { query, childId: childFilter, categoryId: categoryFilter };
-  function applyFilters(next: ParentFilters) {
-    setQuery(next.query);
-    setChildFilter(next.childId);
-    setCategoryFilter(next.categoryId);
-  }
-  const recentlyAdded = (tab === 'channels' ? channels : videos).slice(0, 3);
-
-  function titled(candidate: ContentCandidate): ContentCandidate {
-    const key = candidate.youtubeVideoId ?? candidate.youtubeChannelId ?? candidate.title;
-    const title = resultTitles[key]?.trim();
-    return title ? { ...candidate, title } : candidate;
-  }
-
-  async function runSearch() {
-    setSearching(true);
-    setSearchError('');
-    setNotice('');
-    try {
-      const found = await onSearch(searchQuery);
-      setResults(found);
-      if (!found.length) setSearchError('No YouTube ID found in that link. Paste a video or channel URL.');
-    } catch (caught) {
-      setResults(null);
-      setSearchError(caught instanceof Error ? caught.message : 'That search could not run.');
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  const selectedChannel = selectedChannelId
-    ? channels.find((channel) => channel.channelId === selectedChannelId)
-    : undefined;
+}: ParentContentProps) {
+  const content = useParentContent({ videos, channels, mode, selectedChannelId, accessFor, onSearch });
+  const {
+    tab,
+    filters,
+    filtersOpen,
+    expandedId,
+    filteredVideos,
+    filteredChannels,
+    selectedChannel,
+    recentlyAdded,
+    searchQuery,
+    setSearchQuery,
+    results,
+    searchError,
+    searching,
+    notice,
+    titled,
+    runSearch,
+  } = content;
 
   // A channel's own page: just that channel and its uploads. More pages arrive as the parent
   // scrolls, so there is no bulk fetch when a channel is approved.
@@ -211,10 +108,10 @@ export function ParentContentPanel({
       {mode === 'dashboard' ? null : (
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>
-            {mode === 'channels' ? 'Channels' : mode === 'videos' ? 'Videos' : 'Categories'}
+            {PARENT_CONTENT_TITLES[mode === 'videos' ? 'videos' : mode === 'categories' ? 'categories' : 'channels']}
           </Text>
           {mode === 'categories' ? null : (
-            <ParentFilterButton filters={filters} onPress={() => setFiltersOpen(true)} />
+            <ParentFilterButton filters={filters} onPress={content.openFilters} />
           )}
         </View>
       )}
@@ -281,7 +178,7 @@ export function ParentContentPanel({
                           </View>
                         ) : channel.approved ? (
                           <View style={styles.expiryTag}>
-                            <Text style={styles.expiryTagText}>Videos not loaded</Text>
+                            <Text style={styles.expiryTagText}>{PARENT_CONTENT_COPY.videosNotLoaded}</Text>
                           </View>
                         ) : null}
                         {expiry.map((label, index) => (
@@ -307,7 +204,7 @@ export function ParentContentPanel({
                     <FocusablePressable
                       accessibilityLabel={`Edit categories for ${channel.name}`}
                       style={styles.iconButton}
-                      onPress={() => setExpandedId(expanded ? null : channel.id)}
+                      onPress={() => content.toggleExpanded(channel.id)}
                     >
                       <Feather name="tag" size={16} color={colors.muted} />
                     </FocusablePressable>
@@ -374,7 +271,7 @@ export function ParentContentPanel({
                     <FocusablePressable
                       accessibilityLabel={`Edit categories for ${video.title}`}
                       style={styles.iconButton}
-                      onPress={() => setExpandedId(expanded ? null : video.id)}
+                      onPress={() => content.toggleExpanded(video.id)}
                     >
                       <Feather name="tag" size={16} color={colors.muted} />
                     </FocusablePressable>
@@ -422,7 +319,7 @@ export function ParentContentPanel({
         <View style={styles.searchHeader}>
           <View style={styles.searchIcon}><Feather name="search" size={18} color={colors.purple} /></View>
           <View style={styles.searchHeaderText}>
-            <Text style={styles.searchTitle}>Parent content search</Text>
+            <Text style={styles.searchTitle}>{PARENT_CONTENT_COPY.searchTitle}</Text>
             <Text style={styles.searchBody}>
               Only available in Parent Mode. Results are never playable until you approve them, and Kid Mode has no search at all.
             </Text>
@@ -431,7 +328,7 @@ export function ParentContentPanel({
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Paste a YouTube video or channel link"
+          placeholder={PARENT_CONTENT_COPY.searchPlaceholder}
           placeholderTextColor="#B8B1AA"
           autoCapitalize="none"
           style={styles.input}
@@ -452,8 +349,8 @@ export function ParentContentPanel({
               </View>
               <View style={styles.rowInfo}>
                 <TextInput
-                  value={resultTitles[key] ?? candidate.title}
-                  onChangeText={(value) => setResultTitles((current) => ({ ...current, [key]: value }))}
+                  value={titled(candidate).title}
+                  onChangeText={(value) => content.setResultTitle(candidate, value)}
                   style={styles.resultTitleInput}
                   accessibilityLabel="Approved title"
                   maxLength={80}
@@ -468,7 +365,7 @@ export function ParentContentPanel({
                 style={styles.resultAction}
                 onPress={() =>
                   void onSaveCandidate(titled(candidate)).then(() =>
-                    setNotice('Saved as an ask-a-parent item. It stays unplayable until you approve it.'),
+                    content.setNotice('Saved as an ask-a-parent item. It stays unplayable until you approve it.'),
                   )
                 }
               >
@@ -478,7 +375,7 @@ export function ParentContentPanel({
                 accessibilityLabel="Approve for everyone"
                 style={styles.resultApprove}
                 onPress={() =>
-                  void onApproveCandidate(titled(candidate)).then(() => setNotice('Approved into the family library.'))
+                  void onApproveCandidate(titled(candidate)).then(() => content.setNotice('Approved into the family library.'))
                 }
               >
                 <Text style={styles.resultApproveText}>Approve</Text>
@@ -496,76 +393,9 @@ export function ParentContentPanel({
         filters={filters}
         profiles={profiles}
         categories={categories}
-        onChange={applyFilters}
-        onClose={() => setFiltersOpen(false)}
+        onChange={content.setFilters}
+        onClose={content.closeFilters}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  privacyBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 12, flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingVertical: 8 },
-  privacyText: { color: colors.mintDark, fontSize: 11, fontWeight: '800' },
-  tabRow: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  tab: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 13, flexDirection: 'row', gap: 7, minHeight: 46, paddingHorizontal: 13 },
-  tabActive: { backgroundColor: colors.lavender },
-  tabText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  tabTextActive: { color: colors.purple },
-  input: { backgroundColor: colors.canvas, borderRadius: 13, color: colors.ink, fontSize: 15, height: 50, marginTop: 14, paddingHorizontal: 13 },
-  filterLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 8, marginTop: 20 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: colors.card, borderRadius: 12, justifyContent: 'center', minHeight: 42, paddingHorizontal: 11 },
-  chipActive: { backgroundColor: colors.lavender },
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  chipTextActive: { color: colors.purple },
-  recentRow: { flexDirection: 'row', gap: 10 },
-  recentCard: { borderRadius: 15, flex: 1, minHeight: 76, padding: 11 },
-  recentTitle: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  recentMeta: { color: colors.muted, fontSize: 11, marginTop: 6 },
-  listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 22 },
-  row: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 15, flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8, minHeight: 74, padding: 9 },
-  thumb: { borderRadius: 11, height: 52, width: 52 },
-  thumbFallback: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 11, height: 52, justifyContent: 'center', width: 52 },
-  rowInfo: { flex: 1, paddingHorizontal: 11 },
-  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  rowMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
-  approvalTag: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
-  approvalTagText: { color: colors.mintDark, fontSize: 10, fontWeight: '800' },
-  expiryTag: { backgroundColor: colors.peach, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 4 },
-  expiryTagText: { color: '#8A5340', fontSize: 10, fontWeight: '800' },
-  videoCountTag: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
-  videoCountText: { color: colors.purple, fontSize: 10, fontWeight: '800' },
-  pageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 14, paddingTop: 4 },
-  pageTitle: { color: yt.text, fontSize: 20, fontWeight: '700' },
-  backRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 6, paddingVertical: 8 },
-  backText: { color: colors.ink, fontSize: 15, fontWeight: '800' },
-  channelHero: { alignItems: 'center', gap: 6, paddingBottom: 18, paddingTop: 4 },
-  heroThumb: { borderRadius: 32, height: 64, marginBottom: 4, width: 64 },
-  heroName: { color: colors.ink, fontSize: 19, fontWeight: '800', textAlign: 'center' },
-  heroMeta: { color: colors.muted, fontSize: 13 },
-  channelVideos: { borderTopColor: colors.line, borderTopWidth: 1, marginTop: 12, paddingTop: 12, width: '100%' },
-  iconButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 42 },
-  categoryEditor: { borderTopColor: colors.line, borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, paddingTop: 12, width: '100%' },
-  empty: { backgroundColor: colors.card, borderRadius: 15, marginBottom: 8, padding: 16 },
-  searchCard: { backgroundColor: colors.card, borderRadius: 20, marginTop: 26, padding: 15 },
-  searchHeader: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  searchIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 18, height: 38, justifyContent: 'center', width: 38 },
-  searchHeaderText: { flex: 1 },
-  searchTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
-  searchBody: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
-  lookup: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 13, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', marginTop: 12 },
-  lookupText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  error: { color: colors.danger, fontSize: 12, marginTop: 10 },
-  notice: { color: colors.mintDark, fontSize: 12, fontWeight: '700', marginTop: 10 },
-  resultRow: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 14, flexDirection: 'row', marginTop: 10, minHeight: 68, padding: 9 },
-  resultTitleInput: { color: colors.ink, fontSize: 14, fontWeight: '800', padding: 0 },
-  manualSlot: { marginTop: 18 },
-  resultAction: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 11, height: 44, justifyContent: 'center', marginRight: 6, paddingHorizontal: 12 },
-  resultActionText: { color: colors.purple, fontSize: 13, fontWeight: '800' },
-  resultApprove: { alignItems: 'center', backgroundColor: colors.mintDark, borderRadius: 11, height: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  resultApproveText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-});

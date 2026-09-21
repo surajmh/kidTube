@@ -81,7 +81,7 @@ import { sponsorBlockService, SponsorSegment } from './src/services/sponsorBlock
 import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
 import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
-import { ContentTab } from './src/components/ParentContentPanel';
+import { ContentTab } from './src/components/ParentContent';
 import { RequestDecisionInput } from './src/components/ParentRequestsPanel';
 import { ParentOverrideSheet } from './src/components/ParentOverrideSheet';
 import { PinEntry } from './src/components/PinEntry';

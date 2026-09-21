@@ -17,7 +17,7 @@ import { OverridePreset } from '../services/playbackOverrideService';
 import { ParentSession } from '../services/auth/parentSession';
 import { RequestDecisionInput } from './ParentRequestsPanel';
 import { ParentRequestsPanel } from './ParentRequestsPanel';
-import { ContentTab, ParentContentPanel } from './ParentContentPanel';
+import { ContentTab, ParentContentPanel } from './ParentContent';
 import { ParentActivityPanel } from './ParentActivityPanel';
 import { ParentChildrenPanel } from './ParentChildrenPanel';
 import { ParentCategoriesPanel } from './ParentCategoriesPanel';
