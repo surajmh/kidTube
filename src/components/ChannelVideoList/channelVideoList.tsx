@@ -33,7 +33,6 @@ export function ChannelVideoList({
   canLoadMore,
   onRefresh,
   onLoadMore,
-  onVideoPress,
   variant,
 }: ChannelVideoListProps) {
   const parent = variant === 'parent';
@@ -117,12 +116,7 @@ export function ChannelVideoList({
           pageSize={parent ? CHANNEL_LIST_PAGE_SIZE.parent : CHANNEL_LIST_PAGE_SIZE.kid}
           style={styles.grid}
           renderItem={(video, index) => (
-            <ChannelVideoRow
-              key={video.id}
-              video={video}
-              index={index}
-              onPress={onVideoPress ? () => onVideoPress(video) : undefined}
-            />
+            <ChannelVideoRow key={video.id} video={video} index={index} />
           )}
         />
       ) : null}
@@ -157,14 +151,12 @@ export function ChannelVideoList({
 function ChannelVideoRow({
   video,
   index,
-  onPress,
 }: {
   video: ApprovedVideo;
   index: number;
-  onPress?: () => void;
 }) {
-  const body = (
-    <>
+  return (
+    <View style={[styles.row, { backgroundColor: cardTints[index % cardTints.length] }]}>
       {video.thumbnailUrl ? (
         <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} />
       ) : (
@@ -180,23 +172,6 @@ function ChannelVideoRow({
           {formatDuration(video.duration) ?? CHANNEL_LIST_COPY.unknownDuration}
         </Text>
       </View>
-    </>
-  );
-
-  if (!onPress) {
-    return <View style={[styles.row, { backgroundColor: cardTints[index % cardTints.length] }]}>{body}</View>;
-  }
-
-  return (
-    <FocusablePressable
-      accessibilityLabel={`Play ${video.title}`}
-      style={[styles.row, { backgroundColor: cardTints[index % cardTints.length] }]}
-      onPress={onPress}
-    >
-      {body}
-      <View style={styles.playBadge}>
-        <Feather name="play" size={14} color={colors.ink} />
-      </View>
-    </FocusablePressable>
+    </View>
   );
 }

@@ -26,7 +26,6 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1, paddingHorizontal: 10 },
   rowTitle: { color: colors.ink, fontSize: 13, fontWeight: '800', lineHeight: 18 },
   rowMeta: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 4 },
-  playBadge: { alignItems: 'center', backgroundColor: yt.badge, borderRadius: 16, height: 32, justifyContent: 'center', width: 32 },
   empty: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 18 },
   emptyIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
   emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '800', marginTop: 10 },

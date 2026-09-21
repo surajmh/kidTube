@@ -22,7 +22,6 @@ export type ChannelVideoListProps = {
   canLoadMore: boolean;
   onRefresh?: () => void;
   onLoadMore?: () => void;
-  onVideoPress?: (video: ApprovedVideo) => void;
   /** `kid` hides every network control and softens the copy. */
   variant: ChannelListVariant;
 };
