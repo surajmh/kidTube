@@ -1800,6 +1800,10 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             // Note: the recovery budget is NOT reset here. Resetting on every successful start
             // would let a flapping stream retry forever; only a user action restores it.
             setRecoveryMessage('');
+            // The *message* is a different thing from the budget: playback is running, so a
+            // previous failure is stale. Without this, a recovered start left "This video
+            // couldn't start" and a Try again button on screen over a playing video.
+            setError(null);
             setIsPlaying(true);
             setIsBuffering(false);
           }}
