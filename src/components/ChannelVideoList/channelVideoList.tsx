@@ -1,11 +1,16 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedVideo } from '../types';
-import { ChannelSyncState, describeChannelSync } from '../services/content/channelSyncRules';
-import { colors, cardTints } from './theme';
-import { FocusablePressable } from './tv';
-import { PagedGrid } from './PagedGrid';
+import { ApprovedVideo } from '../../types';
+import { describeChannelSync } from '../../services/content/channelSyncRules';
+import { colors, cardTints } from '../theme';
+import { formatDuration } from '../shared/duration.helper';
+import styles from './channelVideoList.style';
+import { channelListState, isLoadingMore } from './channelVideoList.helper';
+import { CHANNEL_LIST_COPY, CHANNEL_LIST_PAGE_SIZE } from './channelVideoList.constant';
+import { ChannelVideoListProps } from './channelVideoList.type';
+import { FocusablePressable } from '../tv';
+import { PagedGrid } from '../PagedGrid';
 
 /**
  * The videos of one approved channel.
@@ -20,26 +25,6 @@ import { PagedGrid } from './PagedGrid';
  * which would claim the channel is empty when it is not (§10).
  */
 
-function formatDuration(seconds?: number) {
-  if (!seconds) return '—';
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-export type ChannelVideoListProps = {
-  videos: ApprovedVideo[];
-  state?: ChannelSyncState;
-  busy?: boolean;
-  /** Set when the last fetch failed; the list still renders every cached video. */
-  errorMessage?: string;
-  canLoadMore: boolean;
-  onRefresh?: () => void;
-  onLoadMore?: () => void;
-  onVideoPress?: (video: ApprovedVideo) => void;
-  /** `kid` hides every network control and softens the copy. */
-  variant: 'parent' | 'kid';
-};
-
 export function ChannelVideoList({
   videos,
   state,
@@ -52,15 +37,16 @@ export function ChannelVideoList({
   variant,
 }: ChannelVideoListProps) {
   const parent = variant === 'parent';
-  const loading = busy && videos.length === 0;
-  const loadMoreBusy = busy && videos.length > 0;
+  const listState = channelListState({ busy, videoCount: videos.length, hasError: Boolean(errorMessage) });
+  const loading = listState === 'loading';
+  const loadMoreBusy = isLoadingMore(busy, videos.length);
 
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
         <Text style={styles.status} numberOfLines={1}>
           {loading
-            ? 'Loading videos…'
+            ? CHANNEL_LIST_COPY.loadingStatus
             : parent
               ? describeChannelSync(state)
               : videos.length
@@ -84,24 +70,24 @@ export function ChannelVideoList({
         <View style={styles.pending} accessibilityLabel="Loading videos">
           <Feather name="download-cloud" size={20} color={colors.ink} />
           <Text style={styles.pendingText}>
-            {parent ? 'Fetching this channel’s uploads…' : 'Getting videos ready…'}
+            {parent ? CHANNEL_LIST_COPY.loadingParent : CHANNEL_LIST_COPY.loadingKid}
           </Text>
         </View>
       ) : null}
 
       {/* A failure keeps every cached video on screen and explains itself. */}
-      {!loading && errorMessage && videos.length === 0 ? (
+      {listState === 'unavailable' ? (
         <View
           style={styles.errorCard}
           // A child gets the plain version; the provider's wording is for the parent.
-          accessibilityLabel={parent ? errorMessage : "Couldn't load videos right now."}
+          accessibilityLabel={parent ? errorMessage : CHANNEL_LIST_COPY.errorTitle}
         >
           <View style={styles.errorIcon}><Feather name="alert-circle" size={18} color={colors.danger} /></View>
-          <Text style={styles.errorTitle}>{"Couldn't load videos right now."}</Text>
+          <Text style={styles.errorTitle}>{CHANNEL_LIST_COPY.errorTitle}</Text>
           <Text style={styles.errorBody}>
             {parent
               ? errorMessage
-              : 'Ask a grown-up to refresh this channel for you.'}
+              : CHANNEL_LIST_COPY.errorBodyKid}
           </Text>
           {parent && onRefresh ? (
             <FocusablePressable
@@ -116,11 +102,11 @@ export function ChannelVideoList({
         </View>
       ) : null}
 
-      {errorMessage && videos.length > 0 ? (
+      {listState === 'stale-with-cache' ? (
         <View style={styles.inlineWarning}>
           <Feather name="alert-circle" size={13} color={colors.danger} />
           <Text style={styles.inlineWarningText} numberOfLines={2}>
-            {parent ? errorMessage : 'Showing saved videos. A grown-up can refresh this channel.'}
+            {parent ? errorMessage : CHANNEL_LIST_COPY.staleKid}
           </Text>
         </View>
       ) : null}
@@ -128,7 +114,7 @@ export function ChannelVideoList({
       {videos.length > 0 ? (
         <PagedGrid
           items={videos}
-          pageSize={parent ? 20 : 12}
+          pageSize={parent ? CHANNEL_LIST_PAGE_SIZE.parent : CHANNEL_LIST_PAGE_SIZE.kid}
           style={styles.grid}
           renderItem={(video, index) => (
             <ChannelVideoRow
@@ -141,14 +127,14 @@ export function ChannelVideoList({
         />
       ) : null}
 
-      {!loading && !errorMessage && videos.length === 0 ? (
+      {listState === 'empty' ? (
         <View style={styles.empty} accessibilityLabel="No videos yet">
           <View style={styles.emptyIcon}><Feather name="inbox" size={18} color={colors.ink} /></View>
-          <Text style={styles.emptyTitle}>{parent ? 'No videos found' : 'Nothing here yet'}</Text>
+          <Text style={styles.emptyTitle}>{parent ? CHANNEL_LIST_COPY.emptyTitleParent : CHANNEL_LIST_COPY.emptyTitleKid}</Text>
           <Text style={styles.emptyBody}>
             {parent
-              ? 'This channel has no public uploads yet, or the provider could not read them. Press Refresh to try again.'
-              : 'Ask a grown-up to refresh this channel.'}
+              ? CHANNEL_LIST_COPY.emptyBodyParent
+              : CHANNEL_LIST_COPY.emptyBodyKid}
           </Text>
         </View>
       ) : null}
@@ -191,7 +177,7 @@ function ChannelVideoRow({
         <Text style={styles.rowMeta} numberOfLines={1}>
           {video.publishedAt ? new Date(video.publishedAt).getFullYear() : 'From this channel'}
           {' · '}
-          {formatDuration(video.duration)}
+          {formatDuration(video.duration) ?? CHANNEL_LIST_COPY.unknownDuration}
         </Text>
       </View>
     </>
@@ -214,35 +200,3 @@ function ChannelVideoRow({
     </FocusablePressable>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginTop: 6, width: '100%' },
-  headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 },
-  status: { color: colors.muted, flex: 1, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
-  refresh: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 11, flexDirection: 'row', gap: 6, minHeight: 40, paddingHorizontal: 11 },
-  refreshText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  pending: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 14, flexDirection: 'row', gap: 10, padding: 14 },
-  pendingText: { color: colors.muted, flex: 1, fontSize: 12, fontWeight: '700' },
-  errorCard: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 16 },
-  errorIcon: { alignItems: 'center', backgroundColor: '#FDE9EC', borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-  errorTitle: { color: colors.ink, fontSize: 14, fontWeight: '800', marginTop: 10, textAlign: 'center' },
-  errorBody: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, textAlign: 'center' },
-  tryAgain: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 12, justifyContent: 'center', marginTop: 12, minHeight: 44, paddingHorizontal: 18 },
-  tryAgainText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  inlineWarning: { alignItems: 'center', backgroundColor: '#FDE9EC', borderRadius: 12, flexDirection: 'row', gap: 7, marginBottom: 10, padding: 10 },
-  inlineWarningText: { color: colors.danger, flex: 1, fontSize: 11, fontWeight: '700', lineHeight: 15 },
-  grid: { gap: 8 },
-  row: { alignItems: 'center', borderRadius: 14, flexDirection: 'row', minHeight: 68, padding: 8 },
-  thumb: { borderRadius: 10, height: 48, width: 64 },
-  thumbFallback: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center' },
-  rowInfo: { flex: 1, paddingHorizontal: 10 },
-  rowTitle: { color: colors.ink, fontSize: 13, fontWeight: '800', lineHeight: 18 },
-  rowMeta: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 4 },
-  playBadge: { alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, height: 32, justifyContent: 'center', width: 32 },
-  empty: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 18 },
-  emptyIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-  emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '800', marginTop: 10 },
-  emptyBody: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, textAlign: 'center' },
-  loadMore: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 14, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 9, minHeight: 48, paddingHorizontal: 14 },
-  loadMoreText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-});

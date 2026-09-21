@@ -1,6 +1,9 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 import { ChannelAvailability, KidSearchResults } from './kidHome.type';
+// One duration formatter for the whole app; this used to exist here and in ChannelVideoList
+// with different behaviour for a missing value.
+export { formatDuration } from '../shared/duration.helper';
 
 /**
  * Pure view logic for Kid Mode.
@@ -63,16 +66,6 @@ export function channelAvailability(
   return 'ready';
 }
 
-/** `h:mm:ss` past an hour, `m:ss` below it. Returns null when there is no usable duration. */
-export function formatDuration(seconds?: number): string | null {
-  if (!seconds || seconds <= 0 || !Number.isFinite(seconds)) return null;
-  const whole = Math.floor(seconds);
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor((whole % 3600) / 60);
-  const secs = whole % 60;
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${minutes}:${pad(secs)}`;
-}
 
 /**
  * Thumbnails come straight from the image CDN by video id, so the feed looks right without a
