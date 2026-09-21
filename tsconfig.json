@@ -4,5 +4,6 @@
     "jsx": "react-native",
     "strict": true,
     "noEmit": true
-  }
+  },
+  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "nativewind-env.d.ts"]
 }
