@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 import { yt } from '../youtube/theme';
 
 /** Parent shell styles. */
