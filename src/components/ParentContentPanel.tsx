@@ -54,6 +54,8 @@ export function ParentContentPanel({
   syncStateFor,
   channelBusy,
   onOpenChannelVideos,
+  selectedChannelId,
+  onSelectChannel,
   onRefreshChannel,
   onLoadMoreChannel,
 }: {
@@ -80,6 +82,9 @@ export function ParentContentPanel({
   channelBusy: (channelId: string) => boolean;
   /** Cache-respecting fetch, run when a parent opens a channel's videos (§7). */
   onOpenChannelVideos: (channel: ApprovedChannel) => void;
+  /** Set while a channel's own page is open; the Channels tab otherwise lists channels only. */
+  selectedChannelId: string | null;
+  onSelectChannel: (channelId: string | null) => void;
   onRefreshChannel: (channel: ApprovedChannel) => void;
   onLoadMoreChannel: (channel: ApprovedChannel) => void;
 }) {
@@ -87,7 +92,6 @@ export function ParentContentPanel({
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [childFilter, setChildFilter] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [openChannelId, setOpenChannelId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<ContentCandidate[] | null>(null);
   const [searchError, setSearchError] = useState('');
@@ -143,6 +147,52 @@ export function ParentContentPanel({
     } finally {
       setSearching(false);
     }
+  }
+
+  const selectedChannel = selectedChannelId
+    ? channels.find((channel) => channel.channelId === selectedChannelId)
+    : undefined;
+
+  // A channel's own page: just that channel and its uploads. More pages arrive as the parent
+  // scrolls, so there is no bulk fetch when a channel is approved.
+  if (selectedChannel) {
+    const state = syncStateFor(selectedChannel.channelId);
+    const channelVideos = channelVideosFrom(videos, selectedChannel.channelId);
+    return (
+      <View>
+        <FocusablePressable
+          accessibilityLabel="Back to channels"
+          style={styles.backRow}
+          onPress={() => onSelectChannel(null)}
+        >
+          <Feather name="arrow-left" size={18} color={colors.ink} />
+          <Text style={styles.backText}>Channels</Text>
+        </FocusablePressable>
+
+        <View style={styles.channelHero}>
+          {selectedChannel.thumbnailUrl ? (
+            <Image source={{ uri: selectedChannel.thumbnailUrl }} style={styles.heroThumb} />
+          ) : (
+            <View style={styles.thumbFallback}>
+              <Feather name="radio" size={20} color={colors.purple} />
+            </View>
+          )}
+          <Text style={styles.heroName} numberOfLines={2}>{selectedChannel.name}</Text>
+          <Text style={styles.heroMeta}>{describeChannelSync(state)}</Text>
+        </View>
+
+        <ChannelVideoList
+          variant="parent"
+          videos={channelVideos}
+          state={state}
+          busy={channelBusy(selectedChannel.channelId)}
+          errorMessage={state?.lastError?.message}
+          canLoadMore={Boolean(state?.nextPageToken)}
+          onRefresh={() => onRefreshChannel(selectedChannel)}
+          onLoadMore={() => onLoadMoreChannel(selectedChannel)}
+        />
+      </View>
+    );
   }
 
   return (
@@ -258,7 +308,6 @@ export function ParentContentPanel({
                 const expiry = approveLabelFor(approvals, { channelId: channel.channelId });
                 const state = syncStateFor(channel.channelId);
                 const channelVideos = channelVideosFrom(videos, channel.channelId);
-                const open = openChannelId === channel.channelId;
                 return (
                   <View key={channel.id} style={styles.row}>
                     {channel.thumbnailUrl ? (
@@ -300,15 +349,15 @@ export function ParentContentPanel({
                     </View>
                     {channel.approved ? (
                       <FocusablePressable
-                        accessibilityLabel={`${open ? 'Hide' : 'Show'} videos from ${channel.name}`}
+                        accessibilityLabel={`Open ${channel.name}`}
                         style={styles.iconButton}
                         onPress={() => {
-                          setOpenChannelId(open ? null : channel.channelId);
+                          onSelectChannel(channel.channelId);
                           // Opening the channel page refreshes it only if the cache is stale.
-                          if (!open) onOpenChannelVideos(channel);
+                          onOpenChannelVideos(channel);
                         }}
                       >
-                        <Feather name={open ? 'chevron-up' : 'play-circle'} size={16} color={colors.purple} />
+                        <Feather name="chevron-right" size={18} color={colors.purple} />
                       </FocusablePressable>
                     ) : null}
                     <FocusablePressable
@@ -340,20 +389,6 @@ export function ParentContentPanel({
                             </FocusablePressable>
                           );
                         })}
-                      </View>
-                    ) : null}
-                    {open && channel.approved ? (
-                      <View style={styles.channelVideos}>
-                        <ChannelVideoList
-                          variant="parent"
-                          videos={channelVideos}
-                          state={state}
-                          busy={channelBusy(channel.channelId)}
-                          errorMessage={state?.lastError?.message}
-                          canLoadMore={Boolean(state?.nextPageToken)}
-                          onRefresh={() => onRefreshChannel(channel)}
-                          onLoadMore={() => onLoadMoreChannel(channel)}
-                        />
                       </View>
                     ) : null}
                   </View>
@@ -548,6 +583,12 @@ const styles = StyleSheet.create({
   expiryTagText: { color: '#8A5340', fontSize: 10, fontWeight: '800' },
   videoCountTag: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
   videoCountText: { color: colors.purple, fontSize: 10, fontWeight: '800' },
+  backRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 6, paddingVertical: 8 },
+  backText: { color: colors.ink, fontSize: 15, fontWeight: '800' },
+  channelHero: { alignItems: 'center', gap: 6, paddingBottom: 18, paddingTop: 4 },
+  heroThumb: { borderRadius: 32, height: 64, marginBottom: 4, width: 64 },
+  heroName: { color: colors.ink, fontSize: 19, fontWeight: '800', textAlign: 'center' },
+  heroMeta: { color: colors.muted, fontSize: 13 },
   channelVideos: { borderTopColor: colors.line, borderTopWidth: 1, marginTop: 12, paddingTop: 12, width: '100%' },
   iconButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 42 },
   categoryEditor: { borderTopColor: colors.line, borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, paddingTop: 12, width: '100%' },

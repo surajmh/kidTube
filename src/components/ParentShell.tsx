@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../types';
 import { Phase3Settings, ScreenTimeUsage } from '../phase3Types';
@@ -22,6 +22,7 @@ import { ParentActivityPanel } from './ParentActivityPanel';
 import { ParentChildrenPanel } from './ParentChildrenPanel';
 import { ParentCategoriesPanel } from './ParentCategoriesPanel';
 import { colors } from './theme';
+import { yt } from './youtube/theme';
 import { FocusablePressable } from './tv';
 
 export type ParentSection = 'content' | 'requests' | 'children' | 'activity' | 'settings';
@@ -60,6 +61,7 @@ export type ParentShellActions = {
   onOpenChannelVideos: (channel: ApprovedChannel) => void;
   onRefreshChannel: (channel: ApprovedChannel) => void;
   onLoadMoreChannel: (channel: ApprovedChannel) => void;
+  onSelectChannel: (channelId: string | null) => void;
   onCreateCategory: (name: string) => Promise<void>;
   onRenameCategory: (categoryId: string, name: string) => Promise<void>;
   onDeleteCategory: (categoryId: string) => Promise<void>;
@@ -92,6 +94,7 @@ export function ParentShell({
   section,
   setSection,
   contentTab,
+  selectedChannelId,
   setContentTab,
   profilesSlot,
   settingsSlot,
@@ -103,6 +106,7 @@ export function ParentShell({
   section: ParentSection;
   setSection: (section: ParentSection) => void;
   contentTab: ContentTab;
+  selectedChannelId: string | null;
   setContentTab: (tab: ContentTab) => void;
   profilesSlot?: React.ReactNode;
   settingsSlot?: React.ReactNode;
@@ -124,8 +128,35 @@ export function ParentShell({
     />
   );
 
+  /**
+   * Infinite scroll for a channel's page.
+   *
+   * The next page is fetched as the parent nears the end, so approving a channel never triggers a
+   * bulk fetch of its whole history. Guarded by the page token so a burst of scroll events cannot
+   * queue the same page twice.
+   */
+  const requestedTokenRef = React.useRef<string | null>(null);
+  function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (!selectedChannelId) return;
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    if (contentSize.height - (contentOffset.y + layoutMeasurement.height) > 700) return;
+    const token = actions.syncStateFor(selectedChannelId)?.nextPageToken;
+    if (!token || actions.channelBusy(selectedChannelId)) return;
+    if (requestedTokenRef.current === token) return;
+    const channel = data.channels.find((item) => item.channelId === selectedChannelId);
+    if (!channel) return;
+    requestedTokenRef.current = token;
+    actions.onLoadMoreChannel(channel);
+  }
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      onScroll={handleScroll}
+      scrollEventThrottle={64}
+    >
       <View style={styles.topBar}>
         <View>
           <Text style={styles.kicker}>PARENT MODE</Text>
@@ -190,6 +221,8 @@ export function ParentShell({
             onOpenChannelVideos={actions.onOpenChannelVideos}
             onRefreshChannel={actions.onRefreshChannel}
             onLoadMoreChannel={actions.onLoadMoreChannel}
+            selectedChannelId={selectedChannelId}
+            onSelectChannel={actions.onSelectChannel}
             requestsSlot={requestsPanel}
             manualAddSlot={manualAddSlot}
             categoriesSlot={
@@ -266,26 +299,64 @@ function Stat({ value, label, icon, tint }: { value: string; label: string; icon
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  content: { paddingBottom: 24, paddingHorizontal: 20 },
-  topBar: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 },
-  kicker: { color: colors.purple, fontSize: 11, fontWeight: '900', letterSpacing: 1.3 },
-  title: { color: colors.ink, fontSize: 28, fontWeight: '800', letterSpacing: -0.8, marginTop: 5 },
-  exitButton: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 14, flexDirection: 'row', gap: 7, marginTop: 3, minHeight: 46, paddingHorizontal: 12 },
-  exitText: { color: colors.purple, fontSize: 12, fontWeight: '800' },
-  tabStrip: { gap: 8, marginTop: 22 },
-  notice: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 14, flexDirection: 'row', gap: 8, marginTop: 14, padding: 12 },
-  noticeText: { color: colors.purpleDark, flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 17 },
-  tab: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 14, flexDirection: 'row', gap: 7, minHeight: 46, paddingHorizontal: 13 },
-  tabActive: { backgroundColor: colors.lavender },
-  tabText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  tabTextActive: { color: colors.purple },
-  badge: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 9, minWidth: 19, paddingHorizontal: 5, paddingVertical: 2 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
-  statsRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
-  statCard: { backgroundColor: colors.card, borderRadius: 16, flex: 1, padding: 11 },
-  statIcon: { alignItems: 'center', borderRadius: 10, height: 30, justifyContent: 'center', width: 30 },
-  statValue: { color: colors.ink, fontSize: 21, fontWeight: '800', marginTop: 9 },
-  statLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 1 },
+  screen: { backgroundColor: yt.bg, flex: 1 },
+  content: { paddingBottom: 32, paddingHorizontal: 16 },
+
+  topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14 },
+  kicker: { color: yt.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 1.1 },
+  title: { color: yt.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, marginTop: 2 },
+  exitButton: {
+    alignItems: 'center',
+    backgroundColor: yt.surfaceAlt,
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 36,
+    paddingHorizontal: 14,
+  },
+  exitText: { color: yt.text, fontSize: 13, fontWeight: '600' },
+
+  // Filter-chip navigation, matching Kid Mode: inverted pill for the active section.
+  tabStrip: { gap: 8, marginTop: 18, paddingRight: 16 },
+  tab: {
+    alignItems: 'center',
+    backgroundColor: yt.surfaceAlt,
+    borderRadius: 8,
+    flexDirection: 'row',
+    gap: 7,
+    minHeight: 34,
+    paddingHorizontal: 12,
+  },
+  tabActive: { backgroundColor: yt.chipActive },
+  tabText: { color: yt.text, fontSize: 13, fontWeight: '600' },
+  tabTextActive: { color: yt.chipActiveText },
+  badge: {
+    alignItems: 'center',
+    backgroundColor: yt.accent,
+    borderRadius: 9,
+    minWidth: 18,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  badgeText: { color: yt.onAccent, fontSize: 11, fontWeight: '700' },
+
+  notice: {
+    alignItems: 'center',
+    backgroundColor: yt.surface,
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    padding: 12,
+  },
+  noticeText: { color: yt.text, flex: 1, fontSize: 13, lineHeight: 18 },
+
+  // Counters read as a quiet summary strip, not four competing cards.
+  statsRow: { borderTopColor: yt.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginTop: 20, paddingTop: 16 },
+  statCard: { flex: 1, gap: 2 },
+  statIcon: { alignItems: 'center', borderRadius: 8, height: 26, justifyContent: 'center', width: 26 },
+  statValue: { color: yt.text, fontSize: 20, fontWeight: '700', marginTop: 8 },
+  statLabel: { color: yt.textDim, fontSize: 11 },
+
   bottomSpace: { height: 28 },
 });

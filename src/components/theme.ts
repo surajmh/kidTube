@@ -1,20 +1,39 @@
-/** Shared palette for Phase 4 surfaces (mirrors the Phase 1-3 tokens). */
+/**
+ * Parent Mode palette.
+ *
+ * Shares Kid Mode's surfaces and accent (see `youtube/theme.ts`) so the two halves of the app read
+ * as one product. The token names are kept from the original light theme so the ~90 call sites did
+ * not have to change; only their values moved to dark.
+ *
+ * The accent is the one colour white text is placed on, so every existing white-on-accent label
+ * stays legible without edits.
+ */
 export const colors = {
-  ink: '#243047',
-  muted: '#718096',
-  canvas: '#FFF9F2',
-  card: '#FFFFFF',
-  lavender: '#EEE8FF',
-  purple: '#6654C7',
-  purpleDark: '#5140A5',
+  /** Primary text. */
+  ink: '#F1F1F1',
+  /** Secondary text. */
+  muted: '#AAAAAA',
+  /** Page background. */
+  canvas: '#0F0F0F',
+  /** Cards and raised surfaces. */
+  card: '#212121',
+  /** Secondary surface: chips, icon wells, active pills. */
+  lavender: '#272727',
+  /** Accent. Fills carry white text. */
+  purple: '#FF0033',
+  purpleDark: '#CC0029',
+  /** Warm icon tint. */
   coral: '#FF8D79',
-  peach: '#FFE5D7',
-  mint: '#DDF5EA',
-  mintDark: '#257A5A',
+  /** Decorative card tints, dark so thumbnails and text stay dominant. */
+  peach: '#2C1F1B',
+  mint: '#14241D',
+  sky: '#16202C',
+  /** Success text. */
+  mintDark: '#5FD068',
   yellow: '#FFD76A',
-  line: '#EEE9E2',
-  danger: '#B74754',
-  sky: '#E3F0FF',
+  line: '#303030',
+  /** Readable red on a near-black surface, unlike the light theme's deep red. */
+  danger: '#FF6E6E',
 } as const;
 
 export const cardTints = [colors.lavender, colors.peach, colors.mint, colors.sky];

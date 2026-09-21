@@ -86,26 +86,10 @@ import { RequestDecisionInput } from './src/components/ParentRequestsPanel';
 import { ParentOverrideSheet } from './src/components/ParentOverrideSheet';
 import { PinEntry } from './src/components/PinEntry';
 import { Avatar, avatarIcons, avatarOptions } from './src/components/Avatar';
+import { colors } from './src/components/theme';
 import { FocusablePressable } from './src/components/tv';
 import { yt } from './src/components/youtube/theme';
 import { ChannelAvatar, VideoCard as FeedVideoCard } from './src/components/youtube/VideoCard';
-
-const colors = {
-  ink: '#243047',
-  muted: '#718096',
-  canvas: '#FFF9F2',
-  card: '#FFFFFF',
-  lavender: '#EEE8FF',
-  purple: '#6654C7',
-  purpleDark: '#5140A5',
-  coral: '#FF8D79',
-  peach: '#FFE5D7',
-  mint: '#DDF5EA',
-  mintDark: '#257A5A',
-  yellow: '#FFD76A',
-  line: '#EEE9E2',
-  danger: '#B74754',
-};
 
 function id(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -148,6 +132,8 @@ function App() {
   const [resetting, setResetting] = useState(false);
   const [parentSection, setParentSection] = useState<ParentSection>('content');
   const [contentTab, setContentTab] = useState<ContentTab>('channels');
+  /** Which channel's own page is open in Parent Mode, if any. */
+  const [parentChannelId, setParentChannelId] = useState<string | null>(null);
   const [kidTab, setKidTab] = useState<KidTab>('home');
   const [kidCategoryId, setKidCategoryId] = useState<string | null>(null);
   const [kidChannelId, setKidChannelId] = useState<string | null>(null);
@@ -1105,6 +1091,7 @@ function App() {
               onOpenChannelVideos: (channel) => void openChannelVideos(channel),
               onRefreshChannel: (channel) => void syncChannel(channel, 'refresh'),
               onLoadMoreChannel: (channel) => void syncChannel(channel, 'more'),
+              onSelectChannel: setParentChannelId,
               onCreateCategory: createCategory,
               onRenameCategory: renameCategory,
               onDeleteCategory: deleteCategory,
@@ -1126,6 +1113,7 @@ function App() {
             section={parentSection}
             setSection={setParentSection}
             contentTab={contentTab}
+            selectedChannelId={parentChannelId}
             setContentTab={setContentTab}
             manualAddSlot={
               <ManualAddSection
