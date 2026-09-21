@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Phase3Settings, SponsorBlockCategory, ScreenTimeUsage } from '../phase3Types';
-import { localDayKey } from '../services/playbackPolicyService';
-import { ChildProfile } from '../types';
+import { Phase3Settings, SponsorBlockCategory, ScreenTimeUsage } from '../../phase3Types';
+import { localDayKey } from '../../services/playbackPolicyService';
+import { ChildProfile } from '../../types';
+import { colors } from '../theme';
+import styles from './phase3Settings.style';
+import { minutesToInput, minutesToTime, parseTime } from '../shared/time.helper';
+import { LIMIT_OPTIONS, DEFAULT_SETTINGS_WINDOW } from './phase3Settings.constant';
+import { toggleInList } from './phase3Settings.helper';
 
-const colors = {
-  ink: '#243047',
-  muted: '#718096',
-  canvas: '#FFF9F2',
-  card: '#FFFFFF',
-  lavender: '#EEE8FF',
-  purple: '#6654C7',
-  mint: '#DDF5EA',
-  mintDark: '#257A5A',
-  line: '#EEE9E2',
-  danger: '#B74754',
-};
 
 const categoryLabels: Array<[SponsorBlockCategory, string]> = [
   ['sponsor', 'Sponsorship'],
@@ -27,28 +20,6 @@ const categoryLabels: Array<[SponsorBlockCategory, string]> = [
   ['music', 'Music'],
 ];
 
-const limitOptions = [15, 30, 45, 60, 90, 120];
-
-function minutesToTime(value: number) {
-  const hour = Math.floor(value / 60) % 24;
-  const minute = value % 60;
-  const suffix = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`;
-}
-
-function minutesToInput(value: number) {
-  return `${String(Math.floor(value / 60) % 24).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-}
-
-function parseTime(value: string) {
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour > 23 || minute > 59) return null;
-  return hour * 60 + minute;
-}
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
   return (
@@ -62,7 +33,7 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { settings: Phase3Settings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: Phase3Settings) => void }) {
   const [selectedDay, setSelectedDay] = useState(new Date().getDay());
   const dayWindows = settings.schedules[String(selectedDay)] ?? [];
-  const currentWindow = dayWindows[0] ?? { startMinutes: 16 * 60, endMinutes: 19 * 60 };
+  const currentWindow = dayWindows[0] ?? DEFAULT_SETTINGS_WINDOW;
 
   function patch(patch: Partial<Phase3Settings>) {
     onChange({ ...settings, ...patch });
@@ -75,8 +46,7 @@ export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { s
   }
 
   function toggleCategory(category: SponsorBlockCategory) {
-    const exists = settings.sponsorBlockCategories.includes(category);
-    patch({ sponsorBlockCategories: exists ? settings.sponsorBlockCategories.filter((item) => item !== category) : [...settings.sponsorBlockCategories, category] });
+    patch({ sponsorBlockCategories: toggleInList(settings.sponsorBlockCategories, category) });
   }
 
   return (
@@ -92,7 +62,7 @@ export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { s
         <Text style={styles.cardTitle}>Daily screen time</Text>
         <Text style={styles.helper}>Only actual playing time is counted. Paused, buffering, and browsing do not count.</Text>
         <View style={styles.limitWrap}>
-          {limitOptions.map((minutes) => <Pressable key={minutes} onPress={() => patch({ dailyLimitMinutes: minutes })} style={[styles.limitChip, settings.dailyLimitMinutes === minutes && styles.limitChipSelected]}><Text style={[styles.limitText, settings.dailyLimitMinutes === minutes && styles.limitTextSelected]}>{minutes} min</Text></Pressable>)}
+          {LIMIT_OPTIONS.map((minutes) => <Pressable key={minutes} onPress={() => patch({ dailyLimitMinutes: minutes })} style={[styles.limitChip, settings.dailyLimitMinutes === minutes && styles.limitChipSelected]}><Text style={[styles.limitText, settings.dailyLimitMinutes === minutes && styles.limitTextSelected]}>{minutes} min</Text></Pressable>)}
           <Pressable onPress={() => patch({ dailyLimitMinutes: null })} style={[styles.limitChip, settings.dailyLimitMinutes === null && styles.limitChipSelected]}><Text style={[styles.limitText, settings.dailyLimitMinutes === null && styles.limitTextSelected]}>Unlimited</Text></Pressable>
         </View>
         <ToggleRow label="Screen-time warnings" value={settings.screenTimeWarningsEnabled} onChange={(screenTimeWarningsEnabled) => patch({ screenTimeWarningsEnabled })} />
@@ -119,41 +89,3 @@ export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { s
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  card: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 18, borderWidth: 1, marginTop: 16, padding: 16 },
-  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: '800', marginBottom: 8 },
-  toggleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
-  rowLabel: { color: colors.ink, flex: 1, fontSize: 14, fontWeight: '700' },
-  toggle: { backgroundColor: '#DED9D1', borderRadius: 16, height: 30, justifyContent: 'center', padding: 3, width: 52 },
-  toggleOn: { backgroundColor: colors.purple },
-  toggleKnob: { backgroundColor: '#fff', borderRadius: 12, height: 24, width: 24 },
-  toggleKnobOn: { alignSelf: 'flex-end' },
-  categoryWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 7 },
-  category: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 5, minHeight: 40, paddingHorizontal: 10 },
-  categorySelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
-  categoryText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  categoryTextSelected: { color: colors.ink },
-  helper: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  limitWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 12 },
-  limitChip: { borderColor: colors.line, borderRadius: 12, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 9 },
-  limitChipSelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
-  limitText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  limitTextSelected: { color: colors.ink },
-  usageHeading: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 8, textTransform: 'uppercase' },
-  usageRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: 'row', minHeight: 38 },
-  usageText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  dayWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 12 },
-  dayChip: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
-  dayChipSelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
-  dayText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  dayTextSelected: { color: colors.ink },
-  scheduleFields: { flexDirection: 'row', gap: 10 },
-  scheduleField: { flex: 1 },
-  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', marginBottom: 5 },
-  scheduleInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 10, borderWidth: 1, color: colors.ink, fontSize: 14, height: 44, paddingHorizontal: 10 },
-  saveHint: { color: colors.muted, fontSize: 12, marginTop: 16, textAlign: 'center' },
-});

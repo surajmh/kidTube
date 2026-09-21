@@ -1,19 +1,13 @@
 import { ContentApproval, PlaybackOverride } from '../../phase4Types';
 import { ChildRulesMap } from '../../services/childRulesService';
 import { DEFAULT_WINDOW, MINUTES_IN_DAY } from './parentChildren.constant';
+// One clock formatter for the app; this used to be retyped in each panel that edits a schedule.
+export { minutesToTime } from '../shared/time.helper';
 
 /** One day's allowed-viewing window, in minutes from midnight. */
 export type TimeWindow = { startMinutes: number; endMinutes: number };
 export type ScheduleMap = Record<string, TimeWindow[]>;
 
-/** Minutes from midnight as a 12-hour clock time. */
-export function minutesToTime(value: number): string {
-  const normalised = ((value % MINUTES_IN_DAY) + MINUTES_IN_DAY) % MINUTES_IN_DAY;
-  const hour = Math.floor(normalised / 60);
-  const minute = normalised % 60;
-  const suffix = hour >= 12 ? 'PM' : 'AM';
-  return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${suffix}`;
-}
 
 /**
  * A child with no stored rules inherits everything.

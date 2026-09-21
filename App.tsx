@@ -78,7 +78,7 @@ import {
   shouldAutoRecover,
 } from './src/services/playbackRecovery';
 import { sponsorBlockService, SponsorSegment } from './src/services/sponsorBlockService';
-import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
+import { Phase3SettingsPanel } from './src/components/Phase3Settings';
 import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ContentTab } from './src/components/ParentContent';
