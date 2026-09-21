@@ -83,7 +83,7 @@ import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ContentTab } from './src/components/ParentContent';
 import { RequestDecisionInput } from './src/components/ParentRequests';
-import { ParentOverrideSheet } from './src/components/ParentOverrideSheet';
+import { ParentOverrideSheet } from './src/components/ParentOverride';
 import { PinEntry } from './src/components/PinEntry';
 import { Avatar, avatarIcons, avatarOptions } from './src/components/Avatar';
 import { colors } from './src/components/theme';

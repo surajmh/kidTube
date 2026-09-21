@@ -1,16 +1,13 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedVideo, ChildProfile, WatchHistory } from '../types';
-import { ScreenTimeUsage } from '../phase3Types';
-import { ContentApproval, ContentCategory, ContentRequest } from '../phase4Types';
-import { activityService, formatWatchTime } from '../services/activityService';
-import { colors } from './theme';
+import { formatWatchTime } from '../../services/activityService';
+import { colors } from '../theme';
+import styles from './parentActivity.style';
+import { useActivitySummaries } from './parentActivity.hook';
+import { barWidthPercent } from './parentActivity.helper';
+import { ParentActivityProps } from './parentActivity.type';
 
-/**
- * Local-only dashboard. All numbers come from on-device storage: watch time,
- * watch history and request history. No tracking, no analytics service.
- */
 export function ParentActivityPanel({
   profiles,
   history,
@@ -19,30 +16,17 @@ export function ParentActivityPanel({
   categories,
   requests,
   approvals,
-}: {
-  profiles: ChildProfile[];
-  history: WatchHistory[];
-  screenTime: ScreenTimeUsage[];
-  videos: ApprovedVideo[];
-  categories: ContentCategory[];
-  requests: ContentRequest[];
-  approvals: ContentApproval[];
-}) {
-  const summaries = useMemo(
-    () =>
-      profiles.map((profile) =>
-        activityService.summarize({
-          profileId: profile.id,
-          history,
-          screenTime,
-          videos,
-          categories,
-          requests,
-          approvals,
-        }),
-      ),
-    [profiles, history, screenTime, videos, categories, requests, approvals],
-  );
+}: ParentActivityProps) {
+  const summaries = useActivitySummaries({
+    profiles,
+    history,
+    screenTime,
+    videos,
+    categories,
+    requests,
+    approvals,
+  });
+
 
   return (
     <View>
@@ -93,7 +77,7 @@ export function ParentActivityPanel({
                     <View
                       style={[
                         styles.usageFill,
-                        { width: `${Math.min(100, (category.videos / Math.max(1, summary.topCategories[0].videos)) * 100)}%` },
+                        { width: `${barWidthPercent(category.videos, summary.topCategories[0].videos)}%` },
                       ]}
                     />
                   </View>
@@ -155,30 +139,3 @@ function Metric({ label, value, icon }: { label: string; value: string; icon: ke
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  badge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 12, flexDirection: 'row', gap: 5, paddingHorizontal: 10, paddingVertical: 8 },
-  badgeText: { color: colors.mintDark, fontSize: 11, fontWeight: '800' },
-  helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 8 },
-  card: { backgroundColor: colors.card, borderRadius: 18, marginTop: 16, padding: 15 },
-  cardHeader: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
-  cardTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' },
-  cardMeta: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  sectionLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 8, marginTop: 20 },
-  metricRow: { flexDirection: 'row', gap: 10 },
-  metric: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 14, flex: 1, padding: 11 },
-  metricIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, height: 28, justifyContent: 'center', width: 28 },
-  metricValue: { color: colors.ink, fontSize: 17, fontWeight: '800', marginTop: 9 },
-  metricLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 3, textAlign: 'center' },
-  usageRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 36 },
-  usageLabel: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  usageBar: { backgroundColor: colors.line, borderRadius: 4, flex: 1, height: 7, overflow: 'hidden' },
-  usageFill: { backgroundColor: colors.purple, borderRadius: 4, height: 7 },
-  usageValue: { color: colors.muted, fontSize: 12, fontWeight: '800', minWidth: 24, textAlign: 'right' },
-  historyRow: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', gap: 10, marginTop: 7, minHeight: 54, padding: 10 },
-  historyInfo: { flex: 1 },
-  rowMeta: { color: colors.muted, fontSize: 12, marginTop: 3 },
-});
