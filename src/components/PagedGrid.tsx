@@ -46,7 +46,7 @@ export function PagedGrid<T>({
           style={[styles.more, moreStyle]}
           onPress={() => setVisibleCount((count) => count + pageSize)}
         >
-          <Feather name="plus" size={18} color={colors.purple} />
+          <Feather name="plus" size={18} color={colors.ink} />
           <Text style={styles.moreText}>{`Show ${Math.min(remaining, pageSize)} more`}</Text>
           <Text style={styles.moreCount}>{`${remaining} left`}</Text>
         </FocusablePressable>
@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     minHeight: 96,
     padding: 12,
   },
-  moreText: { color: colors.purple, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  moreText: { color: colors.ink, fontSize: 13, fontWeight: '800', textAlign: 'center' },
   moreCount: { color: colors.muted, fontSize: 11, fontWeight: '700' },
 });

@@ -71,6 +71,59 @@ class ExtractionSpikeTest {
     }
   }
 
+  @Test
+  fun readsMetadata() {
+    for ((id, label) in SAMPLES) {
+      val meta = NewPipeMetadata.video(id)
+      println("\n--- $label ---")
+      println("  title    : ${meta["title"]}")
+      println("  channel  : ${meta["channelName"]} (${meta["youtubeChannelId"]})")
+      println("  duration : ${meta["durationSeconds"]}s")
+      println("  published: ${meta["publishedAt"]}")
+      println("  thumb    : ${(meta["thumbnailUrl"] as? String)?.take(60)}")
+      assertTrue("no title for $id", (meta["title"] as? String).isNullOrBlank().not())
+    }
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  @Test
+  fun listsChannelUploadsAcrossPages() {
+    val canonical = NewPipeChannels.resolveChannelId("@BlenderOfficial")
+    println("\nresolved handle -> $canonical")
+    assertTrue("handle did not resolve to a UC id", canonical.startsWith("UC"))
+
+    val channel = NewPipeChannels.channel(canonical)
+    println("channel: ${channel["name"]}  thumb=${(channel["thumbnailUrl"] as? String)?.take(50)}")
+    assertTrue("channel has no name", (channel["name"] as? String).isNullOrBlank().not())
+
+    val first = NewPipeChannels.channelVideos(canonical, null)
+    val firstVideos = first["videos"] as List<Map<String, Any?>>
+    val token = first["nextPageToken"] as? String
+    println("page 1: ${firstVideos.size} videos, nextPageToken=${token != null}")
+    firstVideos.take(3).forEach { println("   - ${it["title"]} (${it["durationSeconds"]}s)") }
+    assertTrue("page 1 returned nothing", firstVideos.isNotEmpty())
+
+    // Every row must be pinned to the channel that was asked about.
+    assertTrue(
+      "a row was attributed to another channel",
+      firstVideos.all { it["youtubeChannelId"] == canonical },
+    )
+
+    if (token == null) {
+      println("channel fits in one page; pagination not exercised")
+      return
+    }
+    val second = NewPipeChannels.channelVideos(canonical, token)
+    val secondVideos = second["videos"] as List<Map<String, Any?>>
+    println("page 2: ${secondVideos.size} videos")
+    assertTrue("page 2 returned nothing", secondVideos.isNotEmpty())
+
+    val firstIds = firstVideos.map { it["youtubeVideoId"] }.toSet()
+    val overlap = secondVideos.count { it["youtubeVideoId"] in firstIds }
+    println("overlap with page 1: $overlap")
+    assertTrue("page 2 repeated page 1 -- the token did not advance", overlap < secondVideos.size)
+  }
+
   private companion object {
     val SAMPLES = listOf(
       "jNQXAC9IVRw" to "Me at the zoo (oldest, low-res only)",

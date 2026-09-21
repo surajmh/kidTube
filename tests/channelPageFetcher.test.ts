@@ -1,4 +1,3 @@
-import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchChannelPage } from '../src/services/content/channelPageFetcher';
 import { emptyChannelSyncState } from '../src/services/content/channelSyncRules';

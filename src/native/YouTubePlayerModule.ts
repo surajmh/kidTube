@@ -20,7 +20,48 @@ export interface YouTubePlayerModuleEvents {
   }) => void;
 }
 
+/**
+ * Public metadata for one video, or a failure. Asking about a video grants no ability to play it:
+ * the allow list and the playback policy are untouched by this call.
+ */
+export type NativeVideoMetadata = {
+  youtubeVideoId?: string;
+  title?: string;
+  channelName?: string;
+  youtubeChannelId?: string;
+  durationSeconds?: number;
+  thumbnailUrl?: string;
+  publishedAt?: string;
+  failed?: boolean;
+  code?: string;
+  message?: string;
+};
+
+export type NativeChannelMetadata = {
+  youtubeChannelId?: string;
+  name?: string;
+  thumbnailUrl?: string;
+  description?: string;
+  failed?: boolean;
+  code?: string;
+  message?: string;
+};
+
+export type NativeChannelVideoPage = {
+  channelId?: string;
+  videos?: NativeVideoMetadata[];
+  nextPageToken?: string | null;
+  failed?: boolean;
+  code?: string;
+  message?: string;
+};
+
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
+  /** Metadata only — never resolves a stream and never approves anything. */
+  getVideoMetadata(videoId: string): Promise<NativeVideoMetadata>;
+  resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
+  getChannel(reference: string): Promise<NativeChannelMetadata>;
+  getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
   /** Fail-closed allow list: native refuses ids that are not in it. */
   setAllowedVideoIds(videoIds: string[]): Promise<PlayerCommandResult>;
   play(videoId: string): Promise<PlayerCommandResult>;

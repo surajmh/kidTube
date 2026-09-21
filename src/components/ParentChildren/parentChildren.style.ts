@@ -1,0 +1,45 @@
+import { StyleSheet } from 'react-native';
+import { colors } from '../theme';
+
+/** Children panel styles. */
+const styles = StyleSheet.create({
+  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
+  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
+  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
+  profileRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 },
+  profileChip: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 15, flexDirection: 'row', gap: 8, minHeight: 50, padding: 5, paddingRight: 13 },
+  profileChipActive: { backgroundColor: colors.lavender },
+  profileChipText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
+  profileChipTextActive: { color: colors.ink },
+  card: { backgroundColor: colors.card, borderRadius: 18, marginTop: 16, padding: 15 },
+  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
+  helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 8 },
+  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 8, marginTop: 18 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', gap: 6, justifyContent: 'center', minHeight: 44, paddingHorizontal: 11 },
+  wideChip: { marginTop: 12 },
+  chipActive: { backgroundColor: colors.lavender },
+  chipText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
+  chipTextActive: { color: colors.ink },
+  smallAction: { backgroundColor: colors.lavender, borderRadius: 10, justifyContent: 'center', minHeight: 40, paddingHorizontal: 10 },
+  smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
+  overrideActive: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 14, flexDirection: 'row', gap: 9, marginTop: 12, minHeight: 52, padding: 10 },
+  overrideActiveText: { color: colors.mintDark, flex: 1, fontSize: 13, fontWeight: '800' },
+  ruleRow: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 13, flexDirection: 'row', gap: 8, marginTop: 10, minHeight: 62, padding: 8 },
+  ruleInfo: { flex: 1 },
+  rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' },
+  rowMeta: { color: colors.muted, fontSize: 12, marginTop: 3 },
+  ruleToggle: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 11, height: 44, justifyContent: 'center', width: 46 },
+  ruleToggleGrant: { backgroundColor: colors.mintDark },
+  ruleToggleBlock: { backgroundColor: colors.danger },
+  windowEditor: { marginTop: 12 },
+  windowRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  windowField: { flex: 1 },
+  stepper: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', padding: 4 },
+  stepButton: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 10, height: 44, justifyContent: 'center', width: 44 },
+  stepValue: { color: colors.ink, fontSize: 14, fontWeight: '800' },
+  dayChip: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 11, justifyContent: 'center', minHeight: 42, paddingHorizontal: 10 },
+});
+
+export default styles;

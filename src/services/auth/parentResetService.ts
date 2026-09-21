@@ -12,7 +12,6 @@ import {
   requestRepository,
 } from '../../repositories/phase4Repository';
 import { channelSyncRepository } from '../../repositories/channelSyncRepository';
-import { providerSettingsRepository } from '../content/providerSettings';
 import { defaultPhase3Settings } from '../../phase3Types';
 import { defaultCategories } from '../../phase4Types';
 import { parentPinService } from './parentPinService';
@@ -55,8 +54,6 @@ export const parentResetService = {
       childRulesRepository.saveAll({}),
       profilePolicyRepository.saveAll({}),
       channelSyncRepository.saveAll({}),
-      // The provider URL is part of the parent configuration, so the reset drops it too.
-      providerSettingsRepository.save({ endpointUrl: '' }),
       // Categories and settings fall back to the shipped defaults rather than being left empty.
       categoryRepository.saveAll(defaultCategories),
       settingsRepository.save({ ...defaultPhase3Settings }),

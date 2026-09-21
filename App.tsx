@@ -28,12 +28,6 @@ import {
 } from './src/repositories/phase4Repository';
 import { channelSyncRepository, ChannelSyncMap } from './src/repositories/channelSyncRepository';
 import { channelSyncService } from './src/services/channelSyncService';
-import {
-  ContentProviderSettings,
-  emptyProviderSettings,
-  providerSettingsRepository,
-  validateEndpoint,
-} from './src/services/content/providerSettings';
 import { SyncMode } from './src/services/content/channelSyncRules';
 import { parentPinService } from './src/services/auth/parentPinService';
 import { ParentSession, parentSessionService } from './src/services/auth/parentSession';
@@ -46,6 +40,7 @@ import { ChildRulesMap, childRulesService } from './src/services/childRulesServi
 import { profilePolicyService, mergeProfilePolicy } from './src/services/profilePolicyService';
 import { OverridePreset, playbackOverrideService } from './src/services/playbackOverrideService';
 import { kidContentLibraryService } from './src/services/kidContentLibraryService';
+import { enrichLibrary } from './src/services/content/nativeVideoMetadata';
 import { parentContentSearchService } from './src/services/parentContentSearchService';
 import { parentContentService } from './src/services/parentContentService';
 import { requestService } from './src/services/requestService';
@@ -83,33 +78,18 @@ import {
   shouldAutoRecover,
 } from './src/services/playbackRecovery';
 import { sponsorBlockService, SponsorSegment } from './src/services/sponsorBlockService';
-import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
-import { ParentProviderSettings } from './src/components/ParentProviderSettings';
-import { KidHomeScreen, KidTab } from './src/components/KidHomeScreen';
+import { Phase3SettingsPanel } from './src/components/Phase3Settings';
+import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
-import { ContentTab } from './src/components/ParentContentPanel';
-import { RequestDecisionInput } from './src/components/ParentRequestsPanel';
-import { ParentOverrideSheet } from './src/components/ParentOverrideSheet';
+import { ContentTab } from './src/components/ParentContent';
+import { RequestDecisionInput } from './src/components/ParentRequests';
+import { ParentOverrideSheet } from './src/components/ParentOverride';
 import { PinEntry } from './src/components/PinEntry';
 import { Avatar, avatarIcons, avatarOptions } from './src/components/Avatar';
+import { colors } from './src/components/theme';
 import { FocusablePressable } from './src/components/tv';
-
-const colors = {
-  ink: '#243047',
-  muted: '#718096',
-  canvas: '#FFF9F2',
-  card: '#FFFFFF',
-  lavender: '#EEE8FF',
-  purple: '#6654C7',
-  purpleDark: '#5140A5',
-  coral: '#FF8D79',
-  peach: '#FFE5D7',
-  mint: '#DDF5EA',
-  mintDark: '#257A5A',
-  yellow: '#FFD76A',
-  line: '#EEE9E2',
-  danger: '#B74754',
-};
+import { yt } from './src/components/youtube/theme';
+import { ChannelAvatar, VideoCard as FeedVideoCard } from './src/components/youtube/VideoCard';
 
 function id(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -138,7 +118,6 @@ function App() {
   const [profilePolicies, setProfilePolicies] = useState<Record<string, ProfilePolicyOverrides>>({});
   const [overrides, setOverrides] = useState<PlaybackOverride[]>([]);
   const [channelSyncStates, setChannelSyncStates] = useState<ChannelSyncMap>({});
-  const [providerSettings, setProviderSettings] = useState<ContentProviderSettings>(emptyProviderSettings);
   const [busyChannelIds, setBusyChannelIds] = useState<string[]>([]);
   const [parentSession, setParentSession] = useState<ParentSession | null>(null);
   const [activeProfileId, setActiveProfileId] = useState('');
@@ -151,8 +130,10 @@ function App() {
   const [pinError, setPinError] = useState('');
   const [pinLockRemainingMs, setPinLockRemainingMs] = useState(0);
   const [resetting, setResetting] = useState(false);
-  const [parentSection, setParentSection] = useState<ParentSection>('content');
+  const [parentSection, setParentSection] = useState<ParentSection>('home');
   const [contentTab, setContentTab] = useState<ContentTab>('channels');
+  /** Which channel's own page is open in Parent Mode, if any. */
+  const [parentChannelId, setParentChannelId] = useState<string | null>(null);
   const [kidTab, setKidTab] = useState<KidTab>('home');
   const [kidCategoryId, setKidCategoryId] = useState<string | null>(null);
   const [kidChannelId, setKidChannelId] = useState<string | null>(null);
@@ -202,7 +183,6 @@ function App() {
         storedPolicies,
         storedOverrides,
         storedChannelSync,
-        storedProvider,
       ] = await Promise.all([
         channelRepository.getAll(),
         videoRepository.getAll(),
@@ -216,7 +196,6 @@ function App() {
         profilePolicyRepository.getAll(),
         overrideRepository.getAll(),
         channelSyncRepository.getAll(),
-        providerSettingsRepository.get(),
       ]);
       if (cancelled) return;
 
@@ -244,7 +223,7 @@ function App() {
       childRulesService.hydrate(snapshot.childRules);
       profilePolicyService.hydrate(snapshot.profilePolicies);
       playbackOverrideService.hydrate(snapshot.overrides);
-      channelSyncService.hydrate({ states: snapshot.channelSync, settings: storedProvider });
+      channelSyncService.hydrate({ states: snapshot.channelSync });
       playbackPolicy.hydrate({
         settings: snapshot.settings,
         screenTime: snapshot.screenTime,
@@ -282,7 +261,6 @@ function App() {
       setProfilePolicies(snapshot.profilePolicies);
       setOverrides(snapshot.overrides);
       setChannelSyncStates(snapshot.channelSync);
-      setProviderSettings(storedProvider);
     }
 
     void hydrateEssential();
@@ -319,7 +297,7 @@ function App() {
       if (parentSessionService.isActive()) return;
       parentSessionService.end();
       setParentSession(null);
-      setParentSection('content');
+      setParentSection('home');
       setScreen('kid');
     };
     const subscription = AppState.addEventListener('change', (nextState) => { if (nextState === 'active') check(); });
@@ -354,7 +332,6 @@ function App() {
     profilePolicies,
     overrides,
     channelSyncStates,
-    providerSettings,
   ];
   if (accessHydrationRef.current.length !== accessInputs.length || accessInputs.some((value, index) => value !== accessHydrationRef.current[index])) {
     accessHydrationRef.current = accessInputs;
@@ -366,7 +343,6 @@ function App() {
     profilePolicyService.hydrate(profilePolicies);
     playbackOverrideService.hydrate(overrides);
     channelSyncService.setStates(channelSyncStates);
-    channelSyncService.setProvider(providerSettings);
   }
 
   useEffect(() => {
@@ -480,11 +456,41 @@ function App() {
     setChannels(next);
   }
 
+  /**
+   * Always-current view of the library for async work.
+   *
+   * Handlers that set state and then immediately kick off an await (approving a channel, then
+   * syncing it) would otherwise write back the arrays captured before that state change.
+   */
+  const libraryRef = useRef({ videos, channels });
+  libraryRef.current = { videos, channels };
+
   async function saveVideos(next: ApprovedVideo[]) {
     if (!parentSession) return;
     await parentContentService.replaceContent(parentSession, { videos: next, channels });
     setVideos(next);
   }
+
+  /**
+   * Fills in titles, channels and durations for rows added by link, which carry only an id.
+   *
+   * Parent Mode only, on purpose: Kid Mode still issues no network calls of any kind. This is
+   * metadata, so it cannot change what is approved — it only makes the library readable. A row
+   * that cannot be described is left exactly as it was.
+   */
+  useEffect(() => {
+    if (screen !== 'parent' || !parentSession) return;
+    let cancelled = false;
+    void (async () => {
+      const enriched = await enrichLibrary(videos);
+      if (cancelled || !enriched) return;
+      await saveVideos(enriched);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `videos` settles: once nothing needs metadata, enrichLibrary returns null and no state changes.
+  }, [screen, parentSession, videos]);
 
   /**
    * The player reports progress every couple of seconds; storage writes are debounced and flushed
@@ -847,16 +853,24 @@ function App() {
     if (!parentSession) return;
     setBusyChannelIds((current) => (current.includes(channel.channelId) ? current : [...current, channel.channelId]));
     try {
-      const result = await channelSyncService.sync(parentSession, { channel, videos, mode });
+      const result = await channelSyncService.sync(parentSession, { channel, videos: libraryRef.current.videos, mode });
       // `fetched: false` means the cache was fresh or another sync was already
       // running; its caller publishes, so this one must not write a stale array back.
       if (!result.fetched) {
         setChannelSyncStates(channelSyncService.allStates());
         return;
       }
-      const nextChannels = channels.map((item) =>
-        item.channelId === channel.channelId ? result.channels[0] : item,
-      );
+      // Read the library *after* the fetch, never from the render that created this function:
+      // approving a channel sets state and syncs immediately, so the captured array would still
+      // be the one from before the channel existed.
+      const currentChannels = libraryRef.current.channels;
+      const synced = result.channels[0];
+      const known = currentChannels.some((item) => item.channelId === channel.channelId);
+      // Appending when it is missing is the safety net: publishing a channel list without the
+      // channel that was just synced would silently un-approve it.
+      const nextChannels = known
+        ? currentChannels.map((item) => (item.channelId === channel.channelId ? synced : item))
+        : [...currentChannels, synced ?? channel];
       await publishLibrary(result.videos, nextChannels);
     } finally {
       setBusyChannelIds((current) => current.filter((id) => id !== channel.channelId));
@@ -874,30 +888,6 @@ function App() {
   async function syncNewlyApprovedChannel(channel: ApprovedChannel) {
     if (!parentSession) return;
     await syncChannel(channel, 'initial');
-  }
-
-  async function saveProviderSettings(endpointUrl: string, token: string): Promise<string | null> {
-    if (!parentSession) return 'Parent mode is required.';
-    const validation = validateEndpoint(endpointUrl, token);
-    if (!validation.ok) return validation.error;
-    await providerSettingsRepository.save(validation.settings);
-    setProviderSettings(validation.settings);
-    channelSyncService.setProvider(validation.settings);
-    // A newly connected provider should not wait for the user to press Refresh.
-    const approved = channels.filter((item) => item.approved);
-    if (approved.length) {
-      const synced = await channelSyncService.syncMissing(parentSession, { channels, videos });
-      if (synced.synced > 0) await publishLibrary(synced.videos, synced.channels);
-      else setChannelSyncStates(channelSyncService.allStates());
-    }
-    return null;
-  }
-
-  async function disconnectProvider() {
-    if (!parentSession) return;
-    await providerSettingsRepository.save(emptyProviderSettings);
-    setProviderSettings(emptyProviderSettings);
-    channelSyncService.setProvider(emptyProviderSettings);
   }
 
   async function toggleVideoCategory(video: ApprovedVideo, categoryId: string, assigned: boolean) {
@@ -1010,7 +1000,10 @@ function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView
+        style={[styles.safeArea, (screen === 'kid' || screen === 'player') && !setupStep && styles.safeAreaDark]}
+        edges={['top', 'bottom']}
+      >
         {setupStep === 'pin' && <PinSetup onSubmit={finishPinSetup} pin={pin} setPin={setPin} error={pinError} />}
         {setupStep === 'profile' && <ProfileSetup onSubmit={createFirstProfile} />}
         {!setupStep && screen === 'kid' && (
@@ -1098,6 +1091,7 @@ function App() {
               onOpenChannelVideos: (channel) => void openChannelVideos(channel),
               onRefreshChannel: (channel) => void syncChannel(channel, 'refresh'),
               onLoadMoreChannel: (channel) => void syncChannel(channel, 'more'),
+              onSelectChannel: setParentChannelId,
               onCreateCategory: createCategory,
               onRenameCategory: renameCategory,
               onDeleteCategory: deleteCategory,
@@ -1119,6 +1113,7 @@ function App() {
             section={parentSection}
             setSection={setParentSection}
             contentTab={contentTab}
+            selectedChannelId={parentChannelId}
             setContentTab={setContentTab}
             manualAddSlot={
               <ManualAddSection
@@ -1137,13 +1132,6 @@ function App() {
                 setActiveProfileId={setActiveProfileId}
                 onChange={saveProfiles}
                 onDelete={deleteProfile}
-              />
-            }
-            providerSlot={
-              <ParentProviderSettings
-                settings={providerSettings}
-                onSave={saveProviderSettings}
-                onDisconnect={disconnectProvider}
               />
             }
             settingsSlot={
@@ -1214,7 +1202,7 @@ function App() {
 function LoadingScreen() {
   return (
     <View style={[styles.safeArea, styles.centered]}>
-      <View style={styles.logoMark}><Feather name="sun" size={25} color={colors.purple} /></View>
+      <View style={styles.logoMark}><Feather name="sun" size={25} color={colors.ink} /></View>
       <Text style={styles.loadingText}>Waking up Nestling…</Text>
     </View>
   );
@@ -1223,7 +1211,7 @@ function LoadingScreen() {
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brandRow}>
-      <View style={styles.logoMarkSmall}><Feather name="sun" size={17} color={colors.purple} /></View>
+      <View style={styles.logoMarkSmall}><Feather name="sun" size={17} color={colors.ink} /></View>
       {!compact && <Text style={styles.brandName}>nestling</Text>}
     </View>
   );
@@ -1231,10 +1219,11 @@ function Brand({ compact = false }: { compact?: boolean }) {
 
 function PinSetup({ onSubmit, pin, setPin, error }: { onSubmit: () => void; pin: string; setPin: (value: string) => void; error: string }) {
   return (
-    <KeyboardAvoidingView style={styles.setupScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.setupFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.setupScreen} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Brand />
       <View style={styles.setupHero}>
-        <View style={styles.heroOrb}><Feather name="lock" size={38} color={colors.purple} /></View>
+        <View style={styles.heroOrb}><Feather name="lock" size={38} color={colors.ink} /></View>
         <Text style={styles.eyebrow}>A little grown-up setup</Text>
         <Text style={styles.heroTitle}>Make this nest{`\n`}just for them.</Text>
         <Text style={styles.heroBody}>Create a 4-digit parent PIN. You’ll use it whenever you want to change what your little ones can watch.</Text>
@@ -1243,6 +1232,7 @@ function PinSetup({ onSubmit, pin, setPin, error }: { onSubmit: () => void; pin:
         <Text style={styles.inputLabel}>Your private PIN</Text>
         <PinEntry pin={pin} onChange={setPin} onSubmit={onSubmit} error={error} helper="Keep it somewhere safe — kids won’t see this screen." submitLabel="Create parent PIN" />
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -1252,7 +1242,8 @@ function ProfileSetup({ onSubmit }: { onSubmit: (name: string, avatar: string) =
   const [avatar, setAvatar] = useState(avatarOptions[0]);
   const [error, setError] = useState('');
   return (
-    <KeyboardAvoidingView style={styles.setupScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.setupFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.setupScreen} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Brand />
       <View style={styles.setupHero}>
         <View style={[styles.heroOrb, { backgroundColor: colors.peach }]}><Feather name="heart" size={38} color={colors.coral} /></View>
@@ -1262,18 +1253,19 @@ function ProfileSetup({ onSubmit }: { onSubmit: (name: string, avatar: string) =
       </View>
       <View style={styles.formCard}>
         <Text style={styles.inputLabel}>Their name</Text>
-        <TextInput value={name} onChangeText={setName} placeholder="e.g. Milo" placeholderTextColor="#B8B1AA" style={styles.textInput} maxLength={24} />
+        <TextInput value={name} onChangeText={setName} placeholder="e.g. Milo" placeholderTextColor={colors.muted} style={styles.textInput} maxLength={24} />
         <Text style={[styles.inputLabel, { marginTop: 18 }]}>Pick a little icon</Text>
         <View style={styles.avatarPicker}>
           {avatarOptions.map((option) => (
             <FocusablePressable key={option} accessibilityLabel={`Choose ${option} avatar`} style={[styles.avatarOption, avatar === option && styles.avatarOptionSelected]} onPress={() => setAvatar(option)}>
-              <Feather name={avatarIcons[option]} size={25} color={avatar === option ? colors.purple : colors.muted} />
+              <Feather name={avatarIcons[option]} size={25} color={avatar === option ? colors.ink : colors.muted} />
             </FocusablePressable>
           ))}
         </View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <PrimaryButton label="Create profile" onPress={() => name.trim() ? onSubmit(name, avatar) : setError('Give this profile a name first.')} icon="arrow-right" />
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -1300,8 +1292,8 @@ function ProfileManager({ profiles, activeProfileId, setActiveProfileId, onChang
       <View style={styles.sectionIntro}><View><Text style={styles.parentSectionTitle}>Little explorers</Text><Text style={styles.parentSectionBody}>Choose who sees the Kid Mode home.</Text></View><Feather name="heart" size={22} color={colors.coral} /></View>
       <View style={styles.profileManagerCard}>
         <Text style={styles.inputLabel}>{editingId ? 'Edit profile' : 'Add a child profile'}</Text>
-        <TextInput value={name} onChangeText={setName} placeholder="Profile name" placeholderTextColor="#B8B1AA" style={styles.textInput} maxLength={24} />
-        <View style={styles.avatarPicker}>{avatarOptions.map((option) => <FocusablePressable key={option} accessibilityLabel={`Choose ${option} avatar`} style={[styles.avatarOption, avatar === option && styles.avatarOptionSelected]} onPress={() => setAvatar(option)}><Feather name={avatarIcons[option]} size={23} color={avatar === option ? colors.purple : colors.muted} /></FocusablePressable>)}</View>
+        <TextInput value={name} onChangeText={setName} placeholder="Profile name" placeholderTextColor={colors.muted} style={styles.textInput} maxLength={24} />
+        <View style={styles.avatarPicker}>{avatarOptions.map((option) => <FocusablePressable key={option} accessibilityLabel={`Choose ${option} avatar`} style={[styles.avatarOption, avatar === option && styles.avatarOptionSelected]} onPress={() => setAvatar(option)}><Feather name={avatarIcons[option]} size={23} color={avatar === option ? colors.ink : colors.muted} /></FocusablePressable>)}</View>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <View style={styles.formButtonRow}>{editingId ? <SecondaryButton label="Cancel" onPress={() => { setEditingId(null); setName(''); }} /> : null}<PrimaryButton label={editingId ? 'Save changes' : 'Add profile'} onPress={() => void save()} icon="check" /></View>
       </View>
@@ -1398,7 +1390,7 @@ function FormCard({ title, subtitle, children, onCancel, onSave }: { title: stri
 }
 
 function Field({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize = 'sentences' }: { label: string; value: string; onChangeText: (value: string) => void; placeholder: string; keyboardType?: 'default' | 'url' | 'number-pad'; autoCapitalize?: 'none' | 'sentences' }) {
-  return <View style={styles.field}><Text style={styles.inputLabel}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#B8B1AA" style={styles.textInput} keyboardType={keyboardType} autoCapitalize={autoCapitalize} /></View>;
+  return <View style={styles.field}><Text style={styles.inputLabel}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.muted} style={styles.textInput} keyboardType={keyboardType} autoCapitalize={autoCapitalize} /></View>;
 }
 
 function formatLockRemaining(ms: number) {
@@ -1435,7 +1427,7 @@ function ParentPinModal({ visible, pin, setPin, error, lockRemainingMs, resettin
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.modalScrim}>
         <ScrollView style={styles.pinModal} contentContainerStyle={styles.pinModalContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.modalIcon}><Feather name="lock" size={22} color={colors.purple} /></View>
+          <View style={styles.modalIcon}><Feather name="lock" size={22} color={colors.ink} /></View>
           <Text style={styles.modalTitle}>Parent check</Text>
           {locked ? (
             <>
@@ -1463,7 +1455,7 @@ function ParentPinModal({ visible, pin, setPin, error, lockRemainingMs, resettin
                     value={confirmText}
                     onChangeText={setConfirmText}
                     placeholder={resetConfirmationPhrase}
-                    placeholderTextColor="#B8B1AA"
+                    placeholderTextColor={colors.muted}
                     style={styles.textInput}
                     autoCapitalize="characters"
                   />
@@ -1770,7 +1762,7 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   }
 
   if (!isNativeYouTubePlayerAvailable) {
-    return <View style={styles.playerScreen}><PlayerHeader onBack={leavePlayer} /><View style={styles.blockedPlayer}><View style={styles.blockedIcon}><Feather name="smartphone" size={30} color={colors.purple} /></View><Text style={styles.blockedTitle}>Android player build required</Text><Text style={styles.blockedBody}>Install the native development build to play approved videos on Android phones, tablets, and TV.</Text><SecondaryButton label="Go back" onPress={onBack} /></View></View>;
+    return <View style={styles.playerScreen}><PlayerHeader onBack={leavePlayer} /><View style={styles.blockedPlayer}><View style={styles.blockedIcon}><Feather name="smartphone" size={30} color={colors.ink} /></View><Text style={styles.blockedTitle}>Android player build required</Text><Text style={styles.blockedBody}>Install the native development build to play approved videos on Android phones, tablets, and TV.</Text><SecondaryButton label="Go back" onPress={onBack} /></View></View>;
   }
 
   return (
@@ -1808,6 +1800,10 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             // Note: the recovery budget is NOT reset here. Resetting on every successful start
             // would let a flapping stream retry forever; only a user action restores it.
             setRecoveryMessage('');
+            // The *message* is a different thing from the budget: playback is running, so a
+            // previous failure is stale. Without this, a recovered start left "This video
+            // couldn't start" and a Try again button on screen over a playing video.
+            setError(null);
             setIsPlaying(true);
             setIsBuffering(false);
           }}
@@ -1864,18 +1860,21 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
       </View>
       <View style={styles.playerInfo}>
         <Text style={styles.playerTitle}>{video.title}</Text>
-        <Text style={styles.playerChannel}>{video.channelName ?? 'Approved by your parent'} · {formatDuration(video.duration)}</Text>
+        <View style={styles.playerChannelRow}>
+          <ChannelAvatar name={video.channelName?.trim() || 'Approved by your parent'} size={34} />
+          <Text style={styles.playerChannel}>{video.channelName?.trim() || 'Approved by your parent'}</Text>
+        </View>
         {recoveryMessage ? (
           <Text style={styles.warningText}>{recoveryMessage}</Text>
         ) : isBuffering ? (
           <Text style={styles.nativeHint}>Getting the nest ready…</Text>
         ) : error ? (
           <View>
-            <Text style={styles.errorText}>{error.message}</Text>
+            <Text style={styles.playerErrorText}>{error.message}</Text>
             <SecondaryButton label="Try again" onPress={manualRetryPlayback} />
           </View>
         ) : policyMessage ? (
-          <Text style={styles.errorText}>{policyMessage}</Text>
+          <Text style={styles.playerErrorText}>{policyMessage}</Text>
         ) : warningMessage ? (
           <Text style={styles.warningText}>{warningMessage}</Text>
         ) : (
@@ -1891,15 +1890,21 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
           <View style={[styles.progressFill, { width: `${Math.max(progress * 100, 1)}%` }]} />
         </FocusablePressable>
         <View style={styles.timeRow}><Text style={styles.timeText}>{formatDuration(Math.round((durationMs / 1000) * progress))}</Text><Text style={styles.timeText}>{formatDuration(Math.round(durationMs / 1000) || video.duration)}</Text></View>
-        <FocusablePressable accessibilityLabel={isPlaying ? 'Pause video' : 'Resume video'} style={styles.playerControl} onPress={togglePlayback}><Feather name={isPlaying ? 'pause' : 'play'} size={20} color="#fff" /><Text style={styles.playerControlText}>{isPlaying ? 'Pause' : 'Resume'} preview</Text></FocusablePressable>
-        {hasEnded && nextVideo ? <FocusablePressable accessibilityLabel="Play next approved video" style={styles.playerControl} onPress={selectNextVideo}><Feather name="skip-forward" size={20} color="#fff" /><Text style={styles.playerControlText}>Next approved video</Text></FocusablePressable> : null}
+        <FocusablePressable accessibilityLabel={isPlaying ? 'Pause video' : 'Resume video'} style={styles.playerControl} onPress={togglePlayback}><Feather name={isPlaying ? 'pause' : 'play'} size={20} color={yt.text} /><Text style={styles.playerControlText}>{isPlaying ? 'Pause' : 'Resume'} preview</Text></FocusablePressable>
+        {hasEnded && nextVideo ? <FocusablePressable accessibilityLabel="Play next approved video" style={styles.playerControl} onPress={selectNextVideo}><Feather name="skip-forward" size={20} color={yt.text} /><Text style={styles.playerControlText}>Next approved video</Text></FocusablePressable> : null}
       </View>
+      {nextVideo && nextVideo.id !== video.id ? (
+        <>
+          <Text style={styles.upNextLabel}>Up next</Text>
+          <FeedVideoCard video={nextVideo} onPress={() => onNextVideo(nextVideo)} />
+        </>
+      ) : null}
     </View>
   );
 }
 
 function PlayerHeader({ onBack }: { onBack: () => void }) {
-  return <View style={styles.playerTopBar}><FocusablePressable accessibilityLabel="Back to videos" style={styles.backButton} onPress={onBack}><Feather name="arrow-left" size={22} color={colors.ink} /></FocusablePressable><Brand /><View style={styles.nativeBadge}><View style={styles.mockDot} /><Text style={styles.mockBadgeText}>ANDROID PLAYER</Text></View></View>;
+  return <View style={styles.playerTopBar}><FocusablePressable accessibilityLabel="Back to videos" style={styles.backButton} onPress={onBack}><Feather name="arrow-down" size={24} color={yt.text} /></FocusablePressable></View>;
 }
 
 function BlockedPlayer({ onBack, message }: { onBack: () => void; message: string }) {
@@ -1908,13 +1913,13 @@ function BlockedPlayer({ onBack, message }: { onBack: () => void; message: strin
 
 function PrimaryButton({ label, onPress, icon, disabled = false }: { label: string; onPress: () => void; icon?: keyof typeof Feather.glyphMap; disabled?: boolean }) { return <FocusablePressable disabled={disabled} accessibilityLabel={label} style={styles.primaryButton} onPress={onPress}><Text style={styles.primaryButtonText}>{label}</Text>{icon ? <Feather name={icon} size={18} color="#fff" /> : null}</FocusablePressable>; }
 function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) { return <FocusablePressable accessibilityLabel={label} style={styles.secondaryButton} onPress={onPress}><Text style={styles.secondaryButtonText}>{label}</Text></FocusablePressable>; }
-function AddButton({ label, icon, onPress }: { label: string; icon: keyof typeof Feather.glyphMap; onPress: () => void }) { return <FocusablePressable accessibilityLabel={label} style={styles.addButton} onPress={onPress}><Feather name={icon} size={18} color={colors.purple} /><Text style={styles.addButtonText}>{label}</Text><Feather name="plus" size={16} color={colors.purple} /></FocusablePressable>; }
+function AddButton({ label, icon, onPress }: { label: string; icon: keyof typeof Feather.glyphMap; onPress: () => void }) { return <FocusablePressable accessibilityLabel={label} style={styles.addButton} onPress={onPress}><Feather name={icon} size={18} color={colors.ink} /><Text style={styles.addButtonText}>{label}</Text><Feather name="plus" size={16} color={colors.ink} /></FocusablePressable>; }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.canvas }, screen: { flex: 1 }, centered: { alignItems: 'center', justifyContent: 'center' }, loadingText: { color: colors.muted, fontSize: 16, marginTop: 14 },
-  setupScreen: { flex: 1, paddingHorizontal: 24, paddingTop: 18, justifyContent: 'space-between', paddingBottom: 22 }, brandRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, logoMark: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 54, justifyContent: 'center', width: 54 }, logoMarkSmall: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 }, brandName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.8 }, setupHero: { alignItems: 'center', marginVertical: 20, paddingHorizontal: 16 }, heroOrb: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 42, height: 84, justifyContent: 'center', marginBottom: 20, width: 84 }, eyebrow: { color: colors.purple, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, heroTitle: { color: colors.ink, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 9, textAlign: 'center' }, heroBody: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 16, maxWidth: 350, textAlign: 'center' }, formCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 24, borderWidth: 1, padding: 20, shadowColor: '#D7CFC5', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 }, inputLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 }, pinInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, color: colors.ink, fontSize: 28, fontWeight: '800', height: 58, letterSpacing: 11, paddingHorizontal: 18, textAlign: 'center' }, textInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 13, borderWidth: 1, color: colors.ink, fontSize: 16, height: 50, paddingHorizontal: 14 }, inputError: { borderColor: colors.danger }, helperText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, errorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 }, primaryButton: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 10, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, buttonPressed: { opacity: 0.78 }, buttonDisabled: { opacity: 0.55 }, avatarPicker: { flexDirection: 'row', gap: 11 }, avatarOption: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 }, avatarOptionSelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
-  parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.purple, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.purple, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.purple, fontSize: 12, fontWeight: '800' },
-  playerScreen: { flex: 1, paddingHorizontal: 18 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 58, justifyContent: 'space-between' }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { backgroundColor: '#000', borderRadius: 22, height: 235, overflow: 'hidden' }, nativePlayer: { flex: 1 }, nativeHint: { color: colors.muted, fontSize: 12, marginTop: 8 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.purple, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 3, paddingTop: 25 }, playerTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', letterSpacing: -0.5, lineHeight: 30 }, playerChannel: { color: colors.muted, fontSize: 14, marginTop: 8 }, warningText: { color: colors.purple, fontSize: 13, fontWeight: '800', marginTop: 8 }, progressTrack: { backgroundColor: '#E4DED6', borderRadius: 4, height: 24, justifyContent: 'center', marginTop: 22 }, progressFill: { backgroundColor: colors.purple, borderRadius: 4, height: 7 }, timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }, timeText: { color: colors.muted, fontSize: 12, fontWeight: '700' }, playerControl: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 15, flexDirection: 'row', gap: 9, height: 52, justifyContent: 'center', marginTop: 20 }, playerControlText: { color: '#fff', fontSize: 15, fontWeight: '800' }, overrideButton: { alignItems: 'center', backgroundColor: colors.purpleDark, borderRadius: 14, flexDirection: 'row', gap: 9, height: 50, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 22, borderWidth: 1, marginTop: 35, padding: 30 }, blockedIcon: { alignItems: 'center', backgroundColor: '#FBE5E3', borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: colors.ink, fontSize: 21, fontWeight: '800', marginTop: 17, textAlign: 'center' }, blockedBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 8, textAlign: 'center' }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(36, 48, 71, 0.48)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
+  safeArea: { flex: 1, backgroundColor: colors.canvas }, safeAreaDark: { backgroundColor: yt.bg }, screen: { flex: 1 }, centered: { alignItems: 'center', justifyContent: 'center' }, loadingText: { color: colors.muted, fontSize: 16, marginTop: 14 },
+  setupFlex: { flex: 1 }, setupScreen: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 18, justifyContent: 'space-between', paddingBottom: 22 }, brandRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, logoMark: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 54, justifyContent: 'center', width: 54 }, logoMarkSmall: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 }, brandName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.8 }, setupHero: { alignItems: 'center', marginVertical: 20, paddingHorizontal: 16 }, heroOrb: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 42, height: 84, justifyContent: 'center', marginBottom: 20, width: 84 }, eyebrow: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, heroTitle: { color: colors.ink, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 9, textAlign: 'center' }, heroBody: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 16, maxWidth: 350, textAlign: 'center' }, formCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 24, borderWidth: 1, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 }, inputLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 }, pinInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, color: colors.ink, fontSize: 28, fontWeight: '800', height: 58, letterSpacing: 11, paddingHorizontal: 18, textAlign: 'center' }, textInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 13, borderWidth: 1, color: colors.ink, fontSize: 16, height: 50, paddingHorizontal: 14 }, inputError: { borderColor: colors.danger }, helperText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, errorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 }, primaryButton: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 10, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, buttonPressed: { opacity: 0.78 }, buttonDisabled: { opacity: 0.55 }, avatarPicker: { flexDirection: 'row', gap: 11 }, avatarOption: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 }, avatarOptionSelected: { backgroundColor: colors.lavender, borderColor: colors.line },
+  parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
+  playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden', width: '100%' }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, progressTrack: { backgroundColor: yt.surfaceAlt, borderRadius: 2, height: 20, justifyContent: 'center', marginTop: 18 }, progressFill: { backgroundColor: yt.accent, borderRadius: 2, height: 4 }, timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }, timeText: { color: yt.textDim, fontSize: 12, fontWeight: '600' }, playerControl: { alignItems: 'center', backgroundColor: yt.surfaceAlt, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 16 }, playerControlText: { color: yt.text, fontSize: 14, fontWeight: '700' }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   resetCard: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 16, borderWidth: 1, marginTop: 6, padding: 14 },
   resetLabelMargin: { marginTop: 14 },
 });

@@ -146,6 +146,29 @@ export const parentPinService = {
     return { ok: true };
   },
 
+  /**
+   * Changes the PIN in one step. It lives here rather than in the UI so the
+   * lockout cannot be sidestepped: a caller that verified separately and then
+   * called setPin would reset the failure counter on its own authority.
+   *
+   * The new PIN is checked first, so a typo in it never costs an attempt
+   * against the old one. Rejecting an unchanged PIN keeps "changed" honest --
+   * a no-op that reports success would leave a parent believing a PIN their
+   * child already knows had been replaced.
+   *
+   * Throws on a malformed or unchanged new PIN, matching setPin's contract;
+   * a wrong current PIN comes back as an ordinary PinCheckResult so the caller
+   * can show the remaining attempts or the lockout.
+   */
+  async changePin(currentPin: string, nextPin: string): Promise<PinCheckResult> {
+    if (!pinPattern.test(nextPin)) throw new Error('The parent PIN must be exactly 4 digits.');
+    if (nextPin === currentPin) throw new Error('Choose a PIN different from the current one.');
+    const check = await parentPinService.verify(currentPin);
+    if (!check.ok) return check;
+    await parentPinService.setPin(nextPin);
+    return { ok: true };
+  },
+
   /** Only the destructive reset path may call this. */
   async clearPin(): Promise<void> {
     await SecureStore.deleteItemAsync(pinRecordKey).catch(() => undefined);
