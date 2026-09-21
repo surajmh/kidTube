@@ -1,33 +1,16 @@
-import React, { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Image, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../types';
-import {
-  ApprovalDuration,
-  ContentRequest,
-  approvalDurationLabels,
-  approvalDurationOrder,
-} from '../phase4Types';
-import { describeRequestTarget, requestTarget } from '../services/requestService';
-import { colors } from './theme';
-import { FocusablePressable } from './tv';
+import { ContentRequest, approvalDurationLabels, approvalDurationOrder } from '../../phase4Types';
+import { describeRequestTarget, requestTarget } from '../../services/requestService';
+import { colors } from '../theme';
+import { FocusablePressable } from '../tv';
+import styles from './parentRequests.style';
+import { useParentRequests } from './parentRequests.hook';
+import { profileNameFor, thumbnailFor as thumbnailForRequest, timeAgo } from './parentRequests.helper';
+import { ParentRequestsProps, RequestDecisionInput } from './parentRequests.type';
 
-export type RequestDecisionInput = {
-  request: ContentRequest;
-  decision: 'approved' | 'rejected';
-  profileId: string | null;
-  duration: ApprovalDuration;
-};
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
+export type { RequestDecisionInput };
 
 export function ParentRequestsPanel({
   profiles,
@@ -37,53 +20,32 @@ export function ParentRequestsPanel({
   onDecide,
   onDelete,
   onClearResolved,
-}: {
-  profiles: ChildProfile[];
-  requests: ContentRequest[];
-  videos: ApprovedVideo[];
-  channels: ApprovedChannel[];
-  onDecide: (input: RequestDecisionInput) => Promise<void>;
-  onDelete: (requestId: string) => Promise<void>;
-  onClearResolved: () => Promise<void>;
-}) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [durations, setDurations] = useState<Record<string, ApprovalDuration>>({});
-  const [scopes, setScopes] = useState<Record<string, 'child' | 'family'>>({});
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState('');
-
-  const pending = requests.filter((request) => request.status === 'pending');
-  const resolved = requests.filter((request) => request.status !== 'pending');
+}: ParentRequestsProps) {
+  const {
+    openId,
+    toggleOpen,
+    busyId,
+    error,
+    pending,
+    resolved,
+    durationFor,
+    scopeFor,
+    setDuration,
+    setScope,
+    decide,
+  } = useParentRequests({ requests, onDecide });
 
   function profileName(profileId: string) {
-    return profiles.find((profile) => profile.id === profileId)?.name ?? 'Child';
-  }
-
-  function durationFor(requestId: string) {
-    return durations[requestId] ?? 'permanent';
-  }
-
-  function scopeFor(requestId: string) {
-    return scopes[requestId] ?? 'child';
+    return profileNameFor(profiles, profileId);
   }
 
   function thumbnailFor(request: ContentRequest) {
-    if (request.thumbnailUrl) return request.thumbnailUrl;
-    return videos.find((video) => video.youtubeVideoId === request.youtubeVideoId)?.thumbnailUrl;
+    return thumbnailForRequest(request, videos);
   }
 
-  async function decide(input: RequestDecisionInput) {
-    setBusyId(input.request.id);
-    setError('');
-    try {
-      await onDecide(input);
-      setOpenId(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'That decision could not be saved.');
-    } finally {
-      setBusyId(null);
-    }
-  }
+
+
+
 
   return (
     <View>
@@ -140,7 +102,7 @@ export function ParentRequestsPanel({
                   accessibilityLabel={`Approve ${request.title ?? 'request'}`}
                   style={[styles.approve, isOpen && styles.approveOpen]}
                   disabled={busyId === request.id}
-                  onPress={() => setOpenId(isOpen ? null : request.id)}
+                  onPress={() => toggleOpen(request.id)}
                 >
                   <Feather name="check" size={16} color="#fff" />
                   <Text style={styles.approveText}>{isOpen ? 'Choose how long' : 'Approve'}</Text>
@@ -192,7 +154,7 @@ export function ParentRequestsPanel({
                         key={option}
                         accessibilityLabel={approvalDurationLabels[option]}
                         style={[styles.chip, duration === option && styles.chipActive]}
-                        onPress={() => setDurations((current) => ({ ...current, [request.id]: option }))}
+                        onPress={() => setDuration(request.id, option)}
                       >
                         <Text style={[styles.chipText, duration === option && styles.chipTextActive]}>
                           {option === 'once' ? 'One playback' : approvalDurationLabels[option]}
@@ -214,14 +176,14 @@ export function ParentRequestsPanel({
                     <FocusablePressable
                       accessibilityLabel={`Only ${profileName(request.profileId)}`}
                       style={[styles.chip, scope === 'child' && styles.chipActive]}
-                      onPress={() => setScopes((current) => ({ ...current, [request.id]: 'child' }))}
+                      onPress={() => setScope(request.id, 'child')}
                     >
                       <Text style={[styles.chipText, scope === 'child' && styles.chipTextActive]}>Only {profileName(request.profileId)}</Text>
                     </FocusablePressable>
                     <FocusablePressable
                       accessibilityLabel="All children"
                       style={[styles.chip, scope === 'family' && styles.chipActive]}
-                      onPress={() => setScopes((current) => ({ ...current, [request.id]: 'family' }))}
+                      onPress={() => setScope(request.id, 'family')}
                     >
                       <Text style={[styles.chipText, scope === 'family' && styles.chipTextActive]}>All children</Text>
                     </FocusablePressable>
@@ -290,52 +252,3 @@ export function ParentRequestsPanel({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
-  title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
-  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
-  pendingBadge: { alignItems: 'center', backgroundColor: colors.sky, borderRadius: 14, flexDirection: 'row', gap: 7, paddingHorizontal: 12, paddingVertical: 9 },
-  pendingBadgeEmpty: { backgroundColor: colors.mint },
-  pendingDot: { backgroundColor: '#3B82F6', borderRadius: 5, height: 10, width: 10 },
-  pendingDotEmpty: { backgroundColor: colors.mintDark },
-  pendingText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  pendingTextEmpty: { color: colors.mintDark },
-  error: { color: colors.danger, fontSize: 13, marginTop: 12 },
-  empty: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 18, marginTop: 14, padding: 24 },
-  emptyTitle: { color: colors.ink, fontSize: 15, fontWeight: '800' },
-  emptyBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: 'center' },
-  card: { backgroundColor: colors.card, borderRadius: 20, marginTop: 14, padding: 14 },
-  cardHeader: { alignItems: 'flex-start', flexDirection: 'row' },
-  thumb: { borderRadius: 12, height: 58, width: 58 },
-  thumbFallback: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 12, height: 58, justifyContent: 'center', width: 58 },
-  cardInfo: { flex: 1, paddingHorizontal: 12 },
-  cardWho: { color: colors.ink, fontSize: 12, fontWeight: '900', letterSpacing: 0.4 },
-  cardTitle: { color: colors.ink, fontSize: 16, fontWeight: '800', marginTop: 4 },
-  cardMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  cardAge: { color: colors.muted, fontSize: 11, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  approve: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 13, flex: 1, flexDirection: 'row', gap: 7, height: 48, justifyContent: 'center' },
-  approveOpen: { backgroundColor: colors.purpleDark },
-  approveText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  reject: { alignItems: 'center', borderRadius: 13, flex: 1, flexDirection: 'row', gap: 7, height: 48, justifyContent: 'center' },
-  rejectText: { color: colors.danger, fontSize: 14, fontWeight: '800' },
-  delete: { alignItems: 'center', height: 48, justifyContent: 'center', width: 46 },
-  sheet: { borderTopColor: colors.line, borderTopWidth: 1, marginTop: 14, paddingTop: 14 },
-  sheetLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 6 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  chip: { backgroundColor: colors.canvas, borderRadius: 12, minHeight: 44, justifyContent: 'center', paddingHorizontal: 11 },
-  chipActive: { backgroundColor: colors.lavender },
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  chipTextActive: { color: colors.ink },
-  helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 10 },
-  confirm: { alignItems: 'center', backgroundColor: colors.mintDark, borderRadius: 13, flexDirection: 'row', gap: 8, height: 50, justifyContent: 'center', marginTop: 14, paddingHorizontal: 12 },
-  confirmText: { color: '#fff', fontSize: 13, fontWeight: '800', flexShrink: 1 },
-  historyHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 },
-  historyTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
-  clearButton: { borderRadius: 10, minHeight: 40, justifyContent: 'center', paddingHorizontal: 10 },
-  clearText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  historyRow: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 14, flexDirection: 'row', gap: 12, marginTop: 8, minHeight: 62, padding: 10 },
-  historyTitleText: { color: colors.ink, fontSize: 14, fontWeight: '800' },
-  footerHint: { color: colors.muted, fontSize: 12, marginTop: 22, textAlign: 'center' },
-});

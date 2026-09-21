@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ParentRequestsPanel } from '../ParentRequestsPanel';
+import { ParentRequestsPanel } from '../ParentRequests';
 import { ParentContentPanel } from '../ParentContent';
 import { ParentActivityPanel } from '../ParentActivityPanel';
 import { ParentChildrenPanel } from '../ParentChildren';

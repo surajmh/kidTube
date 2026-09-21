@@ -82,7 +82,7 @@ import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
 import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ContentTab } from './src/components/ParentContent';
-import { RequestDecisionInput } from './src/components/ParentRequestsPanel';
+import { RequestDecisionInput } from './src/components/ParentRequests';
 import { ParentOverrideSheet } from './src/components/ParentOverrideSheet';
 import { PinEntry } from './src/components/PinEntry';
 import { Avatar, avatarIcons, avatarOptions } from './src/components/Avatar';

@@ -13,7 +13,7 @@ import { ChildRulesMap } from '../../services/childRulesService';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 import { OverridePreset } from '../../services/playbackOverrideService';
 import { ParentSession } from '../../services/auth/parentSession';
-import { RequestDecisionInput } from '../ParentRequestsPanel';
+import { RequestDecisionInput } from '../ParentRequests';
 import { ContentTab, ParentContentMode } from '../ParentContent';
 
 export type ParentSection =
