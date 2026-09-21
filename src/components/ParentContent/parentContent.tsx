@@ -82,7 +82,7 @@ export function ParentContentPanel({
             <Image source={{ uri: selectedChannel.thumbnailUrl }} style={styles.heroThumb} />
           ) : (
             <View style={styles.thumbFallback}>
-              <Feather name="radio" size={20} color={colors.purple} />
+              <Feather name="radio" size={20} color={colors.ink} />
             </View>
           )}
           <Text style={styles.heroName} numberOfLines={2}>{selectedChannel.name}</Text>
@@ -154,7 +154,7 @@ export function ParentContentPanel({
                     {channel.thumbnailUrl ? (
                       <Image source={{ uri: channel.thumbnailUrl }} style={styles.thumb} />
                     ) : (
-                      <View style={styles.thumbFallback}><Feather name="radio" size={18} color={colors.purple} /></View>
+                      <View style={styles.thumbFallback}><Feather name="radio" size={18} color={colors.ink} /></View>
                     )}
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{channel.name}</Text>
@@ -171,7 +171,7 @@ export function ParentContentPanel({
                         {/* Never claim "0 videos": an unloaded channel is unknown, not empty. */}
                         {channel.approved && (channelVideos.length > 0 || state?.fetchedAt) ? (
                           <View style={styles.videoCountTag}>
-                            <Feather name="play-circle" size={11} color={colors.purple} />
+                            <Feather name="play-circle" size={11} color={colors.ink} />
                             <Text style={styles.videoCountText}>
                               {channelVideos.length} {channelVideos.length === 1 ? 'video' : 'videos'}
                             </Text>
@@ -198,7 +198,7 @@ export function ParentContentPanel({
                           onOpenChannelVideos(channel);
                         }}
                       >
-                        <Feather name="chevron-right" size={18} color={colors.purple} />
+                        <Feather name="chevron-right" size={18} color={colors.ink} />
                       </FocusablePressable>
                     ) : null}
                     <FocusablePressable
@@ -248,7 +248,7 @@ export function ParentContentPanel({
                     {video.thumbnailUrl ? (
                       <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} />
                     ) : (
-                      <View style={styles.thumbFallback}><Feather name="play" size={18} color={colors.purple} /></View>
+                      <View style={styles.thumbFallback}><Feather name="play" size={18} color={colors.ink} /></View>
                     )}
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{video.title}</Text>
@@ -317,7 +317,7 @@ export function ParentContentPanel({
       {mode !== 'dashboard' ? null : (
       <View style={styles.searchCard}>
         <View style={styles.searchHeader}>
-          <View style={styles.searchIcon}><Feather name="search" size={18} color={colors.purple} /></View>
+          <View style={styles.searchIcon}><Feather name="search" size={18} color={colors.ink} /></View>
           <View style={styles.searchHeaderText}>
             <Text style={styles.searchTitle}>{PARENT_CONTENT_COPY.searchTitle}</Text>
             <Text style={styles.searchBody}>
@@ -345,7 +345,7 @@ export function ParentContentPanel({
           return (
             <View key={`${candidate.type}-${key}`} style={styles.resultRow}>
               <View style={styles.thumbFallback}>
-                <Feather name={candidate.type === 'video' ? 'film' : 'radio'} size={18} color={colors.purple} />
+                <Feather name={candidate.type === 'video' ? 'film' : 'radio'} size={18} color={colors.ink} />
               </View>
               <View style={styles.rowInfo}>
                 <TextInput

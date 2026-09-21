@@ -184,7 +184,7 @@ export function ParentShell({
           <Text style={styles.title}>Your family nest</Text>
         </View>
         <FocusablePressable accessibilityLabel="Back to kid mode" style={styles.exitButton} onPress={actions.onExit}>
-          <Feather name="log-out" size={16} color={colors.purple} />
+          <Feather name="log-out" size={16} color={colors.ink} />
           <Text style={styles.exitText}>Back to kid mode</Text>
         </FocusablePressable>
       </View>
@@ -333,7 +333,7 @@ function Stat({ value, label, icon, tint }: { value: string; label: string; icon
   return (
     <View style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: tint }]}>
-        <Feather name={icon} size={16} color={colors.purple} />
+        <Feather name={icon} size={16} color={colors.ink} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>

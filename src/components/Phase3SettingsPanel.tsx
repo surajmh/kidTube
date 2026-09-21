@@ -81,7 +81,7 @@ export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { s
 
   return (
     <View>
-      <View style={styles.intro}><View><Text style={styles.title}>Family playback defaults</Text><Text style={styles.subtitle}>Applies to every child. Per-child overrides live in the Children tab.</Text></View><Feather name="sliders" size={24} color={colors.purple} /></View>
+      <View style={styles.intro}><View><Text style={styles.title}>Family playback defaults</Text><Text style={styles.subtitle}>Applies to every child. Per-child overrides live in the Children tab.</Text></View><Feather name="sliders" size={24} color={colors.ink} /></View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Player behavior</Text>
         <ToggleRow label="Autoplay next approved video" value={settings.autoplay} onChange={(autoplay) => patch({ autoplay })} />
@@ -136,21 +136,21 @@ const styles = StyleSheet.create({
   category: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 5, minHeight: 40, paddingHorizontal: 10 },
   categorySelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
   categoryText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  categoryTextSelected: { color: colors.purple },
+  categoryTextSelected: { color: colors.ink },
   helper: { color: colors.muted, fontSize: 12, lineHeight: 18 },
   limitWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 12 },
   limitChip: { borderColor: colors.line, borderRadius: 12, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 9 },
   limitChipSelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
   limitText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  limitTextSelected: { color: colors.purple },
+  limitTextSelected: { color: colors.ink },
   usageHeading: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginTop: 8, textTransform: 'uppercase' },
   usageRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: 'row', minHeight: 38 },
-  usageText: { color: colors.purple, fontSize: 13, fontWeight: '800' },
+  usageText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
   dayWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 12 },
   dayChip: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
   dayChipSelected: { backgroundColor: colors.lavender, borderColor: colors.purple },
   dayText: { color: colors.muted, fontSize: 12, fontWeight: '800' },
-  dayTextSelected: { color: colors.purple },
+  dayTextSelected: { color: colors.ink },
   scheduleFields: { flexDirection: 'row', gap: 10 },
   scheduleField: { flex: 1 },
   fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', marginBottom: 5 },

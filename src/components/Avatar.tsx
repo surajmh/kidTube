@@ -17,7 +17,7 @@ export function Avatar({ profile, size }: { profile?: ChildProfile; size: number
   const icon = profile ? avatarIcons[profile.avatar] ?? 'star' : 'user';
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Feather name={icon} size={size * 0.48} color={colors.purple} />
+      <Feather name={icon} size={size * 0.48} color={colors.ink} />
     </View>
   );
 }

@@ -55,7 +55,7 @@ export function KidRequestsPanel({
     <View>
       <View style={styles.hero}>
         <View style={styles.heroIcon}>
-          <Feather name="help-circle" size={26} color={colors.purple} />
+          <Feather name="help-circle" size={26} color={colors.ink} />
         </View>
         <View style={styles.heroText}>
           <Text style={styles.heroTitle}>Ask a Parent</Text>
@@ -77,7 +77,7 @@ export function KidRequestsPanel({
               onPress={() => void run(() => onRequestVideo(video))}
             >
               <View style={styles.askIcon}>
-                <Feather name="play" size={18} color={colors.purple} />
+                <Feather name="play" size={18} color={colors.ink} />
               </View>
               <View style={styles.askInfo}>
                 <Text style={styles.askTitle} numberOfLines={1}>{video.title}</Text>
@@ -101,7 +101,7 @@ export function KidRequestsPanel({
               onPress={() => void run(() => onRequestChannel(channel))}
             >
               <View style={styles.askIcon}>
-                <Feather name="radio" size={18} color={colors.purple} />
+                <Feather name="radio" size={18} color={colors.ink} />
               </View>
               <View style={styles.askInfo}>
                 <Text style={styles.askTitle} numberOfLines={1}>{channel.name}</Text>
@@ -184,13 +184,13 @@ const styles = StyleSheet.create({
   askInfo: { flex: 1, paddingHorizontal: 11 },
   askTitle: { color: colors.ink, fontSize: 15, fontWeight: '800' },
   askMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  askAction: { color: colors.purple, fontSize: 14, fontWeight: '900', paddingHorizontal: 12 },
+  askAction: { color: colors.ink, fontSize: 14, fontWeight: '900', paddingHorizontal: 12 },
   form: { backgroundColor: colors.card, borderRadius: 18, padding: 14 },
   typeRow: { flexDirection: 'row', gap: 8 },
   typeChip: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', gap: 6, minHeight: 44, paddingHorizontal: 12 },
   typeChipActive: { backgroundColor: colors.lavender },
   typeText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
-  typeTextActive: { color: colors.purple },
+  typeTextActive: { color: colors.ink },
   input: { backgroundColor: colors.canvas, borderRadius: 13, color: colors.ink, fontSize: 15, height: 50, marginTop: 10, paddingHorizontal: 13 },
   submit: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 9, height: 52, justifyContent: 'center', marginTop: 12 },
   submitText: { color: '#fff', fontSize: 15, fontWeight: '800' },

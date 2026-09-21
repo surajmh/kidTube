@@ -94,7 +94,7 @@ export function ParentOverrideSheet({
       <View style={styles.scrim}>
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <View style={styles.icon}><Feather name={session ? 'clock' : 'lock'} size={20} color={colors.purple} /></View>
+            <View style={styles.icon}><Feather name={session ? 'clock' : 'lock'} size={20} color={colors.ink} /></View>
             <View style={styles.headerText}>
               <Text style={styles.title}>{session ? 'Parent override' : 'Parent check'}</Text>
               <Text style={styles.body}>
@@ -163,11 +163,11 @@ const styles = StyleSheet.create({
   existing: { backgroundColor: colors.mint, borderRadius: 12, color: colors.mintDark, fontSize: 12, fontWeight: '800', marginTop: 14, padding: 10 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 },
   preset: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 13, flexGrow: 1, minHeight: 52, justifyContent: 'center', paddingHorizontal: 14 },
-  presetText: { color: colors.purple, fontSize: 14, fontWeight: '800' },
+  presetText: { color: colors.ink, fontSize: 14, fontWeight: '800' },
   scheduleToggle: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 12, flexDirection: 'row', gap: 8, marginTop: 12, minHeight: 48, paddingHorizontal: 11 },
   scheduleToggleActive: { backgroundColor: colors.lavender },
   scheduleText: { color: colors.muted, flex: 1, fontSize: 12, fontWeight: '800' },
-  scheduleTextActive: { color: colors.purple },
+  scheduleTextActive: { color: colors.ink },
   error: { color: colors.danger, fontSize: 13, marginTop: 10, textAlign: 'center' },
   helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 12 },
   cancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 },

@@ -70,7 +70,7 @@ export function ParentChildrenPanel({
           <Text style={styles.title}>{PARENT_CHILDREN_COPY.title}</Text>
           <Text style={styles.subtitle}>{PARENT_CHILDREN_COPY.subtitle}</Text>
         </View>
-        <Feather name="users" size={22} color={colors.purple} />
+        <Feather name="users" size={22} color={colors.ink} />
       </View>
 
       <View style={styles.profileRow}>
@@ -399,11 +399,11 @@ function AllowedWindowEditor({
           <Text style={styles.fieldLabel}>START</Text>
           <View style={styles.stepper}>
             <FocusablePressable accessibilityLabel="Earlier start" style={styles.stepButton} onPress={() => shift('startMinutes', -30)}>
-              <Feather name="minus" size={15} color={colors.purple} />
+              <Feather name="minus" size={15} color={colors.ink} />
             </FocusablePressable>
             <Text style={styles.stepValue}>{minutesToTime(window.startMinutes)}</Text>
             <FocusablePressable accessibilityLabel="Later start" style={styles.stepButton} onPress={() => shift('startMinutes', 30)}>
-              <Feather name="plus" size={15} color={colors.purple} />
+              <Feather name="plus" size={15} color={colors.ink} />
             </FocusablePressable>
           </View>
         </View>
@@ -411,11 +411,11 @@ function AllowedWindowEditor({
           <Text style={styles.fieldLabel}>END</Text>
           <View style={styles.stepper}>
             <FocusablePressable accessibilityLabel="Earlier end" style={styles.stepButton} onPress={() => shift('endMinutes', -30)}>
-              <Feather name="minus" size={15} color={colors.purple} />
+              <Feather name="minus" size={15} color={colors.ink} />
             </FocusablePressable>
             <Text style={styles.stepValue}>{minutesToTime(window.endMinutes)}</Text>
             <FocusablePressable accessibilityLabel="Later end" style={styles.stepButton} onPress={() => shift('endMinutes', 30)}>
-              <Feather name="plus" size={15} color={colors.purple} />
+              <Feather name="plus" size={15} color={colors.ink} />
             </FocusablePressable>
           </View>
         </View>

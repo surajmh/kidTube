@@ -108,7 +108,7 @@ export function ParentActivityPanel({
             ) : (
               summary.recentlyWatched.map((entry) => (
                 <View key={`${entry.videoId}-${entry.watchedAt}`} style={styles.historyRow}>
-                  <Feather name="play-circle" size={16} color={colors.purple} />
+                  <Feather name="play-circle" size={16} color={colors.ink} />
                   <View style={styles.historyInfo}>
                     <Text style={styles.usageLabel} numberOfLines={1}>{entry.title}</Text>
                     <Text style={styles.rowMeta} numberOfLines={1}>
@@ -149,7 +149,7 @@ export function ParentActivityPanel({
 function Metric({ label, value, icon }: { label: string; value: string; icon: keyof typeof Feather.glyphMap }) {
   return (
     <View style={styles.metric}>
-      <View style={styles.metricIcon}><Feather name={icon} size={15} color={colors.purple} /></View>
+      <View style={styles.metricIcon}><Feather name={icon} size={15} color={colors.ink} /></View>
       <Text style={styles.metricValue} numberOfLines={1}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </View>

@@ -19,7 +19,12 @@ export const colors = {
   card: '#212121',
   /** Secondary surface: chips, icon wells, active pills. */
   lavender: '#272727',
-  /** Accent. Fills carry white text. */
+  /**
+   * Accent. Fills only -- buttons, badges, the brand mark -- and always with white text on it.
+   *
+   * It is deliberately not used for active labels or icons: one token serving both roles is what
+   * made every active state render red. Active foreground is `ink`.
+   */
   purple: '#FF0033',
   purpleDark: '#CC0029',
   /** Warm icon tint. */

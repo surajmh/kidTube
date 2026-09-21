@@ -79,7 +79,7 @@ export function ParentCategoriesPanel({
         return (
           <View key={category.id} style={styles.row}>
             <View style={[styles.icon, { backgroundColor: cardTints[index % cardTints.length] }]}>
-              <Feather name={category.icon as keyof typeof Feather.glyphMap} size={18} color={colors.purple} />
+              <Feather name={category.icon as keyof typeof Feather.glyphMap} size={18} color={colors.ink} />
             </View>
             <View style={styles.rowInfo}>
               <Text style={styles.rowTitle} numberOfLines={1}>{category.name}</Text>

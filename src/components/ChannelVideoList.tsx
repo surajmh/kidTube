@@ -74,7 +74,7 @@ export function ChannelVideoList({
             disabled={busy}
             onPress={onRefresh}
           >
-            <Feather name="refresh-cw" size={13} color={colors.purple} />
+            <Feather name="refresh-cw" size={13} color={colors.ink} />
             <Text style={styles.refreshText}>{busy ? 'Loading…' : 'Refresh'}</Text>
           </FocusablePressable>
         ) : null}
@@ -82,7 +82,7 @@ export function ChannelVideoList({
 
       {loading ? (
         <View style={styles.pending} accessibilityLabel="Loading videos">
-          <Feather name="download-cloud" size={20} color={colors.purple} />
+          <Feather name="download-cloud" size={20} color={colors.ink} />
           <Text style={styles.pendingText}>
             {parent ? 'Fetching this channel’s uploads…' : 'Getting videos ready…'}
           </Text>
@@ -143,7 +143,7 @@ export function ChannelVideoList({
 
       {!loading && !errorMessage && videos.length === 0 ? (
         <View style={styles.empty} accessibilityLabel="No videos yet">
-          <View style={styles.emptyIcon}><Feather name="inbox" size={18} color={colors.purple} /></View>
+          <View style={styles.emptyIcon}><Feather name="inbox" size={18} color={colors.ink} /></View>
           <Text style={styles.emptyTitle}>{parent ? 'No videos found' : 'Nothing here yet'}</Text>
           <Text style={styles.emptyBody}>
             {parent
@@ -160,7 +160,7 @@ export function ChannelVideoList({
           disabled={loadMoreBusy}
           onPress={onLoadMore}
         >
-          <Feather name={loadMoreBusy ? 'loader' : 'chevrons-down'} size={16} color={colors.purple} />
+          <Feather name={loadMoreBusy ? 'loader' : 'chevrons-down'} size={16} color={colors.ink} />
           <Text style={styles.loadMoreText}>{loadMoreBusy ? 'Loading more…' : 'Load more'}</Text>
         </FocusablePressable>
       ) : null}
@@ -183,7 +183,7 @@ function ChannelVideoRow({
         <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} />
       ) : (
         <View style={[styles.thumb, styles.thumbFallback]}>
-          <Feather name="play" size={16} color={colors.purple} />
+          <Feather name="play" size={16} color={colors.ink} />
         </View>
       )}
       <View style={styles.rowInfo}>
@@ -209,7 +209,7 @@ function ChannelVideoRow({
     >
       {body}
       <View style={styles.playBadge}>
-        <Feather name="play" size={14} color={colors.purple} />
+        <Feather name="play" size={14} color={colors.ink} />
       </View>
     </FocusablePressable>
   );
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 },
   status: { color: colors.muted, flex: 1, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
   refresh: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 11, flexDirection: 'row', gap: 6, minHeight: 40, paddingHorizontal: 11 },
-  refreshText: { color: colors.purple, fontSize: 12, fontWeight: '800' },
+  refreshText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
   pending: { alignItems: 'center', backgroundColor: colors.canvas, borderRadius: 14, flexDirection: 'row', gap: 10, padding: 14 },
   pendingText: { color: colors.muted, flex: 1, fontSize: 12, fontWeight: '700' },
   errorCard: { alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 16 },
@@ -244,5 +244,5 @@ const styles = StyleSheet.create({
   emptyTitle: { color: colors.ink, fontSize: 14, fontWeight: '800', marginTop: 10 },
   emptyBody: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 5, textAlign: 'center' },
   loadMore: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 14, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 9, minHeight: 48, paddingHorizontal: 14 },
-  loadMoreText: { color: colors.purple, fontSize: 13, fontWeight: '800' },
+  loadMoreText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
 });
