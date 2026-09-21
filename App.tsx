@@ -1,4 +1,3 @@
-import './global.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -80,7 +79,7 @@ import {
 } from './src/services/playbackRecovery';
 import { sponsorBlockService, SponsorSegment } from './src/services/sponsorBlockService';
 import { Phase3SettingsPanel } from './src/components/Phase3SettingsPanel';
-import { KidHomeScreen, KidTab } from './src/components/KidHomeScreen';
+import { KidHomeScreen, KidTab } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ContentTab } from './src/components/ParentContentPanel';
 import { RequestDecisionInput } from './src/components/ParentRequestsPanel';

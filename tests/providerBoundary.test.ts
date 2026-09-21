@@ -1,4 +1,3 @@
-import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { YouTubeProviderError, classifyProviderError } from '../src/services/content/youtubeContentProvider';
 import { nativeYouTubeContentProvider } from '../src/services/content/nativeYouTubeContentProvider';

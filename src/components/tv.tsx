@@ -53,6 +53,7 @@ export function FocusablePressable({
   );
 }
 
+
 const styles = StyleSheet.create({
   // A transparent border keeps the focus ring from shifting layout.
   base: { borderColor: 'transparent', borderWidth: 2 },

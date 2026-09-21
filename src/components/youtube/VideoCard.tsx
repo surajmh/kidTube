@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
-import { formatDuration, thumbnailUrls, tintFor, yt } from './theme';
+import { KID_COPY, MONOGRAM_TINTS } from '../KidHome/constants';
+import { formatDuration, monogramTint, thumbnailUrls } from '../KidHome/helpers';
+import { yt } from './theme';
 
 /** A 16:9 thumbnail that quietly falls back when the preferred rendition is missing. */
 export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?: number }) {
@@ -30,19 +32,22 @@ export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?
 export function ChannelAvatar({ name, uri, size = 36 }: { name: string; uri?: string; size?: number }) {
   const [failed, setFailed] = useState(false);
   const box = { width: size, height: size, borderRadius: size / 2 };
+
   if (uri && !failed) {
     return <Image source={{ uri }} style={[styles.avatar, box]} onError={() => setFailed(true)} />;
   }
   return (
-    <View style={[styles.avatar, box, { backgroundColor: tintFor(name || '?') }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.42 }]}>{(name || '?').trim().charAt(0).toUpperCase()}</Text>
+    <View style={[styles.avatar, box, { backgroundColor: monogramTint(name || '?', MONOGRAM_TINTS) }]}>
+      <Text style={[styles.avatarText, { fontSize: size * 0.42 }]}>
+        {(name || '?').trim().charAt(0).toUpperCase()}
+      </Text>
     </View>
   );
 }
 
 /**
- * The feed card: full-bleed thumbnail, then a row of channel avatar, title and one metadata line.
- * `compact` is the horizontal-shelf variant used for continue-watching rails.
+ * The feed card: full-bleed thumbnail, then channel avatar, title and one metadata line.
+ * `compact` is the horizontal-shelf variant used for the continue-watching rail.
  */
 export function VideoCard({
   video,
@@ -53,7 +58,7 @@ export function VideoCard({
   onPress: () => void;
   compact?: boolean;
 }) {
-  const channel = video.channelName?.trim() || 'Saved by a grown-up';
+  const channel = video.channelName?.trim() || KID_COPY.unknownChannel;
 
   if (compact) {
     return (
