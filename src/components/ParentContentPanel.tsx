@@ -11,17 +11,21 @@ import {
 } from '../services/content/channelSyncRules';
 import { colors, cardTints } from './theme';
 import { FocusablePressable } from './tv';
+import {
+  ParentFilterButton,
+  ParentFilterDrawer,
+  ParentFilters,
+  emptyParentFilters,
+} from './ParentFilterDrawer';
+import { yt } from './youtube/theme';
 import { PagedGrid } from './PagedGrid';
 import { ChannelVideoList } from './ChannelVideoList';
 
 export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';
 
-const tabs: Array<{ id: ContentTab; label: string; icon: keyof typeof Feather.glyphMap }> = [
-  { id: 'channels', label: 'Channels', icon: 'radio' },
-  { id: 'videos', label: 'Videos', icon: 'play-circle' },
-  { id: 'categories', label: 'Categories', icon: 'grid' },
-  { id: 'requests', label: 'Requests', icon: 'inbox' },
-];
+/** Which page of the parent experience this panel is rendering. */
+export type ParentContentMode = 'dashboard' | 'channels' | 'videos' | 'categories';
+
 
 function approveLabelFor(approvals: ContentApproval[], target: { videoId?: string; channelId?: string }) {
   const matching = approvals.filter((approval) =>
@@ -38,8 +42,6 @@ export function ParentContentPanel({
   channels,
   videos,
   approvals,
-  tab,
-  onTabChange,
   categoriesSlot,
   requestsSlot,
   manualAddSlot,
@@ -54,6 +56,7 @@ export function ParentContentPanel({
   syncStateFor,
   channelBusy,
   onOpenChannelVideos,
+  mode,
   selectedChannelId,
   onSelectChannel,
   onRefreshChannel,
@@ -64,8 +67,6 @@ export function ParentContentPanel({
   channels: ApprovedChannel[];
   videos: ApprovedVideo[];
   approvals: ContentApproval[];
-  tab: ContentTab;
-  onTabChange: (tab: ContentTab) => void;
   categoriesSlot?: React.ReactNode;
   requestsSlot?: React.ReactNode;
   manualAddSlot?: React.ReactNode;
@@ -83,11 +84,13 @@ export function ParentContentPanel({
   /** Cache-respecting fetch, run when a parent opens a channel's videos (§7). */
   onOpenChannelVideos: (channel: ApprovedChannel) => void;
   /** Set while a channel's own page is open; the Channels tab otherwise lists channels only. */
+  mode: ParentContentMode;
   selectedChannelId: string | null;
   onSelectChannel: (channelId: string | null) => void;
   onRefreshChannel: (channel: ApprovedChannel) => void;
   onLoadMoreChannel: (channel: ApprovedChannel) => void;
 }) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [childFilter, setChildFilter] = useState<string | null>(null);
@@ -125,6 +128,14 @@ export function ParentContentPanel({
     [channels, query, categoryFilter, childFilter, accessFor],
   );
 
+  // The nav decides the page; `tab` is kept because the filtering below is written in terms of it.
+  const tab: ContentTab = mode === 'videos' ? 'videos' : mode === 'categories' ? 'categories' : 'channels';
+  const filters: ParentFilters = { query, childId: childFilter, categoryId: categoryFilter };
+  function applyFilters(next: ParentFilters) {
+    setQuery(next.query);
+    setChildFilter(next.childId);
+    setCategoryFilter(next.categoryId);
+  }
   const recentlyAdded = (tab === 'channels' ? channels : videos).slice(0, 3);
 
   function titled(candidate: ContentCandidate): ContentCandidate {
@@ -197,88 +208,21 @@ export function ParentContentPanel({
 
   return (
     <View>
-      <View style={styles.intro}>
-        <View>
-          <Text style={styles.title}>Content</Text>
-          <Text style={styles.subtitle}>Everything your children can watch, decided by you.</Text>
+      {mode === 'dashboard' ? null : (
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>
+            {mode === 'channels' ? 'Channels' : mode === 'videos' ? 'Videos' : 'Categories'}
+          </Text>
+          {mode === 'categories' ? null : (
+            <ParentFilterButton filters={filters} onPress={() => setFiltersOpen(true)} />
+          )}
         </View>
-        <View style={styles.privacyBadge}>
-          <Feather name="shield" size={13} color={colors.mintDark} />
-          <Text style={styles.privacyText}>Local only</Text>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.tabRow}>
-        {tabs.map((item) => (
-          <FocusablePressable
-            key={item.id}
-            accessibilityLabel={item.label}
-            style={[styles.tab, tab === item.id && styles.tabActive]}
-            onPress={() => onTabChange(item.id)}
-          >
-            <Feather name={item.icon} size={16} color={tab === item.id ? colors.purple : colors.muted} />
-            <Text style={[styles.tabText, tab === item.id && styles.tabTextActive]}>{item.label}</Text>
-          </FocusablePressable>
-        ))}
-      </View>
-
-      {tab === 'categories' ? (
+      {mode === 'categories' ? (
         categoriesSlot
-      ) : tab === 'requests' ? (
-        requestsSlot
-      ) : (
+      ) : mode === 'dashboard' ? null : (
         <>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={`Search your approved ${tab}`}
-            placeholderTextColor="#B8B1AA"
-            style={styles.input}
-            accessibilityLabel="Search approved content"
-          />
-
-          <Text style={styles.filterLabel}>FILTER BY CHILD</Text>
-          <View style={styles.chipRow}>
-            <FocusablePressable
-              accessibilityLabel="All children"
-              style={[styles.chip, childFilter === null && styles.chipActive]}
-              onPress={() => setChildFilter(null)}
-            >
-              <Text style={[styles.chipText, childFilter === null && styles.chipTextActive]}>All children</Text>
-            </FocusablePressable>
-            {profiles.map((profile) => (
-              <FocusablePressable
-                key={profile.id}
-                accessibilityLabel={`Filter by ${profile.name}`}
-                style={[styles.chip, childFilter === profile.id && styles.chipActive]}
-                onPress={() => setChildFilter(profile.id)}
-              >
-                <Text style={[styles.chipText, childFilter === profile.id && styles.chipTextActive]}>{profile.name}</Text>
-              </FocusablePressable>
-            ))}
-          </View>
-
-          <Text style={styles.filterLabel}>FILTER BY CATEGORY</Text>
-          <View style={styles.chipRow}>
-            <FocusablePressable
-              accessibilityLabel="All categories"
-              style={[styles.chip, categoryFilter === null && styles.chipActive]}
-              onPress={() => setCategoryFilter(null)}
-            >
-              <Text style={[styles.chipText, categoryFilter === null && styles.chipTextActive]}>All</Text>
-            </FocusablePressable>
-            {categories.map((category) => (
-              <FocusablePressable
-                key={category.id}
-                accessibilityLabel={category.name}
-                style={[styles.chip, categoryFilter === category.id && styles.chipActive]}
-                onPress={() => setCategoryFilter(category.id)}
-              >
-                <Text style={[styles.chipText, categoryFilter === category.id && styles.chipTextActive]}>{category.name}</Text>
-              </FocusablePressable>
-            ))}
-          </View>
-
           {recentlyAdded.length > 0 ? (
             <>
               <Text style={styles.filterLabel}>RECENTLY ADDED</Text>
@@ -473,6 +417,7 @@ export function ParentContentPanel({
         </>
       )}
 
+      {mode !== 'dashboard' ? null : (
       <View style={styles.searchCard}>
         <View style={styles.searchHeader}>
           <View style={styles.searchIcon}><Feather name="search" size={18} color={colors.purple} /></View>
@@ -542,7 +487,18 @@ export function ParentContentPanel({
           );
         })}
       </View>
-      {manualAddSlot ? <View style={styles.manualSlot}>{manualAddSlot}</View> : null}
+      )}
+      {mode === 'dashboard' && manualAddSlot ? <View style={styles.manualSlot}>{manualAddSlot}</View> : null}
+
+      <ParentFilterDrawer
+        visible={filtersOpen}
+        label={tab === 'videos' ? 'videos' : 'channels'}
+        filters={filters}
+        profiles={profiles}
+        categories={categories}
+        onChange={applyFilters}
+        onClose={() => setFiltersOpen(false)}
+      />
     </View>
   );
 }
@@ -583,6 +539,8 @@ const styles = StyleSheet.create({
   expiryTagText: { color: '#8A5340', fontSize: 10, fontWeight: '800' },
   videoCountTag: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 9, flexDirection: 'row', gap: 4, paddingHorizontal: 7, paddingVertical: 4 },
   videoCountText: { color: colors.purple, fontSize: 10, fontWeight: '800' },
+  pageHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 14, paddingTop: 4 },
+  pageTitle: { color: yt.text, fontSize: 20, fontWeight: '700' },
   backRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 6, paddingVertical: 8 },
   backText: { color: colors.ink, fontSize: 15, fontWeight: '800' },
   channelHero: { alignItems: 'center', gap: 6, paddingBottom: 18, paddingTop: 4 },

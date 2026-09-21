@@ -130,7 +130,7 @@ function App() {
   const [pinError, setPinError] = useState('');
   const [pinLockRemainingMs, setPinLockRemainingMs] = useState(0);
   const [resetting, setResetting] = useState(false);
-  const [parentSection, setParentSection] = useState<ParentSection>('content');
+  const [parentSection, setParentSection] = useState<ParentSection>('home');
   const [contentTab, setContentTab] = useState<ContentTab>('channels');
   /** Which channel's own page is open in Parent Mode, if any. */
   const [parentChannelId, setParentChannelId] = useState<string | null>(null);
@@ -297,7 +297,7 @@ function App() {
       if (parentSessionService.isActive()) return;
       parentSessionService.end();
       setParentSession(null);
-      setParentSection('content');
+      setParentSection('home');
       setScreen('kid');
     };
     const subscription = AppState.addEventListener('change', (nextState) => { if (nextState === 'active') check(); });

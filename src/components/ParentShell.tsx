@@ -25,7 +25,15 @@ import { colors } from './theme';
 import { yt } from './youtube/theme';
 import { FocusablePressable } from './tv';
 
-export type ParentSection = 'content' | 'requests' | 'children' | 'activity' | 'settings';
+export type ParentSection =
+  | 'home'
+  | 'channels'
+  | 'videos'
+  | 'categories'
+  | 'requests'
+  | 'children'
+  | 'activity'
+  | 'settings';
 
 export type ParentShellData = {
   session: ParentSession | null;
@@ -80,12 +88,21 @@ export type ParentShellActions = {
   accessFor: (profileId: string, target: { videoId?: string; channelId?: string }) => boolean;
 };
 
+/** The nav bar. Children, Activity and Playback are reached from the dashboard instead: they are
+ *  occasional tasks, and five destinations is the most a nav bar can carry without crowding. */
 const sections: Array<{ id: ParentSection; label: string; icon: keyof typeof Feather.glyphMap }> = [
-  { id: 'content', label: 'Content', icon: 'layers' },
+  { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'channels', label: 'Channels', icon: 'users' },
+  { id: 'videos', label: 'Videos', icon: 'play' },
+  { id: 'categories', label: 'Categories', icon: 'grid' },
   { id: 'requests', label: 'Requests', icon: 'inbox' },
-  { id: 'children', label: 'Children', icon: 'users' },
-  { id: 'activity', label: 'Activity', icon: 'bar-chart-2' },
-  { id: 'settings', label: 'Playback', icon: 'sliders' },
+];
+
+/** Reached from the dashboard rather than the nav bar. */
+const shortcuts: Array<{ id: ParentSection; label: string; hint: string; icon: keyof typeof Feather.glyphMap }> = [
+  { id: 'children', label: 'Children', hint: 'Profiles, limits and rules', icon: 'users' },
+  { id: 'activity', label: 'Activity', hint: 'What has been watched', icon: 'bar-chart-2' },
+  { id: 'settings', label: 'Playback', hint: 'Screen time and bedtime', icon: 'sliders' },
 ];
 
 export function ParentShell({
@@ -149,6 +166,10 @@ export function ParentShell({
     actions.onLoadMoreChannel(channel);
   }
 
+  const contentPage = section === 'home' || section === 'channels' || section === 'videos' || section === 'categories';
+  const contentMode =
+    section === 'channels' ? 'channels' : section === 'videos' ? 'videos' : section === 'categories' ? 'categories' : 'dashboard';
+
   return (
     <ScrollView
       style={styles.screen}
@@ -192,22 +213,24 @@ export function ParentShell({
         ))}
       </ScrollView>
 
-      {section === 'content' ? (
+      {contentPage ? (
         <>
-          <View style={styles.statsRow}>
-            <Stat value={String(data.channels.length)} label="channels" icon="radio" tint={colors.lavender} />
-            <Stat value={String(data.videos.length)} label="videos" icon="play" tint={colors.peach} />
-            <Stat value={String(data.categories.length)} label="categories" icon="grid" tint={colors.mint} />
-            <Stat value={String(pendingCount)} label="pending" icon="inbox" tint={colors.sky} />
-          </View>
+          {section === 'home' ? (
+            <View style={styles.statsRow}>
+              <Stat value={String(data.channels.length)} label="channels" icon="radio" tint={colors.lavender} />
+              <Stat value={String(data.videos.length)} label="videos" icon="play" tint={colors.peach} />
+              <Stat value={String(data.categories.length)} label="categories" icon="grid" tint={colors.mint} />
+              <Stat value={String(pendingCount)} label="pending" icon="inbox" tint={colors.sky} />
+            </View>
+          ) : null}
+
           <ParentContentPanel
+            mode={contentMode}
             profiles={data.profiles}
             categories={data.categories}
             channels={data.channels}
             videos={data.videos}
             approvals={data.approvals}
-            tab={contentTab}
-            onTabChange={setContentTab}
             accessFor={actions.accessFor}
             onRemoveVideo={actions.onRemoveVideo}
             onRemoveChannel={actions.onRemoveChannel}
@@ -236,6 +259,26 @@ export function ParentShell({
               />
             }
           />
+
+          {section === 'home' ? (
+            <View style={styles.shortcuts}>
+              {shortcuts.map((item) => (
+                <FocusablePressable
+                  key={item.id}
+                  accessibilityLabel={item.label}
+                  style={styles.shortcut}
+                  onPress={() => setSection(item.id)}
+                >
+                  <Feather name={item.icon} size={18} color={yt.text} />
+                  <View style={styles.shortcutText}>
+                    <Text style={styles.shortcutLabel}>{item.label}</Text>
+                    <Text style={styles.shortcutHint}>{item.hint}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={18} color={yt.textDim} />
+                </FocusablePressable>
+              ))}
+            </View>
+          ) : null}
         </>
       ) : null}
 
@@ -358,5 +401,10 @@ const styles = StyleSheet.create({
   statValue: { color: yt.text, fontSize: 20, fontWeight: '700', marginTop: 8 },
   statLabel: { color: yt.textDim, fontSize: 11 },
 
+  shortcuts: { borderTopColor: yt.line, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 24, paddingTop: 8 },
+  shortcut: { alignItems: 'center', borderWidth: 0, flexDirection: 'row', gap: 14, paddingVertical: 14 },
+  shortcutText: { flex: 1, gap: 2 },
+  shortcutLabel: { color: yt.text, fontSize: 15, fontWeight: '600' },
+  shortcutHint: { color: yt.textDim, fontSize: 12.5 },
   bottomSpace: { height: 28 },
 });
