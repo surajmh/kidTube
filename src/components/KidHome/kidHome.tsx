@@ -5,10 +5,10 @@ import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
 import { ContentRequest, RequestType } from '../../phase4Types';
 import { FocusablePressable } from '../tv';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
-import { ICON, KID_COPY, KID_DESTINATIONS } from './constants';
-import { useKidHome } from './useKidHome';
-import { ChannelAvailability, KidHomeProps, KidSearchResults } from './types';
-import styles from './styles';
+import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
+import { useKidHome } from './kidHome.hook';
+import { ChannelAvailability, KidHomeProps, KidSearchResults } from './kidHome.type';
+import styles from './kidHome.style';
 
 /**
  * Kid Mode.

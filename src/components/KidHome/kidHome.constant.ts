@@ -1,4 +1,4 @@
-import { KidDestination } from './types';
+import { KidDestination } from './kidHome.type';
 
 /** Four destinations. Categories live as filter chips on the feed instead. */
 export const KID_DESTINATIONS: KidDestination[] = [

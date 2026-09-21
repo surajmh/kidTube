@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ApprovedVideo } from '../../types';
-import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './helpers';
-import { KidHomeProps, KidTab } from './types';
+import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './kidHome.helper';
+import { KidHomeProps, KidTab } from './kidHome.type';
 
 type UseKidHomeInput = Pick<
   KidHomeProps,

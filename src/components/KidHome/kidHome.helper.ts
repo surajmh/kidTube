@@ -1,6 +1,6 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
-import { ChannelAvailability, KidSearchResults } from './types';
+import { ChannelAvailability, KidSearchResults } from './kidHome.type';
 
 /**
  * Pure view logic for Kid Mode.

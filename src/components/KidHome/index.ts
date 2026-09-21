@@ -1,6 +1,6 @@
-export { KidHomeScreen } from './KidHome';
-export type { KidTab, KidHomeProps, ChannelAvailability, KidSearchResults } from './types';
-export { KID_DESTINATIONS, KID_COPY } from './constants';
+export { KidHomeScreen } from './kidHome';
+export type { KidTab, KidHomeProps, ChannelAvailability, KidSearchResults } from './kidHome.type';
+export { KID_DESTINATIONS, KID_COPY } from './kidHome.constant';
 export {
   channelAvailability,
   formatDuration,
@@ -8,5 +8,5 @@ export {
   thumbnailUrls,
   videosForChannel,
   videosInCategory,
-} from './helpers';
-export { useKidHome } from './useKidHome';
+} from './kidHome.helper';
+export { useKidHome } from './kidHome.hook';

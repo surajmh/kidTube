@@ -9,7 +9,7 @@ import {
   thumbnailUrls,
   videosForChannel,
   videosInCategory,
-} from '../helpers';
+} from '../kidHome.helper';
 
 const channelA = 'UCaaaaaaaaaaaaaaaaaaaaaa';
 

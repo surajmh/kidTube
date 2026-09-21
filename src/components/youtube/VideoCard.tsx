@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
-import { KID_COPY, MONOGRAM_TINTS } from '../KidHome/constants';
-import { formatDuration, monogramTint, thumbnailUrls } from '../KidHome/helpers';
+import { KID_COPY, MONOGRAM_TINTS } from '../KidHome/kidHome.constant';
+import { formatDuration, monogramTint, thumbnailUrls } from '../KidHome/kidHome.helper';
 import { yt } from './theme';
 
 /** A 16:9 thumbnail that quietly falls back when the preferred rendition is missing. */

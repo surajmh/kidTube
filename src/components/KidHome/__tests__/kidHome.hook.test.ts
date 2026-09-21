@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
 import { KidLibrary } from '../../../services/kidContentLibraryService';
 import { ChannelSyncState } from '../../../services/content/channelSyncRules';
-import { useKidHome } from '../useKidHome';
+import { useKidHome } from '../kidHome.hook';
 
 const channelA = 'UCaaaaaaaaaaaaaaaaaaaaaa';
 
