@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +46,9 @@ import { parentContentSearchService } from './src/services/parentContentSearchSe
 import { parentContentService } from './src/services/parentContentService';
 import { requestService } from './src/services/requestService';
 import { YouTubePlayer, isNativeYouTubePlayerAvailable } from './src/native';
+import { nativeYouTubePlayerAdapter } from './src/native/YouTubePlayerAdapter';
+import { PlayerControls } from './src/components/PlayerControls';
+import { channelAvatarUri } from './src/components/shared/channelAvatar.helper';
 import { normalizePlayerError, playerErrorCodeOf, PlayerError } from './src/services/playerErrors';
 import { playerAdapter } from './src/services/playerAdapterInstance';
 import { ResumablePlayerAdapter } from './src/services/playerAdapter';
@@ -95,12 +99,6 @@ function id(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function formatDuration(seconds?: number) {
-  if (!seconds) return '—';
-  const minutes = Math.floor(seconds / 60);
-  const remaining = seconds % 60;
-  return `${minutes}:${String(remaining).padStart(2, '0')}`;
-}
 
 function App() {
   const [hydrated, setHydrated] = useState(false);
@@ -1147,6 +1145,7 @@ function App() {
         {!setupStep && screen === 'player' && selectedVideo && (
           <PlayerScreen
             video={selectedVideo}
+            channels={channels}
             profile={activeProfile}
             settings={effectiveSettings}
             nextVideo={nextVideo}
@@ -1488,8 +1487,9 @@ function ParentPinModal({ visible, pin, setPin, error, lockRemainingMs, resettin
   );
 }
 
-function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, onNextVideo, onUsageChange, onBack, onSaveHistory, onPlaybackCompleted, onParentOverride }: {
+function PlayerScreen({ video, profile, settings, channels, nextVideo, retrySignal = 0, onNextVideo, onUsageChange, onBack, onSaveHistory, onPlaybackCompleted, onParentOverride }: {
   video: ApprovedVideo;
+  channels: ApprovedChannel[];
   profile?: ChildProfile;
   settings: Phase3Settings;
   nextVideo?: ApprovedVideo;
@@ -1504,7 +1504,15 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [durationMs, setDurationMs] = useState((video.duration ?? 0) * 1000);
-  const [progressWidth, setProgressWidth] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
+  const window = useWindowDimensions();
+  /**
+   * 16/9 of the full width is taller than the screen in landscape, which pushed the controls
+   * off the bottom. Cap it so the stage always fits, and let Media3 letterbox inside.
+   */
+  const stageHeight = fullscreen
+    ? window.height
+    : Math.min((window.width * 9) / 16, window.height * 0.7);
   const [error, setError] = useState<PlayerError | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
@@ -1683,6 +1691,9 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   }, [retrySignal]);
 
   function leavePlayer() {
+    // Fullscreen is device state, not screen state: without this the app would stay locked to
+    // landscape with the system bars hidden after the player is gone.
+    if (fullscreen) void nativeYouTubePlayerAdapter.setFullscreen(false).catch(() => undefined);
     progressRef.current = progress;
     persistProgress();
     void playerAdapter.stop().catch(() => undefined);
@@ -1740,16 +1751,22 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 
-  function seekFromProgress(locationX: number) {
-    if (progressWidth <= 0 || durationMs <= 0) return;
-    const nextProgress = Math.max(0, Math.min(locationX / progressWidth, 1));
-    progressRef.current = nextProgress;
-    setProgress(nextProgress);
+  function seekToMs(positionMs: number) {
+    if (durationMs <= 0) return;
+    const clamped = Math.max(0, Math.min(positionMs, durationMs));
+    progressRef.current = clamped / durationMs;
+    setProgress(clamped / durationMs);
     // A seek is a discontinuity: the next sample only re-anchors, it does not credit time.
     lastPlayheadMs.current = null;
     void playerAdapter
-      .seek(nextProgress * durationMs)
+      .seek(clamped)
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
+  }
+
+  function toggleFullscreen() {
+    const next = !fullscreen;
+    setFullscreen(next);
+    void nativeYouTubePlayerAdapter.setFullscreen(next).catch(() => undefined);
   }
 
   if (!isAllowed) {
@@ -1765,10 +1782,13 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
     return <View style={styles.playerScreen}><PlayerHeader onBack={leavePlayer} /><View style={styles.blockedPlayer}><View style={styles.blockedIcon}><Feather name="smartphone" size={30} color={colors.ink} /></View><Text style={styles.blockedTitle}>Android player build required</Text><Text style={styles.blockedBody}>Install the native development build to play approved videos on Android phones, tablets, and TV.</Text><SecondaryButton label="Go back" onPress={onBack} /></View></View>;
   }
 
+  const avatarUri = channelAvatarUri(channels, video);
+  const hasNext = Boolean(nextVideo && nextVideo.id !== video.id);
+
   return (
     <View style={styles.playerScreen}>
-      <PlayerHeader onBack={leavePlayer} />
-      <View style={styles.nativePlayerStage}>
+      {fullscreen ? null : <PlayerHeader onBack={leavePlayer} />}
+      <View style={[styles.nativePlayerStage, { height: stageHeight }]}>
         <YouTubePlayer
           autoplay
           videoId={video.youtubeVideoId}
@@ -1857,11 +1877,33 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             handlePlayerError(normalizePlayerError(event.nativeEvent));
           }}
         />
+        <PlayerControls
+          isPlaying={isPlaying}
+          isBuffering={isBuffering}
+          progress={progress}
+          durationMs={durationMs || (video.duration ?? 0) * 1000}
+          fullscreen={fullscreen}
+          canSkipNext={hasNext}
+          onTogglePlay={togglePlayback}
+          onSeek={seekToMs}
+          onToggleFullscreen={toggleFullscreen}
+          onSkipNext={nextVideo ? () => onNextVideo(nextVideo) : undefined}
+        />
       </View>
+      {fullscreen ? null : (
+      <ScrollView
+        style={styles.playerScroll}
+        contentContainerStyle={styles.playerScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.playerInfo}>
         <Text style={styles.playerTitle}>{video.title}</Text>
         <View style={styles.playerChannelRow}>
-          <ChannelAvatar name={video.channelName?.trim() || 'Approved by your parent'} size={34} />
+          <ChannelAvatar
+            name={video.channelName?.trim() || 'Approved by your parent'}
+            uri={avatarUri}
+            size={34}
+          />
           <Text style={styles.playerChannel}>{video.channelName?.trim() || 'Approved by your parent'}</Text>
         </View>
         {recoveryMessage ? (
@@ -1886,19 +1928,16 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             <Text style={styles.overrideButtonText}>Parent Override</Text>
           </FocusablePressable>
         ) : null}
-        <FocusablePressable style={styles.progressTrack} onPress={(event) => seekFromProgress(event.nativeEvent.locationX)} onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)} accessibilityLabel="Seek video">
-          <View style={[styles.progressFill, { width: `${Math.max(progress * 100, 1)}%` }]} />
-        </FocusablePressable>
-        <View style={styles.timeRow}><Text style={styles.timeText}>{formatDuration(Math.round((durationMs / 1000) * progress))}</Text><Text style={styles.timeText}>{formatDuration(Math.round(durationMs / 1000) || video.duration)}</Text></View>
-        <FocusablePressable accessibilityLabel={isPlaying ? 'Pause video' : 'Resume video'} style={styles.playerControl} onPress={togglePlayback}><Feather name={isPlaying ? 'pause' : 'play'} size={20} color={yt.text} /><Text style={styles.playerControlText}>{isPlaying ? 'Pause' : 'Resume'} preview</Text></FocusablePressable>
         {hasEnded && nextVideo ? <FocusablePressable accessibilityLabel="Play next approved video" style={styles.playerControl} onPress={selectNextVideo}><Feather name="skip-forward" size={20} color={yt.text} /><Text style={styles.playerControlText}>Next approved video</Text></FocusablePressable> : null}
       </View>
-      {nextVideo && nextVideo.id !== video.id ? (
+      {hasNext && nextVideo ? (
         <>
           <Text style={styles.upNextLabel}>Up next</Text>
-          <FeedVideoCard video={nextVideo} onPress={() => onNextVideo(nextVideo)} />
+          <FeedVideoCard video={nextVideo} avatarUri={channelAvatarUri(channels, nextVideo)} onPress={() => onNextVideo(nextVideo)} />
         </>
       ) : null}
+      </ScrollView>
+      )}
     </View>
   );
 }
@@ -1919,7 +1958,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.canvas }, safeAreaDark: { backgroundColor: yt.bg }, screen: { flex: 1 }, centered: { alignItems: 'center', justifyContent: 'center' }, loadingText: { color: colors.muted, fontSize: 16, marginTop: 14 },
   setupFlex: { flex: 1 }, setupScreen: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 18, justifyContent: 'space-between', paddingBottom: 22 }, brandRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, logoMark: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 54, justifyContent: 'center', width: 54 }, logoMarkSmall: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 }, brandName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.8 }, setupHero: { alignItems: 'center', marginVertical: 20, paddingHorizontal: 16 }, heroOrb: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 42, height: 84, justifyContent: 'center', marginBottom: 20, width: 84 }, eyebrow: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, heroTitle: { color: colors.ink, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 9, textAlign: 'center' }, heroBody: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 16, maxWidth: 350, textAlign: 'center' }, formCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 24, borderWidth: 1, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 }, inputLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 }, pinInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, color: colors.ink, fontSize: 28, fontWeight: '800', height: 58, letterSpacing: 11, paddingHorizontal: 18, textAlign: 'center' }, textInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 13, borderWidth: 1, color: colors.ink, fontSize: 16, height: 50, paddingHorizontal: 14 }, inputError: { borderColor: colors.danger }, helperText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, errorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 }, primaryButton: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 10, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, buttonPressed: { opacity: 0.78 }, buttonDisabled: { opacity: 0.55 }, avatarPicker: { flexDirection: 'row', gap: 11 }, avatarOption: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 }, avatarOptionSelected: { backgroundColor: colors.lavender, borderColor: colors.line },
   parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden', width: '100%' }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, progressTrack: { backgroundColor: yt.surfaceAlt, borderRadius: 2, height: 20, justifyContent: 'center', marginTop: 18 }, progressFill: { backgroundColor: yt.accent, borderRadius: 2, height: 4 }, timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }, timeText: { color: yt.textDim, fontSize: 12, fontWeight: '600' }, playerControl: { alignItems: 'center', backgroundColor: yt.surfaceAlt, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 16 }, playerControlText: { color: yt.text, fontSize: 14, fontWeight: '700' }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
+  playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { backgroundColor: '#000', overflow: 'hidden', width: '100%' }, playerScroll: { flex: 1 }, playerScrollContent: { paddingBottom: 32 }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, playerControl: { alignItems: 'center', backgroundColor: yt.surfaceAlt, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 16 }, playerControlText: { color: yt.text, fontSize: 14, fontWeight: '700' }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   resetCard: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 16, borderWidth: 1, marginTop: 6, padding: 14 },
   resetLabelMargin: { marginTop: 14 },
 });

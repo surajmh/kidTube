@@ -53,10 +53,13 @@ export function VideoCard({
   video,
   onPress,
   compact = false,
+  avatarUri,
 }: {
   video: ApprovedVideo;
   onPress: () => void;
   compact?: boolean;
+  /** The channel's artwork. Without it the avatar falls back to a monogram. */
+  avatarUri?: string;
 }) {
   const channel = video.channelName?.trim() || KID_COPY.unknownChannel;
 
@@ -74,7 +77,7 @@ export function VideoCard({
     <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.card} onPress={onPress}>
       <Thumbnail video={video} />
       <View style={styles.meta}>
-        <ChannelAvatar name={channel} />
+        <ChannelAvatar name={channel} uri={avatarUri} />
         <View style={styles.metaText}>
           <Text style={styles.title} numberOfLines={2}>{video.title}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>{channel}</Text>
