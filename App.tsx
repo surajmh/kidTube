@@ -1835,6 +1835,15 @@ function PlayerScreen({ video, profile, settings, channels, nextVideo, retrySign
             const positionMs = event.nativeEvent.position ?? 0;
             const playing = Boolean(event.nativeEvent.isPlaying && !stoppedByPolicy.current);
             accountPlayhead(positionMs, playing);
+            // onReady and onPlay are one-shot. If they fire before this view's JS handlers are
+            // attached they are simply lost, which left a spinner and "Getting the nest ready"
+            // sitting over a video that was visibly playing. The progress tick carries the same
+            // truth every 500ms, so the UI corrects itself instead of staying wrong forever.
+            if (playing !== isPlayingRef.current) {
+              isPlayingRef.current = playing;
+              setIsPlaying(playing);
+            }
+            if (playing) setIsBuffering(false);
             if (nextDuration <= 0) return;
             const nextProgress = Math.min(positionMs / nextDuration, 1);
             progressRef.current = nextProgress;

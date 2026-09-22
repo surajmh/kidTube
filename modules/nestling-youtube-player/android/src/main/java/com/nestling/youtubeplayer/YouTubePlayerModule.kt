@@ -1,5 +1,6 @@
 package com.nestling.youtubeplayer
 
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.lang.ref.WeakReference
@@ -62,6 +63,20 @@ class YouTubePlayerModule : Module() {
       metadataCall { NewPipeChannels.channelVideos(channelId, pageToken) }
     }
 
+    /*
+     * Every command below runs on Queues.MAIN.
+     *
+     * ExoPlayer may only be touched from the thread that created it, which is the main thread.
+     * Expo Modules runs an AsyncFunction body on its own background queue, so without this each
+     * of these threw "Player is accessed on the wrong thread" and playback never started.
+     *
+     * This hid for a long time because the pending-play path masked it: a play() arriving before
+     * the view mounted was replayed from registerView, which Expo calls on the main thread, so
+     * whether playback worked came down to mount timing.
+     *
+     * The metadata and channel functions above deliberately stay off the main queue -- they make
+     * network calls, which the main thread forbids.
+     */
     AsyncFunction("play") { videoId: String ->
       if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
       val view = activeView?.get()
@@ -71,38 +86,38 @@ class YouTubePlayerModule : Module() {
       }
       view.controller.play(videoId, true)
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("pause") {
       requireView().controller.pause()
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("resume") { videoId: String ->
       if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
       requireView().controller.resume(videoId)
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("seek") { position: Double ->
       requireView().controller.seek(position.toLong())
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("stop") {
       requireView().controller.stop()
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("setVolume") { volume: Double ->
       requireView().controller.setVolume(volume.toFloat())
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("setFullscreen") { fullscreen: Boolean ->
       requireView().controller.setFullscreen(fullscreen)
       mapOf<String, Any?>("accepted" to true)
-    }
+    }.runOnQueue(Queues.MAIN)
 
     View(YouTubePlayerView::class) {
       Events("onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError")
