@@ -997,16 +997,18 @@ function App() {
     setApprovals(next);
   }
 
-  if (!hydrated) {
-    return <LoadingScreen />;
-  }
-
+  // Must stay above the `!hydrated` early return: a hook below it would change
+  // the hook count between the loading and loaded renders.
   const nextVideo = useMemo(() => {
     if (!selectedVideo) return undefined;
     const videos = kidLibrary.videos;
     const index = videos.findIndex((item) => item.id === selectedVideo.id);
     return videos[(index + 1) % Math.max(1, videos.length)];
   }, [selectedVideo, kidLibrary]);
+
+  if (!hydrated) {
+    return <LoadingScreen />;
+  }
 
   return (
     <SafeAreaProvider>
