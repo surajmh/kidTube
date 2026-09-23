@@ -69,6 +69,14 @@ class ExoPlayerController(
     .also { exoPlayer ->
       // Keeps the screen/CPU awake for the whole video on tablets and TV, and never while paused.
       exoPlayer.setWakeMode(C.WAKE_MODE_LOCAL)
+      // The ladder tops out at 1080p: more costs battery and decode headroom the family
+      // devices in this app's target do not have.
+      exoPlayer.setTrackSelectionParameters(
+        exoPlayer.trackSelectionParameters
+          .buildUpon()
+          .setMaxVideoSize(Int.MAX_VALUE, 1080)
+          .build(),
+      )
       exoPlayer.addListener(object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
           when (playbackState) {
@@ -109,8 +117,9 @@ class ExoPlayerController(
     if (destroyed) return
     attachedView = playerView
     playerView.player = player
-    playerView.useController = true
-    playerView.controllerShowTimeoutMs = 3_000
+    // The React Native layer draws all transport controls (an overlay with a scrubber, skips and
+    // play/pause); the stock Media3 controller would compete with it for taps.
+    playerView.useController = false
     playerView.setOnKeyListener { _, keyCode, event ->
       if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
       when (keyCode) {
@@ -243,9 +252,15 @@ class ExoPlayerController(
     mainHandler.postDelayed({ progressTick() }, progressIntervalMs)
   }
 
-  private fun resolveAndPrepare(videoId: String, generation: Long, startPositionMs: Long, autoplay: Boolean) {
+  private fun resolveAndPrepare(
+    videoId: String,
+    generation: Long,
+    startPositionMs: Long,
+    autoplay: Boolean,
+    preferAdaptive: Boolean = true,
+  ) {
     val task = Runnable {
-      val result = runCatching { resolver.resolve(videoId) }
+      val result = runCatching { resolver.resolve(videoId, preferAdaptive) }
       mainHandler.post {
         if (destroyed || generation != requestGeneration) return@post
         result
@@ -310,7 +325,9 @@ class ExoPlayerController(
     if (destroyed || !recovering) return
     val videoId = currentVideoId ?: return
     emit("onBuffer", event())
-    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, autoplay = true)
+    // The adaptive stream is what just failed, so recovery takes the plain progressive route:
+    // 360p and throttled-proof, and better than a retry loop that re-requests a dead manifest.
+    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, autoplay = true, preferAdaptive = false)
   }
 
   private fun cancelPendingRetry() {

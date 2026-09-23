@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -1553,7 +1555,8 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [durationMs, setDurationMs] = useState((video.duration ?? 0) * 1000);
-  const [progressWidth, setProgressWidth] = useState(0);
+  const [bufferedMs, setBufferedMs] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [error, setError] = useState<PlayerError | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
@@ -1565,6 +1568,7 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   const wasPlayingBeforeBackground = useRef(false);
   const isPlayingRef = useRef(false);
   const progressRef = useRef(0);
+  const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPersistedAt = useRef(0);
   const lastPlayheadMs = useRef<number | null>(null);
   const lastSkippedSegment = useRef<string | null>(null);
@@ -1581,6 +1585,7 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
 
   useEffect(() => {
     setProgress(0);
+    setBufferedMs(0);
     setDurationMs((video.duration ?? 0) * 1000);
     setError(null);
     setPolicyMessage('');
@@ -1588,6 +1593,7 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
     setRecoveryMessage('');
     setTimeBlocked(false);
     setHasEnded(false);
+    setControlsVisible(true);
     progressRef.current = 0;
     lastPlayheadMs.current = null;
     recoveryAttempt.current = 0;
@@ -1599,6 +1605,8 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
   useEffect(() => () => {
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
     recoveryTimer.current = null;
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = null;
   }, []);
 
   useEffect(() => {
@@ -1789,16 +1797,44 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 
-  function seekFromProgress(locationX: number) {
-    if (progressWidth <= 0 || durationMs <= 0) return;
-    const nextProgress = Math.max(0, Math.min(locationX / progressWidth, 1));
+  /** Control visibility: sticky when paused, auto-hidden a few seconds into playback. */
+  function showControls(sticky: boolean) {
+    if (controlsTimer.current) clearTimeout(controlsTimer.current);
+    controlsTimer.current = null;
+    setControlsVisible(true);
+    if (!sticky) controlsTimer.current = setTimeout(() => setControlsVisible(false), 4000);
+  }
+
+  function toggleControls() {
+    if (controlsVisible) {
+      if (controlsTimer.current) clearTimeout(controlsTimer.current);
+      controlsTimer.current = null;
+      setControlsVisible(false);
+    } else {
+      showControls(!isPlayingRef.current);
+    }
+  }
+
+  function seekToPosition(targetMs: number) {
+    if (durationMs <= 0) return;
+    const clamped = Math.max(0, Math.min(targetMs, durationMs));
+    const nextProgress = clamped / durationMs;
     progressRef.current = nextProgress;
     setProgress(nextProgress);
     // A seek is a discontinuity: the next sample only re-anchors, it does not credit time.
     lastPlayheadMs.current = null;
     void playerAdapter
-      .seek(nextProgress * durationMs)
+      .seek(clamped)
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
+  }
+
+  function skipBy(deltaMs: number) {
+    seekToPosition(progress * durationMs + deltaMs);
+  }
+
+  function onCenterPlay() {
+    if (hasEnded) seekToPosition(0);
+    togglePlayback();
   }
 
   if (!isAllowed) {
@@ -1855,8 +1891,9 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             setError(null);
             setIsPlaying(true);
             setIsBuffering(false);
+            showControls(false);
           }}
-          onPause={() => { lastPlayheadMs.current = null; isPlayingRef.current = false; setIsPlaying(false); }}
+          onPause={() => { lastPlayheadMs.current = null; isPlayingRef.current = false; setIsPlaying(false); showControls(true); }}
           onBuffer={() => { lastPlayheadMs.current = null; setIsBuffering(true); }}
           onProgress={(event) => {
             const nativeDuration = event.nativeEvent.duration;
@@ -1869,6 +1906,8 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             progressRef.current = nextProgress;
             setDurationMs(nextDuration);
             setProgress(nextProgress);
+            const buffered = event.nativeEvent.bufferedPosition ?? 0;
+            setBufferedMs((current) => (Math.abs(buffered - current) >= 1000 ? buffered : current));
             const segment = sponsorBlockService.isInsideSegment(positionMs / 1000, segments);
             if (segment) {
               const segmentKey = segment.uuid ?? `${segment.start}-${segment.end}`;
@@ -1892,6 +1931,7 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             setIsBuffering(false);
             setHasEnded(true);
             setRecoveryMessage('');
+            showControls(true);
             persistProgress(1);
             void screenTimeService.flush();
             // A one-playback approval expires as soon as playback finishes.
@@ -1906,6 +1946,50 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             handlePlayerError(normalizePlayerError(event.nativeEvent));
           }}
         />
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <Pressable accessibilityLabel="Show or hide player controls" style={StyleSheet.absoluteFill} onPress={toggleControls} />
+          {controlsVisible || hasEnded ? (
+            <>
+              {!isPlaying && !error && !policyMessage ? (
+                <View pointerEvents="box-none" style={styles.overlayCenter}>
+                  <FocusablePressable
+                    accessibilityLabel={hasEnded ? 'Replay video' : isBuffering ? 'Buffering' : 'Play video'}
+                    style={styles.overlayPlayDisc}
+                    disabled={isBuffering}
+                    onPress={onCenterPlay}
+                  >
+                    <Feather name={hasEnded ? 'rotate-ccw' : 'play'} size={32} color={yt.text} />
+                  </FocusablePressable>
+                </View>
+              ) : null}
+              <View style={styles.overlayBottom}>
+                <View style={styles.overlayTimeRow}>
+                  <Text style={styles.overlayTime}>{formatDuration(Math.round((durationMs / 1000) * progress))}</Text>
+                  <PlayerScrubber positionMs={progress * durationMs} bufferedMs={bufferedMs} durationMs={durationMs} onSeek={seekToPosition} />
+                  <Text style={styles.overlayTime}>{formatDuration(Math.round(durationMs / 1000) || video.duration || 0)}</Text>
+                </View>
+                <View style={styles.overlayControlsRow}>
+                  <FocusablePressable accessibilityLabel="Back 10 seconds" style={styles.overlayButton} onPress={() => skipBy(-10_000)}>
+                    <Feather name="rotate-ccw" size={22} color={yt.text} />
+                  </FocusablePressable>
+                  <FocusablePressable accessibilityLabel={isPlaying ? 'Pause video' : 'Play video'} style={styles.overlayButton} onPress={togglePlayback}>
+                    <Feather name={isPlaying ? 'pause' : 'play'} size={24} color={yt.text} />
+                  </FocusablePressable>
+                  <FocusablePressable accessibilityLabel="Forward 10 seconds" style={styles.overlayButton} onPress={() => skipBy(10_000)}>
+                    <Feather name="rotate-cw" size={22} color={yt.text} />
+                  </FocusablePressable>
+                  <View style={styles.overlaySpacer} />
+                  {isBuffering ? <ActivityIndicator size="small" color={yt.text} /> : null}
+                  {nextVideo && nextVideo.id !== video.id ? (
+                    <FocusablePressable accessibilityLabel="Play next approved video" style={styles.overlayButton} onPress={selectNextVideo}>
+                      <Feather name="skip-forward" size={22} color={yt.text} />
+                    </FocusablePressable>
+                  ) : null}
+                </View>
+              </View>
+            </>
+          ) : null}
+        </View>
       </View>
       <View style={styles.playerInfo}>
         <Text style={styles.playerTitle}>{video.title}</Text>
@@ -1935,12 +2019,6 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
             <Text style={styles.overrideButtonText}>Parent Override</Text>
           </FocusablePressable>
         ) : null}
-        <FocusablePressable style={styles.progressTrack} onPress={(event) => seekFromProgress(event.nativeEvent.locationX)} onLayout={(event) => setProgressWidth(event.nativeEvent.layout.width)} accessibilityLabel="Seek video">
-          <View style={[styles.progressFill, { width: `${Math.max(progress * 100, 1)}%` }]} />
-        </FocusablePressable>
-        <View style={styles.timeRow}><Text style={styles.timeText}>{formatDuration(Math.round((durationMs / 1000) * progress))}</Text><Text style={styles.timeText}>{formatDuration(Math.round(durationMs / 1000) || video.duration)}</Text></View>
-        <FocusablePressable accessibilityLabel={isPlaying ? 'Pause video' : 'Resume video'} style={styles.playerControl} onPress={togglePlayback}><Feather name={isPlaying ? 'pause' : 'play'} size={20} color={yt.text} /><Text style={styles.playerControlText}>{isPlaying ? 'Pause' : 'Resume'} preview</Text></FocusablePressable>
-        {hasEnded && nextVideo ? <FocusablePressable accessibilityLabel="Play next approved video" style={styles.playerControl} onPress={selectNextVideo}><Feather name="skip-forward" size={20} color={yt.text} /><Text style={styles.playerControlText}>Next approved video</Text></FocusablePressable> : null}
       </View>
       {nextVideo && nextVideo.id !== video.id ? (
         <>
@@ -1948,6 +2026,57 @@ function PlayerScreen({ video, profile, settings, nextVideo, retrySignal = 0, on
           <FeedVideoCard video={nextVideo} onPress={() => onNextVideo(nextVideo)} />
         </>
       ) : null}
+    </View>
+  );
+}
+
+/** YouTube-style scrubber: buffered track, played bar, thumb appears only while dragging. */
+function PlayerScrubber({ positionMs, bufferedMs, durationMs, onSeek }: {
+  positionMs: number;
+  bufferedMs: number;
+  durationMs: number;
+  onSeek: (positionMs: number) => void;
+}) {
+  const trackRef = useRef<View>(null);
+  const geom = useRef({ left: 0, width: 0 });
+  const [dragMs, setDragMs] = useState<number | null>(null);
+  const enabled = durationMs > 0;
+  const ratio = (ms: number) => (enabled ? Math.min(Math.max(ms / durationMs, 0), 1) : 0);
+  const played = ratio(dragMs ?? positionMs);
+  const buffered = ratio(bufferedMs);
+  const positionFrom = (pageX: number) => {
+    const { left, width } = geom.current;
+    if (width <= 0) return null;
+    return Math.min(Math.max((pageX - left) / width, 0), 1) * durationMs;
+  };
+  return (
+    <View
+      ref={trackRef}
+      style={styles.scrubber}
+      accessibilityLabel="Seek slider"
+      onLayout={() => {
+        const node = trackRef.current;
+        if (!node) return;
+        node.measureInWindow((x, _y, width) => {
+          geom.current = { left: x, width };
+        });
+      }}
+      onStartShouldSetResponder={() => enabled}
+      onMoveShouldSetResponder={() => enabled}
+      onResponderGrant={(event) => { const ms = positionFrom(event.nativeEvent.pageX); if (ms !== null) setDragMs(ms); }}
+      onResponderMove={(event) => { const ms = positionFrom(event.nativeEvent.pageX); if (ms !== null) setDragMs(ms); }}
+      onResponderRelease={(event) => {
+        const ms = positionFrom(event.nativeEvent.pageX);
+        setDragMs(null);
+        if (ms !== null) onSeek(ms);
+      }}
+      onResponderTerminate={() => setDragMs(null)}
+    >
+      <View style={styles.scrubTrack}>
+        <View style={[styles.scrubFill, styles.scrubBuffered, { width: `${buffered * 100}%` }]} />
+        <View style={[styles.scrubFill, styles.scrubPlayed, { width: `${played * 100}%` }]} />
+      </View>
+      <View style={[styles.scrubThumb, { left: `${played * 100}%`, opacity: dragMs !== null ? 1 : 0 }]} />
     </View>
   );
 }
@@ -1968,7 +2097,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.canvas }, safeAreaDark: { backgroundColor: yt.bg }, screen: { flex: 1 }, centered: { alignItems: 'center', justifyContent: 'center' }, loadingText: { color: colors.muted, fontSize: 16, marginTop: 14 },
   setupFlex: { flex: 1 }, setupScreen: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 18, justifyContent: 'space-between', paddingBottom: 22 }, brandRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, logoMark: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 54, justifyContent: 'center', width: 54 }, logoMarkSmall: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 }, brandName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.8 }, setupHero: { alignItems: 'center', marginVertical: 20, paddingHorizontal: 16 }, heroOrb: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 42, height: 84, justifyContent: 'center', marginBottom: 20, width: 84 }, eyebrow: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, heroTitle: { color: colors.ink, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 9, textAlign: 'center' }, heroBody: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 16, maxWidth: 350, textAlign: 'center' }, formCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 24, borderWidth: 1, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 }, inputLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 }, pinInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, color: colors.ink, fontSize: 28, fontWeight: '800', height: 58, letterSpacing: 11, paddingHorizontal: 18, textAlign: 'center' }, textInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 13, borderWidth: 1, color: colors.ink, fontSize: 16, height: 50, paddingHorizontal: 14 }, inputError: { borderColor: colors.danger }, helperText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, errorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 }, primaryButton: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 10, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, buttonPressed: { opacity: 0.78 }, buttonDisabled: { opacity: 0.55 }, avatarPicker: { flexDirection: 'row', gap: 11 }, avatarOption: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 }, avatarOptionSelected: { backgroundColor: colors.lavender, borderColor: colors.line },
   parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
-  playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden', width: '100%' }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, progressTrack: { backgroundColor: yt.surfaceAlt, borderRadius: 2, height: 20, justifyContent: 'center', marginTop: 18 }, progressFill: { backgroundColor: yt.accent, borderRadius: 2, height: 4 }, timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 }, timeText: { color: yt.textDim, fontSize: 12, fontWeight: '600' }, playerControl: { alignItems: 'center', backgroundColor: yt.surfaceAlt, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 16 }, playerControlText: { color: yt.text, fontSize: 14, fontWeight: '700' }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
+  playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden', width: '100%' }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, overlayCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' }, overlayPlayDisc: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.45)', borderRadius: 32, height: 64, justifyContent: 'center', width: 64 }, overlayBottom: { backgroundColor: 'rgba(0, 0, 0, 0.5)', paddingBottom: 10, paddingHorizontal: 10, paddingTop: 6 }, overlayTimeRow: { alignItems: 'center', flexDirection: 'row', gap: 10 }, overlayTime: { color: yt.text, fontSize: 12, width: 44 }, overlayControlsRow: { alignItems: 'center', flexDirection: 'row', gap: 14, marginTop: 4 }, overlayButton: { alignItems: 'center', height: 40, justifyContent: 'center', width: 40 }, overlaySpacer: { flex: 1 }, scrubber: { flex: 1, height: 22, justifyContent: 'center' }, scrubTrack: { backgroundColor: 'rgba(255, 255, 255, 0.32)', borderRadius: 2, height: 4, overflow: 'hidden' }, scrubFill: { borderRadius: 2, height: 4, position: 'absolute' }, scrubBuffered: { backgroundColor: 'rgba(255, 255, 255, 0.55)' }, scrubPlayed: { backgroundColor: yt.accent }, scrubThumb: { backgroundColor: yt.accent, borderRadius: 7, height: 14, marginLeft: -7, position: 'absolute', top: 4, width: 14 }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   resetCard: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 16, borderWidth: 1, marginTop: 6, padding: 14 },
   resetLabelMargin: { marginTop: 14 },
 });

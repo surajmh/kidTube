@@ -19,21 +19,25 @@ import org.schabi.newpipe.extractor.stream.VideoStream
  * Resolved URLs are short-lived and are never persisted.
  */
 interface YouTubePlaybackResolver {
-  fun resolve(videoId: String): PlaybackInfo
+  /**
+   * @param preferAdaptive false forces the muxed progressive stream, used once adaptive playback
+   * has already failed for this video so a broken manifest cannot loop into a dead playback.
+   */
+  fun resolve(videoId: String, preferAdaptive: Boolean = true): PlaybackInfo
 }
 
 /**
  * Resolves playback through NewPipeExtractor.
  *
- * Prefers an adaptive video-only + audio pair (which is the only way to reach 720p/1080p) and
- * falls back to a muxed progressive stream, which tops out at 360p.
+ * Prefers YouTube's adaptive HLS ladder, which is the only rendition set that is not throttled
+ * server-side, and falls back to a muxed progressive stream, which tops out at 360p.
  */
 class AuthorizedPlaybackResolver(
   private val qualitySelector: QualitySelector = DefaultQualitySelector(),
   private val quality: PlaybackQuality = PlaybackQuality.AUTO,
 ) : YouTubePlaybackResolver {
 
-  override fun resolve(videoId: String): PlaybackInfo {
+  override fun resolve(videoId: String, preferAdaptive: Boolean): PlaybackInfo {
     if (videoId.isBlank()) {
       throw PlaybackException(PlaybackCodes.INVALID_VIDEO_ID, "No video was requested.")
     }
@@ -62,8 +66,25 @@ class AuthorizedPlaybackResolver(
     }
 
     val durationMs = info.duration.takeIf { it > 0 }?.times(1000L)
-    val audio = bestAudio(info.audioStreams)
-    val adaptive = bestVideo(info.videoOnlyStreams)
+
+    // Adaptive HLS first. The direct progressive URLs NewPipe exposes for 480p+ carry no
+    // rate-bypass, so YouTube throttles them server-side and the buffer starves a few seconds
+    // into playback. The HLS ladder lets ExoPlayer switch renditions to match the network
+    // instead of stalling — the same mechanism the YouTube app uses.
+    val hls = info.hlsUrl.takeIf { !it.isNullOrBlank() }
+    if (hls != null && preferAdaptive) {
+      return PlaybackInfo(
+        videoId = videoId,
+        durationMs = durationMs,
+        manifestUrl = hls,
+        mimeType = "application/x-mpegURL",
+      )
+    }
+
+    // Only the HLS ladder reaches beyond 360p; the separate video-only and audio-only URLs are
+    // throttled just as badly, so a forced fallback goes straight to the muxed stream.
+    val audio = if (preferAdaptive) bestAudio(info.audioStreams) else null
+    val adaptive = if (preferAdaptive) bestVideo(info.videoOnlyStreams) else null
 
     if (adaptive != null && audio != null) {
       return PlaybackInfo(

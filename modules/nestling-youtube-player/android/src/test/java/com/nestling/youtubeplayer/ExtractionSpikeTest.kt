@@ -51,6 +51,95 @@ class ExtractionSpikeTest {
   }
 
   /** A stream that 403s or trickles is the documented poToken/throttling failure mode. */
+  /**
+   * Answers what the current YouTube + extractor combination offers for adaptive playback:
+   * DASH/HLS manifest availability, per-stream delivery methods, rate-bypass presence and the
+   * actual fetch rate of the streams the resolver picks today. Run deliberately, like the probe
+   * above.
+   */
+  @Test
+  fun probesAdaptiveSurface() {
+    NewPipeSession.ensureInitialised()
+    val info = org.schabi.newpipe.extractor.stream.StreamInfo.getInfo(
+      org.schabi.newpipe.extractor.ServiceList.YouTube,
+      "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+    )
+
+    println("dashMpdUrl present : ${!info.dashMpdUrl.isNullOrBlank()} (${info.dashMpdUrl?.take(60)})")
+    println("hlsUrl present     : ${!info.hlsUrl.isNullOrBlank()} (${info.hlsUrl?.take(60)})")
+
+    fun flags(url: String) = buildList {
+      if (url.contains("ratebypass")) add("ratebypass")
+      if (url.contains("sparams=")) add("sig-only")
+      if (url.contains("range=")) add("range-param")
+    }
+
+    info.videoOnlyStreams.forEach {
+      println("  videoOnly h=${it.resolution} delivery=${it.deliveryMethod} mime=${it.format?.mimeType} flags=${flags(it.content)}")
+    }
+    info.videoStreams.forEach {
+      println("  muxed     h=${it.resolution} delivery=${it.deliveryMethod} mime=${it.format?.mimeType} flags=${flags(it.content)}")
+    }
+    info.audioStreams.forEach {
+      println("  audio     br=${it.averageBitrate} delivery=${it.deliveryMethod} flags=${flags(it.content)}")
+    }
+
+    // Fetch-rate of what the production resolver would actually select (highest progressive video
+    // + best audio): if this trickles, that is the stall the child sees a few seconds in.
+    val resolver = AuthorizedPlaybackResolver()
+    val picked = resolver.resolve("aqz-KE-bpKQ")
+    probeStream("picked video", picked.videoUrl)
+    probeStream("picked audio", picked.audioUrl)
+
+    probeHls("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
+  }
+
+  /** Confirms the HLS ladder is fetchable end to end: master -> media playlist -> segment. */
+  private fun probeHls(watchUrl: String) {
+    val info = org.schabi.newpipe.extractor.stream.StreamInfo.getInfo(
+      org.schabi.newpipe.extractor.ServiceList.YouTube,
+      watchUrl,
+    )
+    val master = info.hlsUrl
+    if (master.isNullOrBlank()) {
+      println("  hls: no manifest url")
+      return
+    }
+    val text = fetch(master) ?: return
+    val variants = Regex("#EXT-X-STREAM-INF:(.*)").findAll(text).map { it.groupValues[1].trim() }.toList()
+    println("  hls variants: ${variants.size}")
+    variants.take(4).forEach { println("    $it") }
+    val firstUri = Regex("^(?!#)(\\S+\\.m3u8\\S*)$", RegexOption.MULTILINE).find(text)?.groupValues?.get(1)
+    if (firstUri == null) {
+      println("  hls: no variant playlist uri found")
+      return
+    }
+    val media = fetch(resolveRelative(master, firstUri)) ?: return
+    val segment = Regex("^(?!#)(\\S+)$", RegexOption.MULTILINE).find(media)?.groupValues?.get(1)
+    if (segment == null) {
+      println("  hls: no segment uri found")
+      return
+    }
+    probeStream("hls segment", resolveRelative(resolveRelative(master, firstUri), segment))
+  }
+
+  private fun resolveRelative(base: String, relative: String): String =
+    if (relative.startsWith("http")) relative else base.substringBeforeLast('/') + "/" + relative.trimStart('/')
+
+  private fun fetch(url: String): String? = try {
+    probe.newCall(Request.Builder().url(url).build()).execute().use { response ->
+      if (!response.isSuccessful) {
+        println("  fetch ${url.take(60)}: HTTP ${response.code}")
+        null
+      } else {
+        response.body?.string()
+      }
+    }
+  } catch (error: Exception) {
+    println("  fetch ${url.take(60)}: threw ${error.javaClass.simpleName}")
+    null
+  }
+
   private fun probeStream(label: String, url: String?): Boolean {
     if (url == null) return true
     val started = System.nanoTime()
