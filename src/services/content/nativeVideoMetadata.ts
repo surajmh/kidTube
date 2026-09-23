@@ -62,19 +62,25 @@ export async function enrichVideo(video: ApprovedVideo): Promise<ApprovedVideo |
 }
 
 /**
- * Enriches up to `limit` rows, sequentially. Bounded on purpose: this runs on a parent's screen,
- * not in a background job, and a large library should not fire dozens of requests at once.
- * ponytail: sequential and capped; batch it only if a big library actually feels slow.
+ * Enriches up to `limit` rows per pass with a bounded fan-out. The native metadata calls run on
+ * their own IO dispatcher, so a pass costs roughly `limit / concurrency` round trips instead of
+ * `limit` back-to-back ones; the small cap keeps a big library from hammering YouTube at once.
  */
-export async function enrichLibrary(videos: ApprovedVideo[], limit = 12): Promise<ApprovedVideo[] | null> {
+export async function enrichLibrary(videos: ApprovedVideo[], limit = 12, concurrency = 4): Promise<ApprovedVideo[] | null> {
   const pending = videos.filter(needsMetadata).slice(0, limit);
   if (!pending.length) return null;
 
   const updates = new Map<string, ApprovedVideo>();
-  for (const video of pending) {
-    const enriched = await enrichVideo(video);
-    if (enriched) updates.set(video.id, enriched);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < pending.length) {
+      const video = pending[cursor++];
+      const enriched = await enrichVideo(video);
+      if (enriched) updates.set(video.id, enriched);
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(concurrency, pending.length) }, worker));
+
   if (!updates.size) return null;
   return videos.map((video) => updates.get(video.id) ?? video);
 }

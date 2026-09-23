@@ -30,7 +30,7 @@ import { channelSyncRepository, ChannelSyncMap } from './src/repositories/channe
 import { channelSyncService } from './src/services/channelSyncService';
 import { SyncMode } from './src/services/content/channelSyncRules';
 import { parentPinService } from './src/services/auth/parentPinService';
-import { ParentSession, parentSessionService } from './src/services/auth/parentSession';
+import { ParentSession, ParentSignInResult, parentSessionService } from './src/services/auth/parentSession';
 import { parentResetService, resetConfirmationPhrase } from './src/services/auth/parentResetService';
 import { whitelistService } from './src/services/whitelistService';
 import { contentAccessService } from './src/services/contentAccessService';
@@ -68,7 +68,7 @@ import {
 } from './src/services/playbackPolicyService';
 import { screenTimeService } from './src/services/screenTimeService';
 import { accountPlayheadSample } from './src/services/screenTimeAccounting';
-import { repairLocalData } from './src/services/dataIntegrityService';
+import { RepairableCollection, repairLocalData } from './src/services/dataIntegrityService';
 import { extractChannelId, extractVideoId } from './src/services/contentValidation';
 import { profileLifecycleService } from './src/services/profileLifecycleService';
 import {
@@ -102,6 +102,16 @@ function formatDuration(seconds?: number) {
   return `${minutes}:${String(remaining).padStart(2, '0')}`;
 }
 
+/** Two history lists with the same profile/video entries in the same order show the same library rows. */
+function sameHistoryStructure(a: WatchHistory[], b: WatchHistory[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i].profileId !== b[i].profileId || a[i].videoId !== b[i].videoId) return false;
+  }
+  return true;
+}
+
 function App() {
   const [hydrated, setHydrated] = useState(false);
   const [setupStep, setSetupStep] = useState<'pin' | 'profile' | null>(null);
@@ -126,8 +136,6 @@ function App() {
   const [kidNotice, setKidNotice] = useState('');
   const [kidNoticeAction, setKidNoticeAction] = useState<'override' | null>(null);
   const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
   const [pinLockRemainingMs, setPinLockRemainingMs] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [parentSection, setParentSection] = useState<ParentSection>('home');
@@ -200,7 +208,7 @@ function App() {
       if (cancelled) return;
 
       // Repair before trusting: duplicates, orphans, impossible values and stale grants.
-      const { snapshot, repairs } = repairLocalData({
+      const { snapshot, repairs, changed } = repairLocalData({
         profiles,
         videos: storedVideos,
         channels: storedChannels,
@@ -233,20 +241,23 @@ function App() {
 
       if (repairs.length) {
         setRepairNotice(`Repaired local data: ${repairs.join(', ')}.`);
-        await Promise.all([
-          videoRepository.saveAll(snapshot.videos),
-          channelRepository.saveAll(snapshot.channels),
-          categoryRepository.saveAll(snapshot.categories),
-          requestRepository.saveAll(snapshot.requests),
-          approvalRepository.saveAll(snapshot.approvals),
-          overrideRepository.saveAll(snapshot.overrides),
-          childRulesRepository.saveAll(snapshot.childRules),
-          profilePolicyRepository.saveAll(snapshot.profilePolicies),
-          watchHistoryRepository.saveAll(snapshot.history),
-          screenTimeRepository.saveAll(snapshot.screenTime),
-          channelSyncRepository.saveAll(snapshot.channelSync),
-          settingsRepository.save(snapshot.settings),
-        ]);
+        // Only rewrite what actually changed; a repair in one collection used to
+        // mean serialising all twelve on every cold start that found anything.
+        const persist: Record<RepairableCollection, () => Promise<void>> = {
+          profiles: () => profileRepository.saveAll(snapshot.profiles),
+          videos: () => videoRepository.saveAll(snapshot.videos),
+          channels: () => channelRepository.saveAll(snapshot.channels),
+          categories: () => categoryRepository.saveAll(snapshot.categories),
+          requests: () => requestRepository.saveAll(snapshot.requests),
+          approvals: () => approvalRepository.saveAll(snapshot.approvals),
+          overrides: () => overrideRepository.saveAll(snapshot.overrides),
+          childRules: () => childRulesRepository.saveAll(snapshot.childRules),
+          profilePolicies: () => profilePolicyRepository.saveAll(snapshot.profilePolicies),
+          history: () => watchHistoryRepository.saveAll(snapshot.history),
+          screenTime: () => screenTimeRepository.saveAll(snapshot.screenTime),
+          channelSync: () => channelSyncRepository.saveAll(snapshot.channelSync),
+        };
+        await Promise.all(changed.map((collection) => persist[collection]()));
       }
 
       setChannels(snapshot.channels);
@@ -277,7 +288,7 @@ function App() {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (overrideForProfileId) { setOverrideForProfileId(null); return true; }
       if (pinModalVisible) { setPinModalVisible(false); return true; }
-      if (screen === 'player') { setScreen('kid'); return true; }
+      if (screen === 'player') { commitPendingHistory(); setScreen('kid'); return true; }
       if (screen === 'parent') { exitParentMode(); return true; }
       if (kidTab !== 'home' || kidCategoryId || kidChannelId) {
         setKidTab('home');
@@ -495,6 +506,12 @@ function App() {
   /**
    * The player reports progress every couple of seconds; storage writes are debounced and flushed
    * on background/unmount so watch history is neither lost nor written on every tick.
+   *
+   * Ticks update the top entry's `progress`/`watchedAt` in place, which would rebuild the kid
+   * library (and re-render the tree) every couple of seconds while a child watches. Only a
+   * structural change — a different video moving to the front — goes to state; progress-only
+   * updates live in `historyWrite.current.pending` until a boundary (leaving the player,
+   * backgrounding) commits them.
    */
   async function flushHistory() {
     const pending = historyWrite.current.pending;
@@ -506,9 +523,14 @@ function App() {
     if (pending) await watchHistoryRepository.saveAll(pending);
   }
 
+  function commitPendingHistory() {
+    const pending = historyWrite.current.pending;
+    if (pending) setHistory(pending);
+  }
+
   function saveHistory(next: WatchHistory[]) {
-    setHistory(next);
     historyWrite.current.pending = next;
+    setHistory((current) => (sameHistoryStructure(current, next) ? current : next));
     if (historyWrite.current.timer) return;
     historyWrite.current.timer = setTimeout(() => {
       historyWrite.current.timer = null;
@@ -519,6 +541,7 @@ function App() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') return;
+      commitPendingHistory();
       void flushHistory();
       void screenTimeService.flush();
     });
@@ -546,40 +569,24 @@ function App() {
   }, []);
 
   async function enterParentMode() {
-    setPin('');
-    setPinError('');
     // A lockout survives app restarts, so the countdown is restored before the keypad appears.
     const lock = await parentPinService.lockState();
     setPinLockRemainingMs(lock.locked ? lock.retryAfterMs : 0);
     setPinModalVisible(true);
   }
 
-  async function verifyParentPin() {
-    if (pin.length !== 4) {
-      setPinError('Enter your 4-digit PIN.');
-      return;
-    }
-    const result = await parentSessionService.startWithPin(pin);
-    setPin('');
+  /** Verifies a PIN typed inside `ParentPinModal`; the modal turns the result into its own error copy. */
+  async function verifyParentPin(value: string): Promise<ParentSignInResult> {
+    const result = await parentSessionService.startWithPin(value);
     if (!result.ok) {
-      if (result.reason === 'locked') {
-        setPinLockRemainingMs(result.retryAfterMs);
-        setPinError('');
-      } else if (result.reason === 'not-set') {
-        setPinError('No parent PIN is set on this device.');
-      } else {
-        setPinError(
-          result.attemptsRemaining <= 1
-            ? 'That PIN did not match. One more try before PIN entry locks.'
-            : `That PIN did not match. ${result.attemptsRemaining} tries left.`,
-        );
-      }
-      return;
+      if (result.reason === 'locked') setPinLockRemainingMs(result.retryAfterMs);
+      return result;
     }
     setPinLockRemainingMs(0);
     setPinModalVisible(false);
     setParentSession(result.session);
     setScreen('parent');
+    return result;
   }
 
   function exitParentMode() {
@@ -588,22 +595,16 @@ function App() {
     setScreen('kid');
   }
 
-  async function finishPinSetup() {
-    if (pin.length !== 4) {
-      setPinError('Choose exactly 4 numbers for your parent PIN.');
-      return;
-    }
+  async function finishPinSetup(value: string): Promise<string | null> {
     try {
-      await parentPinService.setPin(pin);
+      await parentPinService.setPin(value);
     } catch {
-      setPinError('That PIN could not be saved. Try a different 4-digit PIN.');
-      return;
+      return 'That PIN could not be saved. Try a different 4-digit PIN.';
     }
     // The PIN was just set by the parent, so this session is authorized.
     setParentSession(parentSessionService.grant());
-    setPin('');
-    setPinError('');
     setSetupStep('profile');
+    return null;
   }
 
   /**
@@ -644,8 +645,6 @@ function App() {
       setSelectedVideo(null);
       setParentSession(null);
       setPinModalVisible(false);
-      setPin('');
-      setPinError('');
       setPinLockRemainingMs(0);
       setKidNotice('');
       setKidNoticeAction(null);
@@ -667,33 +666,41 @@ function App() {
     setScreen('parent');
   }
 
-  function playbackDecision(video: ApprovedVideo): PlaybackDecision {
-    if (!activeProfile) return { allowed: false, reason: 'VIDEO_NOT_APPROVED' };
-    return playbackPolicy.canPlay({
-      profileId: activeProfile.id,
-      videoId: video.youtubeVideoId,
-      channelId: video.channelId,
-      categoryIds: video.categoryIds,
-    });
-  }
+  // Stable identities: `openPlayer` reaches KidHome's memoized video cards, and re-creating it on
+  // every render would defeat them.
+  const playbackDecision = useCallback(
+    (video: ApprovedVideo): PlaybackDecision =>
+      activeProfile
+        ? playbackPolicy.canPlay({
+            profileId: activeProfile.id,
+            videoId: video.youtubeVideoId,
+            channelId: video.channelId,
+            categoryIds: video.categoryIds,
+          })
+        : { allowed: false, reason: 'VIDEO_NOT_APPROVED' },
+    [activeProfile],
+  );
 
-  function explainDecision(decision: PlaybackDecision) {
+  const explainDecision = useCallback((decision: PlaybackDecision) => {
     if (decision.allowed) return;
     setKidNotice(describePlaybackDecision(decision));
     setKidNoticeAction(isTimeRelatedReason(decision) ? 'override' : null);
-  }
+  }, []);
 
-  function openPlayer(video: ApprovedVideo) {
-    const decision = playbackDecision(video);
-    if (!decision.allowed) {
-      explainDecision(decision);
-      return;
-    }
-    setKidNotice('');
-    setKidNoticeAction(null);
-    setSelectedVideo(video);
-    setScreen('player');
-  }
+  const openPlayer = useCallback(
+    (video: ApprovedVideo) => {
+      const decision = playbackDecision(video);
+      if (!decision.allowed) {
+        explainDecision(decision);
+        return;
+      }
+      setKidNotice('');
+      setKidNoticeAction(null);
+      setSelectedVideo(video);
+      setScreen('player');
+    },
+    [playbackDecision, explainDecision],
+  );
 
   async function savePhase3Settings(next: Phase3Settings) {
     if (!parentSession) return;
@@ -994,9 +1001,12 @@ function App() {
     return <LoadingScreen />;
   }
 
-  const nextVideo = selectedVideo
-    ? kidLibrary.videos[(kidLibrary.videos.findIndex((item) => item.id === selectedVideo.id) + 1) % Math.max(1, kidLibrary.videos.length)]
-    : undefined;
+  const nextVideo = useMemo(() => {
+    if (!selectedVideo) return undefined;
+    const videos = kidLibrary.videos;
+    const index = videos.findIndex((item) => item.id === selectedVideo.id);
+    return videos[(index + 1) % Math.max(1, videos.length)];
+  }, [selectedVideo, kidLibrary]);
 
   return (
     <SafeAreaProvider>
@@ -1004,7 +1014,7 @@ function App() {
         style={[styles.safeArea, (screen === 'kid' || screen === 'player') && !setupStep && styles.safeAreaDark]}
         edges={['top', 'bottom']}
       >
-        {setupStep === 'pin' && <PinSetup onSubmit={finishPinSetup} pin={pin} setPin={setPin} error={pinError} />}
+        {setupStep === 'pin' && <PinSetup onSubmit={finishPinSetup} />}
         {setupStep === 'profile' && <ProfileSetup onSubmit={createFirstProfile} />}
         {!setupStep && screen === 'kid' && (
           <KidHomeScreen
@@ -1158,7 +1168,9 @@ function App() {
             }}
             onUsageChange={syncUsageIntoState}
             onBack={() => {
-              // Leaving playback is a natural boundary: persist and refresh the usage summary.
+              // Leaving playback is a natural boundary: commit the progress ticks the ref has been
+              // carrying, persist and refresh the usage summary.
+              commitPendingHistory();
               void screenTimeService.flush();
               syncUsageIntoState(true);
               setScreen('kid');
@@ -1176,9 +1188,6 @@ function App() {
       </SafeAreaView>
       <ParentPinModal
         visible={pinModalVisible}
-        pin={pin}
-        setPin={setPin}
-        error={pinError}
         lockRemainingMs={pinLockRemainingMs}
         resetting={resetting}
         onClose={() => setPinModalVisible(false)}
@@ -1217,7 +1226,19 @@ function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function PinSetup({ onSubmit, pin, setPin, error }: { onSubmit: () => void; pin: string; setPin: (value: string) => void; error: string }) {
+/** Self-contained PIN creation step: keystrokes never reach `App`. */
+function PinSetup({ onSubmit }: { onSubmit: (pin: string) => Promise<string | null> }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  async function submit() {
+    if (pin.length !== 4) {
+      setError('Choose exactly 4 numbers for your parent PIN.');
+      return;
+    }
+    const message = await onSubmit(pin);
+    if (message) setError(message);
+    else setPin('');
+  }
   return (
     <KeyboardAvoidingView style={styles.setupFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.setupScreen} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -1230,7 +1251,7 @@ function PinSetup({ onSubmit, pin, setPin, error }: { onSubmit: () => void; pin:
       </View>
       <View style={styles.formCard}>
         <Text style={styles.inputLabel}>Your private PIN</Text>
-        <PinEntry pin={pin} onChange={setPin} onSubmit={onSubmit} error={error} helper="Keep it somewhere safe — kids won’t see this screen." submitLabel="Create parent PIN" />
+        <PinEntry pin={pin} onChange={setPin} onSubmit={submit} error={error} helper="Keep it somewhere safe — kids won’t see this screen." submitLabel="Create parent PIN" />
       </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1400,25 +1421,51 @@ function formatLockRemaining(ms: number) {
   return minutes ? `${minutes} min ${String(seconds).padStart(2, '0')} s` : `${seconds} seconds`;
 }
 
-function ParentPinModal({ visible, pin, setPin, error, lockRemainingMs, resetting, onClose, onSubmit, onReset }: {
+/** Self-contained unlock keypad: PIN keystrokes and error copy never reach `App`. */
+function ParentPinModal({ visible, lockRemainingMs, resetting, onClose, onSubmit, onReset }: {
   visible: boolean;
-  pin: string;
-  setPin: (value: string) => void;
-  error: string;
   lockRemainingMs: number;
   resetting: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (pin: string) => Promise<ParentSignInResult>;
   onReset: () => void;
 }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
   const [stage, setStage] = useState<'pin' | 'reset'>('pin');
   const [confirmText, setConfirmText] = useState('');
 
   useEffect(() => {
-    if (visible) return;
+    if (visible) {
+      setPin('');
+      setError('');
+      return;
+    }
     setStage('pin');
     setConfirmText('');
   }, [visible]);
+
+  async function submit() {
+    if (pin.length !== 4) {
+      setError('Enter your 4-digit PIN.');
+      return;
+    }
+    const result = await onSubmit(pin);
+    setPin('');
+    if (!result.ok) {
+      if (result.reason === 'locked') {
+        setError('');
+      } else if (result.reason === 'not-set') {
+        setError('No parent PIN is set on this device.');
+      } else {
+        setError(
+          result.attemptsRemaining <= 1
+            ? 'That PIN did not match. One more try before PIN entry locks.'
+            : `That PIN did not match. ${result.attemptsRemaining} tries left.`,
+        );
+      }
+    }
+  }
 
   const locked = lockRemainingMs > 0;
   const canConfirmReset = parentResetService.confirmationMatches(confirmText) && !resetting;
@@ -1476,7 +1523,7 @@ function ParentPinModal({ visible, pin, setPin, error, lockRemainingMs, resettin
               <Text style={styles.modalBody}>
                 Enter your 4-digit PIN to open grown-up settings. Use the keypad below with a TV remote.
               </Text>
-              <PinEntry pin={pin} onChange={setPin} onSubmit={onSubmit} error={error} submitLabel="Unlock parent mode" />
+              <PinEntry pin={pin} onChange={setPin} onSubmit={submit} error={error} submitLabel="Unlock parent mode" />
             </>
           )}
           <FocusablePressable accessibilityLabel="Close parent check" style={styles.modalCancel} onPress={onClose}>

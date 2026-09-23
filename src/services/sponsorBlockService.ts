@@ -16,10 +16,12 @@ type CachedSegments = {
 
 const cachePrefix = '@nestling/sponsorblock/';
 const defaultBaseUrl = 'https://sponsor.ajay.app/api/skipSegments';
+const fetchTimeoutMs = 5000;
 
 export class SponsorBlockService {
   private memoryCache = new Map<string, CachedSegments>();
   private readonly cacheTtlMs = 24 * 60 * 60 * 1000;
+  private inFlight = new Map<string, Promise<SponsorSegment[]>>();
 
   constructor(private readonly baseUrl = defaultBaseUrl) {}
 
@@ -45,19 +47,38 @@ export class SponsorBlockService {
       return cached.segments;
     }
 
+    // Reuse the outstanding request if one is already running for this video,
+    // so a re-mount or double check cannot stack duplicate network calls.
+    const pending = this.inFlight.get(normalizedId);
+    if (pending) return pending;
+
+    const request = this.fetchSegments(normalizedId, cached?.segments ?? []);
+    this.inFlight.set(normalizedId, request);
+    try {
+      return await request;
+    } finally {
+      this.inFlight.delete(normalizedId);
+    }
+  }
+
+  private async fetchSegments(videoId: string, fallback: SponsorSegment[]): Promise<SponsorSegment[]> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
     try {
       const categories = ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music'];
-      const url = `${this.baseUrl}?videoID=${encodeURIComponent(normalizedId)}&categories=${encodeURIComponent(JSON.stringify(categories))}`;
-      const response = await fetch(url);
-      if (!response.ok) return cached?.segments ?? [];
+      const url = `${this.baseUrl}?videoID=${encodeURIComponent(videoId)}&categories=${encodeURIComponent(JSON.stringify(categories))}`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return fallback;
       const segments = (await response.json()) as SponsorSegment[];
       const next = { fetchedAt: Date.now(), segments: Array.isArray(segments) ? segments : [] };
-      this.memoryCache.set(normalizedId, next);
-      await AsyncStorage.setItem(`${cachePrefix}${normalizedId}`, JSON.stringify(next));
+      this.memoryCache.set(videoId, next);
+      await AsyncStorage.setItem(`${cachePrefix}${videoId}`, JSON.stringify(next));
       return next.segments;
     } catch {
       // SponsorBlock is an enhancement. Playback continues when it is unavailable.
-      return cached?.segments ?? [];
+      return fallback;
+    } finally {
+      clearTimeout(timer);
     }
   }
 

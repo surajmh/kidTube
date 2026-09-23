@@ -40,9 +40,26 @@ export type LocalDataSnapshot = {
   channelSync?: ChannelSyncMap;
 };
 
+/** Collections whose stored bytes no longer match the repaired snapshot. */
+export type RepairableCollection =
+  | 'profiles'
+  | 'videos'
+  | 'channels'
+  | 'categories'
+  | 'requests'
+  | 'approvals'
+  | 'overrides'
+  | 'childRules'
+  | 'profilePolicies'
+  | 'history'
+  | 'screenTime'
+  | 'channelSync';
+
 export type RepairReport = {
   snapshot: Required<LocalDataSnapshot>;
   repairs: string[];
+  /** Only these collections need re-persisting; the rest are byte-equivalent to what was read. */
+  changed: RepairableCollection[];
 };
 
 const validDate = (value: unknown) => typeof value === 'string' && !Number.isNaN(new Date(value).getTime());
@@ -133,40 +150,46 @@ function sanitizeOverrides(overrides: PlaybackOverride[], profileIds: Set<string
 
 export function repairLocalData(input: LocalDataSnapshot, now = new Date()): RepairReport {
   const repairs: string[] = [];
+  const changed = new Set<RepairableCollection>();
+  const repair = (collection: RepairableCollection, message: string) => {
+    repairs.push(message);
+    changed.add(collection);
+  };
+
   const profiles = (input.profiles ?? []).filter((profile) => profile && typeof profile.id === 'string' && profile.id.trim());
-  if (profiles.length !== (input.profiles ?? []).length) repairs.push('dropped invalid child profiles');
+  if (profiles.length !== (input.profiles ?? []).length) repair('profiles', 'dropped invalid child profiles');
 
   const profileIds = new Set(profiles.map((profile) => profile.id));
 
   const library = sanitizeLibrary(input.videos ?? [], input.channels ?? []);
-  if (library.videos.length !== (input.videos ?? []).length) repairs.push('removed invalid or duplicate videos');
-  if (library.channels.length !== (input.channels ?? []).length) repairs.push('removed invalid or duplicate channels');
+  if (library.videos.length !== (input.videos ?? []).length) repair('videos', 'removed invalid or duplicate videos');
+  if (library.channels.length !== (input.channels ?? []).length) repair('channels', 'removed invalid or duplicate channels');
 
   const categories = sanitizeCategories(input.categories ?? []);
-  if (categories.length !== (input.categories ?? []).length) repairs.push('removed invalid categories');
+  if (categories.length !== (input.categories ?? []).length) repair('categories', 'removed invalid categories');
 
   const requests = sanitizeRequests(input.requests ?? [], profileIds);
-  if (requests.length !== (input.requests ?? []).length) repairs.push('removed requests for missing profiles');
+  if (requests.length !== (input.requests ?? []).length) repair('requests', 'removed requests for missing profiles');
 
   const approvals = sanitizeApprovals(input.approvals ?? [], profileIds, now);
-  if (approvals.length !== (input.approvals ?? []).length) repairs.push('removed expired or orphaned approvals');
+  if (approvals.length !== (input.approvals ?? []).length) repair('approvals', 'removed expired or orphaned approvals');
 
   const overrides = sanitizeOverrides(input.overrides ?? [], profileIds, now);
-  if (overrides.length !== (input.overrides ?? []).length) repairs.push('removed expired or orphaned overrides');
+  if (overrides.length !== (input.overrides ?? []).length) repair('overrides', 'removed expired or orphaned overrides');
 
   const childRules = sanitizeChildRules(input.childRules ?? {}, profileIds);
-  if (Object.keys(childRules).length !== Object.keys(input.childRules ?? {}).length) repairs.push('removed content rules for missing profiles');
+  if (Object.keys(childRules).length !== Object.keys(input.childRules ?? {}).length) repair('childRules', 'removed content rules for missing profiles');
 
   const profilePolicies = sanitizePolicies(input.profilePolicies ?? {}, profileIds);
-  if (Object.keys(profilePolicies).length !== Object.keys(input.profilePolicies ?? {}).length) repairs.push('removed playback policies for missing profiles');
+  if (Object.keys(profilePolicies).length !== Object.keys(input.profilePolicies ?? {}).length) repair('profilePolicies', 'removed playback policies for missing profiles');
 
   const history = (input.history ?? []).filter(
     (item) => item && profileIds.has(item.profileId) && validDate(item.watchedAt) && Number.isFinite(item.progress),
   );
-  if (history.length !== (input.history ?? []).length) repairs.push('removed orphaned watch history');
+  if (history.length !== (input.history ?? []).length) repair('history', 'removed orphaned watch history');
 
   const screenTime = pruneUsageRecords(sanitizeUsageRecords(input.screenTime ?? []), now);
-  if (screenTime.length !== (input.screenTime ?? []).length) repairs.push('removed invalid or old screen-time records');
+  if (screenTime.length !== (input.screenTime ?? []).length) repair('screenTime', 'removed invalid or old screen-time records');
 
   const settings = sanitizeSettings(input.settings);
 
@@ -178,7 +201,7 @@ export function repairLocalData(input: LocalDataSnapshot, now = new Date()): Rep
     (video) => !(isSyncOwned(video) && video.channelId !== undefined && !channelIds.has(video.channelId)),
   );
   if (withoutOrphanedSyncVideos.length !== library.videos.length) {
-    repairs.push('removed videos for channels that are no longer approved');
+    repair('videos', 'removed videos for channels that are no longer approved');
   }
   const channelSync: ChannelSyncMap = {};
   for (const [channelId, state] of Object.entries(input.channelSync ?? {})) {
@@ -186,7 +209,7 @@ export function repairLocalData(input: LocalDataSnapshot, now = new Date()): Rep
     channelSync[channelId] = state;
   }
   if (Object.keys(channelSync).length !== Object.keys(input.channelSync ?? {}).length) {
-    repairs.push('removed channel sync state for missing channels');
+    repair('channelSync', 'removed channel sync state for missing channels');
   }
 
   // Category memberships that point at a category that no longer exists.
@@ -197,8 +220,11 @@ export function repairLocalData(input: LocalDataSnapshot, now = new Date()): Rep
       : item;
   const videos = withoutOrphanedSyncVideos.map(pruneMemberships);
   const channels = library.channels.map(pruneMemberships);
-  if (videos.some((video, index) => video !== library.videos[index]) || channels.some((channel, index) => channel !== library.channels[index])) {
-    repairs.push('removed category assignments for missing categories');
+  if (videos.some((video, index) => video !== library.videos[index])) {
+    repair('videos', 'removed category assignments for missing categories');
+  }
+  if (channels.some((channel, index) => channel !== library.channels[index])) {
+    repair('channels', 'removed category assignments for missing categories');
   }
 
   return {
@@ -218,6 +244,7 @@ export function repairLocalData(input: LocalDataSnapshot, now = new Date()): Rep
       channelSync,
     },
     repairs,
+    changed: [...changed],
   };
 }
 

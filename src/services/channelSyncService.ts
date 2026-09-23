@@ -112,16 +112,15 @@ export class ChannelSyncService {
       throw new YouTubeProviderError('INVALID_INPUT', providerErrorMessage('INVALID_INPUT'), false);
     }
 
-    const channelId =
-      reference.kind === 'channelId'
-        ? reference.id
-        : await this.provider.resolveChannelId(channelReferenceLabel(reference));
+    // One provider round trip, not two: the extractor resolves a handle or link to
+    // the canonical id *and* returns its metadata from the same channel fetch.
+    const lookup = reference.kind === 'channelId' ? reference.id : channelReferenceLabel(reference);
+    const channel = await this.provider.getChannel(lookup);
 
-    if (!isCanonicalChannelId(channelId)) {
+    if (!isCanonicalChannelId(channel.youtubeChannelId)) {
       throw new YouTubeProviderError('CHANNEL_NOT_FOUND', providerErrorMessage('CHANNEL_NOT_FOUND'), false);
     }
 
-    const channel = await this.provider.getChannel(channelId);
     return {
       youtubeChannelId: channel.youtubeChannelId,
       name: channel.name,

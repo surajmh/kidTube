@@ -1,11 +1,24 @@
 package com.nestling.youtubeplayer
 
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.lang.ref.WeakReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class YouTubePlayerModule : Module() {
   private var activeView: WeakReference<YouTubePlayerView>? = null
+
+  /**
+   * NewPipe extraction is blocking network work with a 30s timeout. On the default async queue it
+   * would also stall every later player command behind it, so metadata runs here instead, where
+   * calls can execute concurrently — the downloader, session init and page cache are all
+   * thread-safe.
+   */
+  private val metadataScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
   /**
    * The only video ids the native decoder will accept, pushed by JS from `PlaybackPolicy`.
@@ -46,20 +59,20 @@ class YouTubePlayerModule : Module() {
      * Metadata only: no stream is resolved and nothing is approved by calling this. It is safe to
      * ask about any id, because knowing a video's title grants no access to playing it.
      */
-    AsyncFunction("getVideoMetadata") { videoId: String ->
-      metadataCall { NewPipeMetadata.video(videoId) }
+    AsyncFunction("getVideoMetadata") { videoId: String, promise: Promise ->
+      metadataAsync(promise) { NewPipeMetadata.video(videoId) }
     }
 
-    AsyncFunction("resolveChannelId") { reference: String ->
-      metadataCall { mapOf<String, Any?>("youtubeChannelId" to NewPipeChannels.resolveChannelId(reference)) }
+    AsyncFunction("resolveChannelId") { reference: String, promise: Promise ->
+      metadataAsync(promise) { mapOf("youtubeChannelId" to NewPipeChannels.resolveChannelId(reference)) }
     }
 
-    AsyncFunction("getChannel") { reference: String ->
-      metadataCall { NewPipeChannels.channel(reference) }
+    AsyncFunction("getChannel") { reference: String, promise: Promise ->
+      metadataAsync(promise) { NewPipeChannels.channel(reference) }
     }
 
-    AsyncFunction("getChannelVideos") { channelId: String, pageToken: String? ->
-      metadataCall { NewPipeChannels.channelVideos(channelId, pageToken) }
+    AsyncFunction("getChannelVideos") { channelId: String, pageToken: String?, promise: Promise ->
+      metadataAsync(promise) { NewPipeChannels.channelVideos(channelId, pageToken) }
     }
 
     AsyncFunction("play") { videoId: String ->
@@ -133,6 +146,17 @@ class YouTubePlayerModule : Module() {
     body()
   } catch (error: MetadataException) {
     mapOf("failed" to true, "code" to error.code, "message" to error.message)
+  }
+
+  /** Settles the promise off the shared async queue so a slow fetch never blocks the player. */
+  private fun metadataAsync(promise: Promise, body: () -> Map<String, Any?>) {
+    metadataScope.launch {
+      try {
+        promise.resolve(metadataCall(body))
+      } catch (error: Throwable) {
+        promise.reject("E_METADATA", error.message, error)
+      }
+    }
   }
 
   /** Registers the mounted view and starts any play request that arrived before it existed. */

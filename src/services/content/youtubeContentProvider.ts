@@ -58,6 +58,12 @@ export interface YouTubeContentProvider {
    * a channel link, and a handle must never be mistaken for an identifier.
    */
   resolveChannelId(reference: string): Promise<string>;
+  /**
+   * Fetches canonical channel metadata. Accepts a `UC…` id or any of the same
+   * parent-supplied references `resolveChannelId` takes — resolving a handle and
+   * reading its metadata is one provider round trip, not two. The returned
+   * `youtubeChannelId` is always the canonical id, never the raw reference.
+   */
   getChannel(channelId: string): Promise<YouTubeChannel>;
   getChannelVideos(channelId: string, options?: ChannelPageOptions): Promise<YouTubeVideoPage>;
 }

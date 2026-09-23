@@ -4,35 +4,41 @@ import { resolvedCategoryIds } from '../phase4Types';
 export class WhitelistService {
   private videos: ApprovedVideo[] = [];
   private channels: ApprovedChannel[] = [];
+  /** Id → row indexes over the whitelists; every lookup on this service is called per-video. */
+  private videoById = new Map<string, ApprovedVideo>();
+  private channelById = new Map<string, ApprovedChannel>();
+  private approvedChannelIds = new Set<string>();
 
   setContent(videos: ApprovedVideo[], channels: ApprovedChannel[]) {
     this.videos = videos;
     this.channels = channels;
-  }
-
-  isVideoAllowed(videoId: string, channelId?: string): boolean {
-    const video = this.videos.find((item) => item.youtubeVideoId === videoId);
-    if (video?.approved) return true;
-
-    const resolvedChannelId = channelId ?? video?.channelId;
-    return Boolean(
-      resolvedChannelId &&
-        this.channels.some((channel) => channel.approved && channel.channelId === resolvedChannelId),
+    this.videoById = indexBy(videos, (video) => video.youtubeVideoId);
+    this.channelById = indexBy(channels, (channel) => channel.channelId);
+    this.approvedChannelIds = new Set(
+      channels.filter((channel) => channel.approved).map((channel) => channel.channelId),
     );
   }
 
+  isVideoAllowed(videoId: string, channelId?: string): boolean {
+    const video = this.videoById.get(videoId);
+    if (video?.approved) return true;
+
+    const resolvedChannelId = channelId ?? video?.channelId;
+    return Boolean(resolvedChannelId && this.approvedChannelIds.has(resolvedChannelId));
+  }
+
   isChannelApproved(channelId: string): boolean {
-    return this.channels.some((channel) => channel.approved && channel.channelId === channelId);
+    return this.approvedChannelIds.has(channelId);
   }
 
   findVideo(videoId?: string) {
     if (!videoId) return undefined;
-    return this.videos.find((item) => item.youtubeVideoId === videoId);
+    return this.videoById.get(videoId);
   }
 
   findChannel(channelId?: string) {
     if (!channelId) return undefined;
-    return this.channels.find((item) => item.channelId === channelId);
+    return this.channelById.get(channelId);
   }
 
   approvedVideos() {
@@ -51,6 +57,15 @@ export class WhitelistService {
     const ids = new Set<string>([...(video?.categoryIds ?? []), ...(channel?.categoryIds ?? [])]);
     return resolvedCategoryIds([...ids]);
   }
+}
+
+/** First occurrence wins, matching the `find` semantics these indexes replace. */
+function indexBy<T>(items: T[], key: (item: T) => string) {
+  const map = new Map<string, T>();
+  for (const item of items) {
+    if (!map.has(key(item))) map.set(key(item), item);
+  }
+  return map;
 }
 
 export const whitelistService = new WhitelistService();

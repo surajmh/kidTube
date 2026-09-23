@@ -48,21 +48,25 @@ export function ChannelAvatar({ name, uri, size = 36 }: { name: string; uri?: st
 /**
  * The feed card: full-bleed thumbnail, then channel avatar, title and one metadata line.
  * `compact` is the horizontal-shelf variant used for the continue-watching rail.
+ *
+ * Memoized, and it builds its own press closure: a parent that passed `() => press(video)`
+ * per row would hand a new function to every card on each render and defeat the memo.
  */
-export function VideoCard({
+export const VideoCard = React.memo(function VideoCard({
   video,
   onPress,
   compact = false,
 }: {
   video: ApprovedVideo;
-  onPress: () => void;
+  onPress: (video: ApprovedVideo) => void;
   compact?: boolean;
 }) {
   const channel = video.channelName?.trim() || KID_COPY.unknownChannel;
+  const press = () => onPress(video);
 
   if (compact) {
     return (
-      <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.compact} onPress={onPress}>
+      <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.compact} onPress={press}>
         <Thumbnail video={video} radius={10} />
         <Text style={styles.compactTitle} numberOfLines={2}>{video.title}</Text>
         <Text style={styles.compactMeta} numberOfLines={1}>{channel}</Text>
@@ -71,7 +75,7 @@ export function VideoCard({
   }
 
   return (
-    <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.card} onPress={onPress}>
+    <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.card} onPress={press}>
       <Thumbnail video={video} />
       <View style={styles.meta}>
         <ChannelAvatar name={channel} />
@@ -82,7 +86,7 @@ export function VideoCard({
       </View>
     </FocusablePressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   thumbWrap: { backgroundColor: yt.surfaceAlt, overflow: 'hidden', position: 'relative', width: '100%' },

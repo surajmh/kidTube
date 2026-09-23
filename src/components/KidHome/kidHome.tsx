@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
@@ -38,6 +38,16 @@ export function KidHomeScreen(props: KidHomeProps) {
   } = props;
 
   const kid = useKidHome(props);
+
+  // Per-channel video counts, computed once per library instead of a full scan per channel row.
+  const channelVideoCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const video of library.videos) {
+      if (!video.channelId) continue;
+      counts.set(video.channelId, (counts.get(video.channelId) ?? 0) + 1);
+    }
+    return counts;
+  }, [library.videos]);
 
   return (
     <View style={styles.screen}>
@@ -168,7 +178,7 @@ export function KidHomeScreen(props: KidHomeProps) {
                 <Text style={styles.shelfTitle}>Keep watching</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
                   {kid.keepWatching.map((video) => (
-                    <VideoCard key={`recent-${video.id}`} video={video} compact onPress={() => onVideoPress(video)} />
+                    <VideoCard key={`recent-${video.id}`} video={video} compact onPress={onVideoPress} />
                   ))}
                 </ScrollView>
               </>
@@ -176,7 +186,7 @@ export function KidHomeScreen(props: KidHomeProps) {
 
             {kid.feedVideos.length ? (
               kid.feedVideos.map((video) => (
-                <VideoCard key={video.id} video={video} onPress={() => onVideoPress(video)} />
+                <VideoCard key={video.id} video={video} onPress={onVideoPress} />
               ))
             ) : (
               <Empty
@@ -202,8 +212,8 @@ export function KidHomeScreen(props: KidHomeProps) {
               <ChannelRow
                 key={channel.id}
                 channel={channel}
-                videoCount={library.videos.filter((video) => video.channelId === channel.channelId).length}
-                onPress={() => onSelectChannel(channel.channelId)}
+                videoCount={channelVideoCounts.get(channel.channelId) ?? 0}
+                onOpen={onSelectChannel}
               />
             ))
           ) : (
@@ -214,7 +224,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         {!kid.searching && tab === 'recent' ? (
           library.recentVideos.length ? (
             library.recentVideos.map((video) => (
-              <VideoCard key={`library-${video.id}`} video={video} onPress={() => onVideoPress(video)} />
+              <VideoCard key={`library-${video.id}`} video={video} onPress={onVideoPress} />
             ))
           ) : (
             <Empty icon="film" title="Nothing watched yet" body="Videos you watch show up here." />
@@ -280,19 +290,19 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 function ChannelRow({
   channel,
   videoCount,
-  onPress,
+  onOpen,
   subtitle,
 }: {
   channel: ApprovedChannel;
   videoCount?: number;
-  onPress: () => void;
+  onOpen: (channelId: string) => void;
   subtitle?: string;
 }) {
   return (
     <FocusablePressable
       accessibilityLabel={`Open ${channel.name}`}
       style={styles.channelRow}
-      onPress={onPress}
+      onPress={() => onOpen(channel.channelId)}
     >
       <ChannelAvatar name={channel.name} uri={channel.thumbnailUrl} size={48} />
       <View style={styles.channelRowText}>
@@ -328,11 +338,11 @@ function SearchResults({
           key={`result-${channel.id}`}
           channel={channel}
           subtitle="Channel"
-          onPress={() => onSelectChannel(channel.channelId)}
+          onOpen={onSelectChannel}
         />
       ))}
       {results.videos.map((video) => (
-        <VideoCard key={`result-${video.id}`} video={video} onPress={() => onVideoPress(video)} />
+        <VideoCard key={`result-${video.id}`} video={video} onPress={onVideoPress} />
       ))}
     </>
   );
@@ -386,7 +396,7 @@ function ChannelPage({
       ) : null}
 
       {videos.map((video) => (
-        <VideoCard key={`channel-${video.id}`} video={video} onPress={() => onVideoPress(video)} />
+        <VideoCard key={`channel-${video.id}`} video={video} onPress={onVideoPress} />
       ))}
     </>
   );

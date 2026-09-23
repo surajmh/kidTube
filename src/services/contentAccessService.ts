@@ -41,10 +41,13 @@ export function approvalMatchesTarget(approval: ContentApproval, videoId?: strin
 export class ContentAccessService {
   private rules = new Map<string, ChildContentRules>();
   private approvals: ContentApproval[] = [];
+  /** Approvals indexed by target id; `evaluate` looks each one up per video. */
+  private videoApprovals = new Map<string, ContentApproval[]>();
+  private channelApprovals = new Map<string, ContentApproval[]>();
 
   hydrate(input: { rules?: Record<string, ChildContentRules>; approvals?: ContentApproval[] }) {
     this.rules = new Map(Object.entries(input.rules ?? {}));
-    this.approvals = input.approvals ?? [];
+    this.setApprovals(input.approvals ?? []);
   }
 
   setRules(rules: Record<string, ChildContentRules>) {
@@ -53,6 +56,17 @@ export class ContentAccessService {
 
   setApprovals(approvals: ContentApproval[]) {
     this.approvals = approvals;
+    this.videoApprovals = new Map();
+    this.channelApprovals = new Map();
+    for (const approval of approvals) {
+      const [index, key] =
+        approval.target.type === 'video'
+          ? [this.videoApprovals, approval.target.youtubeVideoId]
+          : [this.channelApprovals, approval.target.youtubeChannelId];
+      const bucket = index.get(key);
+      if (bucket) bucket.push(approval);
+      else index.set(key, [approval]);
+    }
   }
 
   getRules(profileId: string): ChildContentRules {
@@ -64,9 +78,23 @@ export class ContentAccessService {
     return this.approvals.filter((approval) => approval.profileId === profileId || approval.profileId === null);
   }
 
+  /** Approvals targeting this exact video or channel that apply to this profile. */
+  private matchingApprovals(profileId: string, videoId?: string, channelId?: string) {
+    const matches: ContentApproval[] = [];
+    const collect = (index: Map<string, ContentApproval[]>, key?: string) => {
+      if (!key) return;
+      for (const approval of index.get(key) ?? []) {
+        if (approval.profileId === profileId || approval.profileId === null) matches.push(approval);
+      }
+    };
+    collect(this.videoApprovals, videoId);
+    collect(this.channelApprovals, channelId);
+    return matches;
+  }
+
   resolveApprovalState(profileId: string, input: ContentAccessInput, now = new Date()): ApprovalState {
     const { videoId, channelId } = this.resolveIdentifiers(input);
-    const matches = this.approvalsFor(profileId).filter((approval) => approvalMatchesTarget(approval, videoId, channelId));
+    const matches = this.matchingApprovals(profileId, videoId, channelId);
     if (!matches.length) return 'none';
     if (matches.some((approval) => !approvalExpired(approval, now))) return 'allowed';
     return 'expired';
