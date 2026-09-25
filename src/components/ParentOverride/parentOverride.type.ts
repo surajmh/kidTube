@@ -1,11 +1,11 @@
 import { ChildProfile } from '../../types';
-import { Phase3Settings } from '../../phase3Types';
-import { PlaybackOverride } from '../../phase4Types';
+import { PlaybackSettings } from '../../playbackTypes';
+import { PlaybackOverride } from '../../parentalControlsTypes';
 
 export type ParentOverrideProps = {
   visible: boolean;
   profile?: ChildProfile;
-  settings: Phase3Settings;
+  settings: PlaybackSettings;
   overrideSecondsToday: number;
   onClose: () => void;
   onGranted: (overrides: PlaybackOverride[]) => void;

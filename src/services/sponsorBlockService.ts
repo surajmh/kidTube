@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SponsorBlockCategory } from '../phase3Types';
+import { SponsorBlockCategory } from '../playbackTypes';
 
 export type SponsorSegment = {
   uuid?: string;

@@ -1,6 +1,6 @@
 # Phase 2 native playback
 
-Nestling now has an isolated Android Expo module at `modules/nestling-youtube-player`.
+kidTube now has an isolated Android Expo module at `modules/nestling-youtube-player`.
 
 ```text
 React Native YouTubePlayer

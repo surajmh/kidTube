@@ -1,4 +1,4 @@
-import { ChildContentRules, ContentApproval, defaultChildContentRules } from '../phase4Types';
+import { ChildContentRules, ContentApproval, defaultChildContentRules } from '../parentalControlsTypes';
 import { whitelistService } from './whitelistService';
 
 /**

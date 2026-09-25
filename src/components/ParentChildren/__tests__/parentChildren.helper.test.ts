@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ContentApproval, PlaybackOverride } from '../../../phase4Types';
+import { ContentApproval, PlaybackOverride } from '../../../parentalControlsTypes';
 import { ChildRulesMap } from '../../../services/childRulesService';
 import {
   activeOverridesFor,

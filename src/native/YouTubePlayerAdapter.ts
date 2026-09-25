@@ -5,7 +5,7 @@ import { setNativeMetadataModule } from '../services/content/nativeYouTubeConten
 
 function requireNativePlayer() {
   if (!NativeYouTubePlayer) {
-    throw new Error('Native Nestling player is unavailable. Build with npx expo run:android.');
+    throw new Error('Native kidTube player is unavailable. Build with npx expo run:android.');
   }
   return NativeYouTubePlayer;
 }

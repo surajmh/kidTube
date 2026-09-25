@@ -11,7 +11,7 @@ export type ScheduleWindow = {
   endMinutes: number;
 };
 
-export type Phase3Settings = {
+export type PlaybackSettings = {
   autoplay: boolean;
   sponsorBlockEnabled: boolean;
   sponsorBlockCategories: SponsorBlockCategory[];
@@ -40,7 +40,7 @@ export type PlaybackBlockedReason =
 
 export type PlaybackDecision = { allowed: true } | { allowed: false; reason: PlaybackBlockedReason };
 
-export const defaultPhase3Settings: Phase3Settings = {
+export const defaultPlaybackSettings: PlaybackSettings = {
   autoplay: false,
   sponsorBlockEnabled: true,
   sponsorBlockCategories: ['sponsor', 'intro', 'outro', 'selfpromo'],

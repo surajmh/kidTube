@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../phase4Types';
+import { ContentRequest, RequestType } from '../../parentalControlsTypes';
 import { FocusablePressable } from '../tv';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
 import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
@@ -74,10 +74,8 @@ export function KidHomeScreen(props: KidHomeProps) {
         ) : (
           <>
             <View style={styles.brand}>
-              <View style={styles.brandMark}>
-                <Feather name="feather" size={15} color={ICON.onAccent} />
-              </View>
-              <Text style={styles.brandText}>nestling</Text>
+              <Image source={require('../../../assets/icon.png')} style={styles.brandMark} resizeMode="contain" />
+              <Text style={styles.brandText}>kidTube</Text>
             </View>
             <View style={styles.topActions}>
               <FocusablePressable

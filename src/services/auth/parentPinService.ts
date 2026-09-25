@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import { PinRecord, createPinRecord, isPinRecord, verifyPinRecord } from './pinHash';
+import { PinRecord, createPinRecordAsync, isPinRecord, verifyPinRecordAsync } from './pinHash';
 
 /**
  * Parent PIN storage.
@@ -109,7 +109,7 @@ export const parentPinService = {
   /** Validates, hashes and stores a new PIN. The plaintext is not retained anywhere. */
   async setPin(pin: string): Promise<void> {
     if (!pinPattern.test(pin)) throw new Error('The parent PIN must be exactly 4 digits.');
-    const record = createPinRecord(pin);
+    const record = await createPinRecordAsync(pin);
     await SecureStore.setItemAsync(pinRecordKey, JSON.stringify(record));
     await SecureStore.deleteItemAsync(pinKey).catch(() => undefined);
     await writeAttempts({ failures: 0, lockedUntil: 0 });
@@ -124,7 +124,7 @@ export const parentPinService = {
 
     const record = await readRecord();
     if (record) {
-      if (verifyPinRecord(record, pin)) {
+      if (await verifyPinRecordAsync(record, pin)) {
         await writeAttempts({ failures: 0, lockedUntil: 0 });
         return { ok: true };
       }

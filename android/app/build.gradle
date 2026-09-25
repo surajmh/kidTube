@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.family.nestling'
+    namespace 'com.family.kidtube'
     defaultConfig {
-        applicationId 'com.family.nestling'
+        applicationId 'com.family.kidtube'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

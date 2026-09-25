@@ -2,7 +2,7 @@ import { profileRepository } from '../../repositories/profileRepository';
 import { channelRepository } from '../../repositories/channelRepository';
 import { videoRepository } from '../../repositories/videoRepository';
 import { watchHistoryRepository } from '../../repositories/watchHistoryRepository';
-import { screenTimeRepository, settingsRepository } from '../../repositories/phase3Repository';
+import { screenTimeRepository, settingsRepository } from '../../repositories/playbackSettingsRepository';
 import {
   approvalRepository,
   categoryRepository,
@@ -10,10 +10,10 @@ import {
   overrideRepository,
   profilePolicyRepository,
   requestRepository,
-} from '../../repositories/phase4Repository';
+} from '../../repositories/parentalControlsRepository';
 import { channelSyncRepository } from '../../repositories/channelSyncRepository';
-import { defaultPhase3Settings } from '../../phase3Types';
-import { defaultCategories } from '../../phase4Types';
+import { defaultPlaybackSettings } from '../../playbackTypes';
+import { defaultCategories } from '../../parentalControlsTypes';
 import { parentPinService } from './parentPinService';
 import { parentSessionService } from './parentSession';
 
@@ -56,7 +56,7 @@ export const parentResetService = {
       channelSyncRepository.saveAll({}),
       // Categories and settings fall back to the shipped defaults rather than being left empty.
       categoryRepository.saveAll(defaultCategories),
-      settingsRepository.save({ ...defaultPhase3Settings }),
+      settingsRepository.save({ ...defaultPlaybackSettings }),
     ]);
 
     await parentPinService.clearPin();

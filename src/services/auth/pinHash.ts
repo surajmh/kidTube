@@ -2,10 +2,13 @@
  * One-way PIN representation.
  *
  * The PIN must never be stored, logged or compared in the clear, so it is kept as a salted
- * PBKDF2-HMAC-SHA256 digest. This is implemented here, in ~100 lines of pure TypeScript, rather than
- * pulling in a native hashing module: the app is local-first, the surface area is tiny, and it keeps
- * the Android/iOS builds free of another binary dependency.
+ * PBKDF2-HMAC-SHA256 digest. The Android build derives it natively (`derivePinHash`, ~30ms off
+ * the JS thread); the pure-TypeScript implementation below is the fallback for iOS, tests and
+ * any device where the native module is unavailable — it produces byte-identical digests.
  */
+
+import { Platform } from 'react-native';
+import nativePlayerModule from '../../native/YouTubePlayerModule';
 
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -221,4 +224,27 @@ export function verifyPinRecord(record: PinRecord, pin: string): boolean {
   if (!isPinRecord(record)) return false;
   const candidate = toHex(pbkdf2Sha256(pin, fromHex(record.salt), record.iterations));
   return constantTimeEquals(candidate, record.hash);
+}
+
+/** Native derivation when available; identical output, but never blocks the JS thread. */
+async function pbkdf2Sha256Hex(password: string, saltHex: string, iterations: number): Promise<string> {
+  if (Platform.OS === 'android' && nativePlayerModule?.derivePinHash) {
+    try {
+      const result = await nativePlayerModule.derivePinHash(password, saltHex, iterations);
+      if (!result.failed && typeof result.hash === 'string') return result.hash;
+    } catch {
+      // A missing or failing native module must not lock a parent out; fall back to JS.
+    }
+  }
+  return toHex(pbkdf2Sha256(password, fromHex(saltHex), iterations));
+}
+
+export async function createPinRecordAsync(pin: string, iterations = pinHashIterations): Promise<PinRecord> {
+  const salt = createSalt();
+  return { version: 2, salt, iterations, hash: await pbkdf2Sha256Hex(pin, salt, iterations) };
+}
+
+export async function verifyPinRecordAsync(record: PinRecord, pin: string): Promise<boolean> {
+  if (!isPinRecord(record)) return false;
+  return constantTimeEquals(await pbkdf2Sha256Hex(pin, record.salt, record.iterations), record.hash);
 }

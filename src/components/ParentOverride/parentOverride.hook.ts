@@ -35,15 +35,20 @@ export function useParentOverride({ profile, settings, onClose, onGranted }: Use
   }, [reset, onClose]);
 
   const verify = useCallback(async () => {
-    const result = await parentSessionService.startWithPin(pin);
-    // Clear the entry either way, so a wrong PIN is never left sitting in the field.
-    setPin('');
-    if (!result.ok) {
-      setError(describePinFailure(result));
-      return;
+    setBusy(true);
+    try {
+      const result = await parentSessionService.startWithPin(pin);
+      // Clear the entry either way, so a wrong PIN is never left sitting in the field.
+      setPin('');
+      if (!result.ok) {
+        setError(describePinFailure(result));
+        return;
+      }
+      setError('');
+      setSession(result.session);
+    } finally {
+      setBusy(false);
     }
-    setError('');
-    setSession(result.session);
   }, [pin]);
 
   const grant = useCallback(

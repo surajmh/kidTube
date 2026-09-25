@@ -1,4 +1,4 @@
-import { ContentApproval, PlaybackOverride } from '../../phase4Types';
+import { ContentApproval, PlaybackOverride } from '../../parentalControlsTypes';
 import { ChildRulesMap } from '../../services/childRulesService';
 import { DEFAULT_WINDOW, MINUTES_IN_DAY } from './parentChildren.constant';
 // One clock formatter for the app; this used to be retyped in each panel that edits a schedule.

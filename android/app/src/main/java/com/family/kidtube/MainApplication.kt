@@ -1,4 +1,4 @@
-package com.family.nestling
+package com.family.kidtube
 
 import android.app.Application
 import android.content.res.Configuration

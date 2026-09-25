@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { act, renderHook } from '@testing-library/react-native';
 import { ChildProfile } from '../../../types';
-import { Phase3Settings } from '../../../phase3Types';
-import { ContentApproval, PlaybackOverride } from '../../../phase4Types';
+import { PlaybackSettings } from '../../../playbackTypes';
+import { ContentApproval, PlaybackOverride } from '../../../parentalControlsTypes';
 import { ChildRulesMap } from '../../../services/childRulesService';
 import { useParentChildren } from '../parentChildren.hook';
 
@@ -16,7 +16,7 @@ const globalSettings = {
   sponsorBlock: true,
   warnBeforeEnd: true,
   allowedWindows: {},
-} as unknown as Phase3Settings;
+} as unknown as PlaybackSettings;
 
 type Input = Parameters<typeof useParentChildren>[0];
 

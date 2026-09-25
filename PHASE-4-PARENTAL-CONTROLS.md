@@ -23,8 +23,8 @@ Native PlayerAdapter → ExoPlayer → Playback
 
 | Concern | Module |
 | --- | --- |
-| Domain types | `src/phase4Types.ts` |
-| Storage | `src/repositories/phase4Repository.ts` |
+| Domain types | `src/parentalControlsTypes.ts` |
+| Storage | `src/repositories/parentalControlsRepository.ts` |
 | Parent authorization | `src/services/auth/parentSession.ts` |
 | Requests (child + parent) | `src/services/requestService.ts` |
 | Approvals, expiry, one-playback consumption | `src/services/approvalService.ts`, `src/services/approvalRules.ts` |

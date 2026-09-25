@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="700" viewBox="0 0 340 700" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <clipPath id="screen"><rect x="18" y="18" width="304" height="664" rx="30"/></clipPath>
+  </defs>
+
+  <rect x="6" y="6" width="328" height="688" rx="42" fill="#1c1c1e"/>
+  <rect x="12" y="12" width="316" height="676" rx="36" fill="#000"/>
+
+  <g clip-path="url(#screen)">
+    <rect x="18" y="18" width="304" height="664" fill="#0F0F0F"/>
+
+    <!-- header -->
+    <text x="34" y="52" font-size="16" font-weight="700" fill="#F1F1F1">Parent mode</text>
+    <rect x="236" y="36" width="70" height="24" rx="12" fill="#272727"/>
+    <text x="271" y="52" font-size="10" fill="#F1F1F1" text-anchor="middle">Exit</text>
+    <text x="34" y="68" font-size="9" fill="#AAAAAA">Session expires after 30 min idle</text>
+
+    <!-- section pills -->
+    <g font-size="10">
+      <rect x="34" y="82" width="52" height="26" rx="13" fill="#F1F1F1"/><text x="60" y="99" fill="#0F0F0F" text-anchor="middle" font-weight="600">Home</text>
+      <rect x="92" y="82" width="66" height="26" rx="13" fill="#272727"/><text x="125" y="99" fill="#F1F1F1" text-anchor="middle">Channels</text>
+      <rect x="164" y="82" width="54" height="26" rx="13" fill="#272727"/><text x="191" y="99" fill="#F1F1F1" text-anchor="middle">Videos</text>
+      <rect x="224" y="82" width="66" height="26" rx="13" fill="#272727"/><text x="257" y="99" fill="#F1F1F1" text-anchor="middle">Categories</text>
+      <rect x="296" y="82" width="80" height="26" rx="13" fill="#272727"/><text x="306" y="99" fill="#F1F1F1">Requests 2</text>
+    </g>
+
+    <!-- requests card -->
+    <rect x="34" y="124" width="272" height="118" rx="12" fill="#212121" stroke="#303030"/>
+    <text x="50" y="150" font-size="12" font-weight="700" fill="#F1F1F1">2 requests from kids</text>
+    <rect x="50" y="162" width="240" height="1" fill="#303030"/>
+    <text x="50" y="184" font-size="10" fill="#F1F1F1">Number Songs &#8212; Big Counting TV</text>
+    <text x="50" y="198" font-size="9" fill="#AAAAAA">from Arjun</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="188" y="176" width="30" height="18" rx="9" fill="#FF0033"/><text x="203" y="188" fill="#fff">Once</text>
+      <rect x="222" y="176" width="30" height="18" rx="9" fill="#272727"/><text x="237" y="188" fill="#F1F1F1">7 day</text>
+      <rect x="256" y="176" width="34" height="18" rx="9" fill="#272727"/><text x="273" y="188" fill="#F1F1F1">Always</text>
+    </g>
+    <text x="50" y="226" font-size="10" fill="#F1F1F1">Dinosaur Channel (whole channel)</text>
+    <text x="50" y="240" font-size="9" fill="#AAAAAA">from Maari</text>
+
+    <!-- screen time card -->
+    <rect x="34" y="258" width="272" height="112" rx="12" fill="#212121" stroke="#303030"/>
+    <text x="50" y="284" font-size="12" font-weight="700" fill="#F1F1F1">Screen time today</text>
+    <text x="50" y="308" font-size="9" fill="#AAAAAA">Arjun</text>
+    <rect x="90" y="300" width="180" height="8" rx="4" fill="#272727"/>
+    <rect x="90" y="300" width="132" height="8" rx="4" fill="#FF0033"/>
+    <text x="278" y="308" font-size="9" fill="#F1F1F1">22 / 30 min</text>
+    <text x="50" y="332" font-size="9" fill="#AAAAAA">Maari</text>
+    <rect x="90" y="324" width="180" height="8" rx="4" fill="#272727"/>
+    <rect x="90" y="324" width="44" height="8" rx="4" fill="#5FD068"/>
+    <text x="278" y="332" font-size="9" fill="#F1F1F1">8 / 20 min</text>
+    <text x="50" y="356" font-size="9" fill="#AAAAAA">Allowed 07:00 &#8211; 19:30 &#183; bedtime active</text>
+
+    <!-- shortcuts grid -->
+    <g font-size="10" font-weight="600">
+      <rect x="34" y="386" width="132" height="76" rx="12" fill="#2C1F1B"/>
+      <text x="50" y="414" fill="#F1F1F1">Children</text><text x="50" y="430" font-size="8" font-weight="400" fill="#AAAAAA">Profiles &amp; rules</text>
+      <rect x="174" y="386" width="132" height="76" rx="12" fill="#14241D"/>
+      <text x="190" y="414" fill="#F1F1F1">Activity</text><text x="190" y="430" font-size="8" font-weight="400" fill="#AAAAAA">What was watched</text>
+      <rect x="34" y="470" width="132" height="76" rx="12" fill="#16202C"/>
+      <text x="50" y="498" fill="#F1F1F1">Playback</text><text x="50" y="514" font-size="8" font-weight="400" fill="#AAAAAA">Limits &amp; schedule</text>
+      <rect x="174" y="470" width="132" height="76" rx="12" fill="#272727"/>
+      <text x="190" y="498" fill="#F1F1F1">Security</text><text x="190" y="514" font-size="8" font-weight="400" fill="#AAAAAA">Change PIN</text>
+    </g>
+
+    <!-- library summary -->
+    <rect x="34" y="558" width="272" height="60" rx="12" fill="#212121" stroke="#303030"/>
+    <text x="50" y="582" font-size="11" font-weight="600" fill="#F1F1F1">Library: 6 channels &#183; 148 videos</text>
+    <text x="50" y="600" font-size="9" fill="#AAAAAA">Add by link &#183; sync approved channels</text>
+
+    <text x="170" y="656" font-size="9" fill="#AAAAAA" text-anchor="middle">All data stays on this device</text>
+  </g>
+</svg>

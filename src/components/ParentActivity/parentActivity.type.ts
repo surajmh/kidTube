@@ -1,6 +1,6 @@
 import { ApprovedVideo, ChildProfile, WatchHistory } from '../../types';
-import { ScreenTimeUsage } from '../../phase3Types';
-import { ContentApproval, ContentCategory, ContentRequest } from '../../phase4Types';
+import { ScreenTimeUsage } from '../../playbackTypes';
+import { ContentApproval, ContentCategory, ContentRequest } from '../../parentalControlsTypes';
 
 export type ParentActivityProps = {
   profiles: ChildProfile[];

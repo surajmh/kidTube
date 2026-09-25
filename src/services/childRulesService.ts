@@ -1,5 +1,5 @@
-import { childRulesRepository } from '../repositories/phase4Repository';
-import { ChildContentRules, defaultChildContentRules } from '../phase4Types';
+import { childRulesRepository } from '../repositories/parentalControlsRepository';
+import { ChildContentRules, defaultChildContentRules } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 import { toggleCategoryId } from './categoryService';
 

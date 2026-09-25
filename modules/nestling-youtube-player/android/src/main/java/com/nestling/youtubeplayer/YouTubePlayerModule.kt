@@ -4,6 +4,8 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.lang.ref.WeakReference
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -73,6 +75,15 @@ class YouTubePlayerModule : Module() {
 
     AsyncFunction("getChannelVideos") { channelId: String, pageToken: String?, promise: Promise ->
       metadataAsync(promise) { NewPipeChannels.channelVideos(channelId, pageToken) }
+    }
+
+    /**
+     * PBKDF2-HMAC-SHA256 for the parent PIN. Produces a digest byte-identical to the pure-TypeScript
+     * fallback in `src/services/auth/pinHash.ts`, and runs on the IO dispatcher so the Hermes JS
+     * thread — and the PIN modal — never freeze during the 25k derivation rounds.
+     */
+    AsyncFunction("derivePinHash") { pin: String, saltHex: String, iterations: Int, promise: Promise ->
+      metadataAsync(promise) { mapOf("hash" to derivePinHashHex(pin, saltHex, iterations)) }
     }
 
     AsyncFunction("play") { videoId: String ->
@@ -157,6 +168,15 @@ class YouTubePlayerModule : Module() {
         promise.reject("E_METADATA", error.message, error)
       }
     }
+  }
+
+  private fun derivePinHashHex(pin: String, saltHex: String, iterations: Int): String {
+    val salt = saltHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, 256)
+    return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+      .generateSecret(spec)
+      .encoded
+      .joinToString("") { "%02x".format(it.toInt() and 0xff) }
   }
 
   /** Registers the mounted view and starts any play request that arrived before it existed. */

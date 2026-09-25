@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentApproval, ContentCandidate, resolvedCategoryIds } from '../../phase4Types';
+import { ContentApproval, ContentCandidate, resolvedCategoryIds } from '../../parentalControlsTypes';
 import { describeApprovalExpiry } from '../../services/approvalRules';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { AccessCheck } from './parentContent.type';

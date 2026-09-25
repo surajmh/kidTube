@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { contentAccessService } from '../src/services/contentAccessService';
 import { whitelistService } from '../src/services/whitelistService';
 import { kidContentLibraryService } from '../src/services/kidContentLibraryService';
-import { defaultCategories } from '../src/phase4Types';
+import { defaultCategories } from '../src/parentalControlsTypes';
 import { ApprovedChannel, ApprovedVideo } from '../src/types';
 import { approvedVideo, channelA, channelB, syncedVideo, videoIds } from './helpers/fakeProvider';
 

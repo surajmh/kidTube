@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ContentRequest, approvalDurationLabels, approvalDurationOrder } from '../../phase4Types';
+import { ContentRequest, approvalDurationLabels, approvalDurationOrder } from '../../parentalControlsTypes';
 import { describeRequestTarget, requestTarget } from '../../services/requestService';
 import { colors } from '../theme';
 import { FocusablePressable } from '../tv';

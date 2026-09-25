@@ -1,6 +1,6 @@
 import React from 'react';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentApproval, ContentCandidate, ContentCategory } from '../../phase4Types';
+import { ContentApproval, ContentCandidate, ContentCategory } from '../../parentalControlsTypes';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 
 export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';

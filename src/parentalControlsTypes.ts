@@ -1,4 +1,4 @@
-import { ScheduleWindow } from './phase3Types';
+import { ScheduleWindow } from './playbackTypes';
 
 /**
  * Phase 4 domain types.

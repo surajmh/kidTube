@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="700" viewBox="0 0 340 700" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <clipPath id="screen"><rect x="18" y="18" width="304" height="664" rx="30"/></clipPath>
+    <linearGradient id="vid" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2f5c"/><stop offset="1" stop-color="#171425"/></linearGradient>
+    <linearGradient id="nx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f4a40"/><stop offset="1" stop-color="#12292a"/></linearGradient>
+  </defs>
+
+  <rect x="6" y="6" width="328" height="688" rx="42" fill="#1c1c1e"/>
+  <rect x="12" y="12" width="316" height="676" rx="36" fill="#000"/>
+
+  <g clip-path="url(#screen)">
+    <rect x="18" y="18" width="304" height="664" fill="#0F0F0F"/>
+
+    <!-- video surface -->
+    <rect x="18" y="56" width="304" height="171" fill="url(#vid)"/>
+
+    <!-- top row: back + fullscreen -->
+    <polyline points="42,74 34,80 42,86" fill="none" stroke="#F1F1F1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="34" y1="80" x2="48" y2="80" stroke="#F1F1F1" stroke-width="2.4" stroke-linecap="round"/>
+    <g stroke="#F1F1F1" stroke-width="2" fill="none" stroke-linecap="round">
+      <path d="M292 72 h-8 v8"/><path d="M296 90 v8 h-8"/>
+    </g>
+
+    <!-- center play state -->
+    <circle cx="170" cy="141" r="26" fill="rgba(0,0,0,0.55)"/>
+    <polygon points="163,129 163,153 183,141" fill="#fff"/>
+
+    <!-- sponsor marker on timeline -->
+    <rect x="120" y="196" width="26" height="5" rx="2.5" fill="#5FD068"/>
+
+    <!-- scrubber -->
+    <rect x="34" y="198" width="272" height="2" rx="1" fill="#5a5a5a"/>
+    <rect x="34" y="198" width="120" height="2" rx="1" fill="#FF0033"/>
+    <circle cx="154" cy="199" r="5" fill="#FF0033"/>
+    <text x="34" y="216" font-size="9" fill="#F1F1F1">3:12</text>
+    <text x="306" y="216" font-size="9" fill="#F1F1F1" text-anchor="end">7:24</text>
+
+    <!-- control row -->
+    <g fill="none" stroke="#F1F1F1" stroke-width="2" stroke-linecap="round">
+      <!-- -10 -->
+      <g transform="translate(64,244)">
+        <path d="M6 0 A10 10 0 1 1 -4 8" transform="scale(0.9)"/>
+        <polyline points="1,1 7,-1 5,6" transform="scale(0.9)" stroke-width="1.8"/>
+      </g>
+      <!-- play/pause -->
+      <rect x="158" y="234" width="5" height="20" rx="2" fill="#F1F1F1" stroke="none"/>
+      <rect x="170" y="234" width="5" height="20" rx="2" fill="#F1F1F1" stroke="none"/>
+      <!-- +10 -->
+      <g transform="translate(268,244) scale(-1,1)">
+        <path d="M6 0 A10 10 0 1 1 -4 8" transform="scale(0.9)"/>
+        <polyline points="1,1 7,-1 5,6" transform="scale(0.9)" stroke-width="1.8"/>
+      </g>
+    </g>
+
+    <!-- title block -->
+    <text x="34" y="296" font-size="14" font-weight="700" fill="#F1F1F1">Counting with Farm Animals</text>
+    <text x="34" y="315" font-size="11" fill="#AAAAAA">Little Learners &#183; 7:24</text>
+
+    <!-- time-left banner -->
+    <rect x="34" y="330" width="272" height="34" rx="9" fill="#212121"/>
+    <circle cx="54" cy="347" r="8" fill="none" stroke="#FFD76A" stroke-width="1.8"/>
+    <path d="M54 342 v5 l4 3" stroke="#FFD76A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <text x="72" y="351" font-size="11" fill="#F1F1F1">12 minutes of screen time left today</text>
+
+    <!-- Up next -->
+    <text x="34" y="396" font-size="12" font-weight="700" fill="#F1F1F1">Up next in this channel</text>
+    <rect x="34" y="408" width="272" height="76" rx="10" fill="#212121"/>
+    <rect x="42" y="416" width="110" height="60" rx="7" fill="url(#nx)"/>
+    <polygon points="90,438 90,454 104,446" fill="#fff" opacity="0.85"/>
+    <text x="162" y="436" font-size="11" font-weight="600" fill="#F1F1F1">Colors of the Rainbow</text>
+    <text x="162" y="452" font-size="10" fill="#AAAAAA">Little Learners</text>
+    <text x="162" y="468" font-size="10" fill="#AAAAAA">4:51</text>
+
+    <text x="34" y="516" font-size="10" fill="#AAAAAA">Ads and sponsors are skipped automatically.</text>
+    <rect x="34" y="530" width="86" height="24" rx="12" fill="#272727"/>
+    <text x="77" y="546" font-size="10" fill="#F1F1F1" text-anchor="middle">Quality: Auto</text>
+  </g>
+</svg>

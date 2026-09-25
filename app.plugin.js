@@ -1,6 +1,6 @@
 const { withAndroidManifest } = require('@expo/config-plugins');
 
-module.exports = function withNestlingYouTubePlayer(config) {
+module.exports = function withKidTubeYouTubePlayer(config) {
   return withAndroidManifest(config, (config) => {
     const manifest = config.modResults.manifest;
     const permissions = manifest['uses-permission'] ?? [];

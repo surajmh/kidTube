@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Phase3Settings, SponsorBlockCategory, ScreenTimeUsage } from '../../phase3Types';
+import { PlaybackSettings, SponsorBlockCategory, ScreenTimeUsage } from '../../playbackTypes';
 import { localDayKey } from '../../services/playbackPolicyService';
 import { ChildProfile } from '../../types';
 import { colors } from '../theme';
-import styles from './phase3Settings.style';
+import styles from './playbackSettings.style';
 import { minutesToInput, minutesToTime, parseTime } from '../shared/time.helper';
-import { LIMIT_OPTIONS, DEFAULT_SETTINGS_WINDOW } from './phase3Settings.constant';
-import { toggleInList } from './phase3Settings.helper';
+import { LIMIT_OPTIONS, DEFAULT_SETTINGS_WINDOW } from './playbackSettings.constant';
+import { toggleInList } from './playbackSettings.helper';
 
 
 const categoryLabels: Array<[SponsorBlockCategory, string]> = [
@@ -30,12 +30,12 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
   );
 }
 
-export function Phase3SettingsPanel({ settings, usage, profiles, onChange }: { settings: Phase3Settings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: Phase3Settings) => void }) {
+export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: { settings: PlaybackSettings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: PlaybackSettings) => void }) {
   const [selectedDay, setSelectedDay] = useState(new Date().getDay());
   const dayWindows = settings.schedules[String(selectedDay)] ?? [];
   const currentWindow = dayWindows[0] ?? DEFAULT_SETTINGS_WINDOW;
 
-  function patch(patch: Partial<Phase3Settings>) {
+  function patch(patch: Partial<PlaybackSettings>) {
     onChange({ ...settings, ...patch });
   }
 

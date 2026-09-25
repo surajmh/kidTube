@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ApprovalDuration, ContentRequest } from '../../phase4Types';
+import { ApprovalDuration, ContentRequest } from '../../parentalControlsTypes';
 
 /** Who an approval applies to: only the child who asked, or every child. */
 export type RequestScope = 'child' | 'family';

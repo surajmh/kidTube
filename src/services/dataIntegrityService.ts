@@ -1,4 +1,4 @@
-import { Phase3Settings, ScreenTimeUsage } from '../phase3Types';
+import { PlaybackSettings, ScreenTimeUsage } from '../playbackTypes';
 import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../types';
 import {
   ContentApproval,
@@ -7,7 +7,7 @@ import {
   PlaybackOverride,
   ProfilePolicyOverrides,
   defaultChildContentRules,
-} from '../phase4Types';
+} from '../parentalControlsTypes';
 import { approvalExpired } from './contentAccessService';
 import { sanitizeLibrary, sanitizeSettings, sanitizeUsageRecords } from './contentValidation';
 import { pruneUsageRecords } from './screenTimeAccounting';
@@ -35,7 +35,7 @@ export type LocalDataSnapshot = {
   profilePolicies: Record<string, ProfilePolicyOverrides>;
   history: WatchHistory[];
   screenTime: ScreenTimeUsage[];
-  settings: Phase3Settings;
+  settings: PlaybackSettings;
   /** Per-channel fetch state for approved-channel video discovery. */
   channelSync?: ChannelSyncMap;
 };

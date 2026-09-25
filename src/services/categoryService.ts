@@ -1,6 +1,6 @@
-import { categoryRepository } from '../repositories/phase4Repository';
+import { categoryRepository } from '../repositories/parentalControlsRepository';
 import { ApprovedChannel, ApprovedVideo } from '../types';
-import { ContentCategory, defaultCategories } from '../phase4Types';
+import { ContentCategory, defaultCategories } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 
 export class CategoryError extends Error {

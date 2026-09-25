@@ -62,6 +62,8 @@ declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModu
   resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
   getChannel(reference: string): Promise<NativeChannelMetadata>;
   getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
+  /** Native PBKDF2-HMAC-SHA256; identical digest to the pure-TS fallback in auth/pinHash. */
+  derivePinHash(pin: string, saltHex: string, iterations: number): Promise<{ hash?: string; failed?: boolean }>;
   /** Fail-closed allow list: native refuses ids that are not in it. */
   setAllowedVideoIds(videoIds: string[]): Promise<PlayerCommandResult>;
   play(videoId: string): Promise<PlayerCommandResult>;

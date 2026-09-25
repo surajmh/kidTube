@@ -1,4 +1,4 @@
-import { Phase3Settings, ScheduleWindow, ScreenTimeUsage, SponsorBlockCategory, defaultPhase3Settings } from '../phase3Types';
+import { PlaybackSettings, ScheduleWindow, ScreenTimeUsage, SponsorBlockCategory, defaultPlaybackSettings } from '../playbackTypes';
 import { ApprovedChannel, ApprovedVideo } from '../types';
 
 /**
@@ -177,31 +177,31 @@ export function sanitizeSchedules(schedules: unknown): Record<string, ScheduleWi
       if (cleaned.length) next[day] = cleaned;
     }
   }
-  return Object.keys(next).length ? next : defaultPhase3Settings.schedules;
+  return Object.keys(next).length ? next : defaultPlaybackSettings.schedules;
 }
 
 const sponsorBlockCategories: SponsorBlockCategory[] = ['sponsor', 'intro', 'outro', 'selfpromo', 'interaction', 'music'];
 
-export function sanitizeSettings(input: Partial<Phase3Settings> | null | undefined): Phase3Settings {
-  if (!input) return defaultPhase3Settings;
+export function sanitizeSettings(input: Partial<PlaybackSettings> | null | undefined): PlaybackSettings {
+  if (!input) return defaultPlaybackSettings;
   const limit = input.dailyLimitMinutes;
   const dailyLimitMinutes =
     limit === null
       ? null
       : typeof limit === 'number' && Number.isFinite(limit) && limit >= 0
         ? Math.min(limit, 24 * 60)
-        : defaultPhase3Settings.dailyLimitMinutes;
+        : defaultPlaybackSettings.dailyLimitMinutes;
 
   return {
-    ...defaultPhase3Settings,
+    ...defaultPlaybackSettings,
     ...input,
     dailyLimitMinutes,
-    sponsorBlockCategories: (input.sponsorBlockCategories ?? defaultPhase3Settings.sponsorBlockCategories).filter((category) =>
+    sponsorBlockCategories: (input.sponsorBlockCategories ?? defaultPlaybackSettings.sponsorBlockCategories).filter((category) =>
       sponsorBlockCategories.includes(category),
     ),
     schedules: sanitizeSchedules(input.schedules),
-    bedtimeStartMinutes: clampMinutes(input.bedtimeStartMinutes) ?? defaultPhase3Settings.bedtimeStartMinutes,
-    bedtimeEndMinutes: clampMinutes(input.bedtimeEndMinutes) ?? defaultPhase3Settings.bedtimeEndMinutes,
+    bedtimeStartMinutes: clampMinutes(input.bedtimeStartMinutes) ?? defaultPlaybackSettings.bedtimeStartMinutes,
+    bedtimeEndMinutes: clampMinutes(input.bedtimeEndMinutes) ?? defaultPlaybackSettings.bedtimeEndMinutes,
   };
 }
 

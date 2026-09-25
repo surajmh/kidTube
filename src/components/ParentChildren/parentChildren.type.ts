@@ -1,12 +1,12 @@
 import React from 'react';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { Phase3Settings } from '../../phase3Types';
+import { PlaybackSettings } from '../../playbackTypes';
 import {
   ContentApproval,
   ContentCategory,
   PlaybackOverride,
   ProfilePolicyOverrides,
-} from '../../phase4Types';
+} from '../../parentalControlsTypes';
 import { ChildRulesMap } from '../../services/childRulesService';
 import { OverridePreset } from '../../services/playbackOverrideService';
 
@@ -19,7 +19,7 @@ export type ParentChildrenProps = {
   approvals: ContentApproval[];
   rules: ChildRulesMap;
   policyOverrides: Record<string, ProfilePolicyOverrides>;
-  globalSettings: Phase3Settings;
+  globalSettings: PlaybackSettings;
   overrides: PlaybackOverride[];
   onSetPolicy: (profileId: string, patch: ProfilePolicyOverrides | null) => Promise<void>;
   onToggleInherit: (profileId: string, inherit: boolean) => Promise<void>;

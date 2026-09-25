@@ -1,22 +1,25 @@
 {
   "expo": {
-    "name": "Nestling",
-    "slug": "nestling",
+    "name": "kidTube",
+    "slug": "kidtube",
     "version": "1.0.0",
     "orientation": "default",
     "userInterfaceStyle": "light",
-    "scheme": "nestling",
+    "scheme": "kidtube",
+    "icon": "./assets/icon.png",
     "plugins": [
       "./app.plugin.js"
     ],
     "android": {
-      "package": "com.family.nestling",
+      "package": "com.family.kidtube",
       "adaptiveIcon": {
-        "backgroundColor": "#FFF7ED"
+        "foregroundImage": "./assets/adaptive-foreground.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "ios": {
-      "bundleIdentifier": "com.family.nestling"
+      "bundleIdentifier": "com.family.kidtube",
+      "icon": "./assets/icon.png"
     }
   }
 }

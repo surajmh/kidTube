@@ -1,6 +1,6 @@
 import { channelRepository } from '../repositories/channelRepository';
 import { videoRepository } from '../repositories/videoRepository';
-import { requestRepository } from '../repositories/phase4Repository';
+import { requestRepository } from '../repositories/parentalControlsRepository';
 import { ApprovedChannel, ApprovedVideo } from '../types';
 import {
   ApprovalDuration,
@@ -8,7 +8,7 @@ import {
   ContentApproval,
   ContentRequest,
   RequestType,
-} from '../phase4Types';
+} from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 import { approvalService } from './approvalService';
 

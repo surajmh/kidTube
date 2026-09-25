@@ -1,4 +1,4 @@
-import { ApprovalDuration } from '../../phase4Types';
+import { ApprovalDuration } from '../../parentalControlsTypes';
 import { RequestScope } from './parentRequests.type';
 
 /**

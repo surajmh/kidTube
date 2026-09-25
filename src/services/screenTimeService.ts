@@ -1,4 +1,4 @@
-import { screenTimeRepository } from '../repositories/phase3Repository';
+import { screenTimeRepository } from '../repositories/playbackSettingsRepository';
 import { playbackPolicy } from './playbackPolicyService';
 import { pruneUsageRecords } from './screenTimeAccounting';
 

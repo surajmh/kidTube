@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ContentRequest } from '../../../phase4Types';
+import { ContentRequest } from '../../../parentalControlsTypes';
 import {
   ScrollMetrics,
   contentModeFor,

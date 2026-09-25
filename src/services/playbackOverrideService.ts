@@ -1,6 +1,6 @@
-import { overrideRepository } from '../repositories/phase4Repository';
-import { Phase3Settings } from '../phase3Types';
-import { PlaybackOverride } from '../phase4Types';
+import { overrideRepository } from '../repositories/parentalControlsRepository';
+import { PlaybackSettings } from '../playbackTypes';
+import { PlaybackOverride } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 import { endOfLocalDay } from './approvalRules';
 
@@ -19,7 +19,7 @@ export const overridePresets: OverridePreset[] = [
   { id: 'until_bedtime', label: 'Until bedtime', additionalSeconds: null, untilBedtime: true },
 ];
 
-export function bedtimeStartInstant(settings: Phase3Settings, now = new Date()) {
+export function bedtimeStartInstant(settings: PlaybackSettings, now = new Date()) {
   if (!settings.bedtimeEnabled) return null;
   const start = new Date(
     now.getFullYear(),
@@ -70,7 +70,7 @@ export class PlaybackOverrideService {
   /** Parent-only. */
   async grant(
     session: ParentSession,
-    input: { profileId: string; preset: OverridePreset; settings: Phase3Settings; grantsScheduleAccess: boolean },
+    input: { profileId: string; preset: OverridePreset; settings: PlaybackSettings; grantsScheduleAccess: boolean },
   ): Promise<PlaybackOverride[]> {
     parentSessionService.require('grant a parent override');
 

@@ -1,6 +1,6 @@
-import { profilePolicyRepository } from '../repositories/phase4Repository';
-import { Phase3Settings, ScheduleWindow } from '../phase3Types';
-import { ProfilePolicyOverrides } from '../phase4Types';
+import { profilePolicyRepository } from '../repositories/parentalControlsRepository';
+import { PlaybackSettings, ScheduleWindow } from '../playbackTypes';
+import { ProfilePolicyOverrides } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 
 export type ProfilePolicyMap = Record<string, ProfilePolicyOverrides>;
@@ -9,7 +9,7 @@ export type ProfilePolicyMap = Record<string, ProfilePolicyOverrides>;
  * Global Phase 3 settings remain the family default; a profile may override any
  * of them. Any field the profile does not set falls back to the global value.
  */
-export function mergeProfilePolicy(base: Phase3Settings, override?: ProfilePolicyOverrides): Phase3Settings {
+export function mergeProfilePolicy(base: PlaybackSettings, override?: ProfilePolicyOverrides): PlaybackSettings {
   if (!override) return base;
   return {
     ...base,
@@ -26,7 +26,7 @@ export function mergeProfilePolicy(base: Phase3Settings, override?: ProfilePolic
   };
 }
 
-export function describeProfilePolicy(base: Phase3Settings, override?: ProfilePolicyOverrides) {
+export function describeProfilePolicy(base: PlaybackSettings, override?: ProfilePolicyOverrides) {
   const limit = override?.dailyLimitMinutes === undefined ? base.dailyLimitMinutes : override.dailyLimitMinutes;
   const hours = override?.allowedHoursEnabled ?? base.allowedHoursEnabled;
   const autoplay = override?.autoplay ?? base.autoplay;
@@ -57,7 +57,7 @@ export class ProfilePolicyService {
     return Boolean(this.policies[profileId]);
   }
 
-  effectiveSettings(profileId: string, base: Phase3Settings) {
+  effectiveSettings(profileId: string, base: PlaybackSettings) {
     return mergeProfilePolicy(base, this.policies[profileId]);
   }
 

@@ -125,7 +125,7 @@ Every playback entry point was audited, and there is now a native-side gate as w
   `play`/`resume` for anything else with `accepted: false, code: 'policy_blocked'`. The list starts
   empty, so the player fails closed. The adapter turns a rejection into a `POLICY_BLOCKED` error
   instead of a silent no-op, and the child sees only "This video isn't available for your profile."
-- Deep links: `app.json` declares the `nestling` scheme (Expo dev-client requirement) and the Android
+- Deep links: `app.json` declares the `kidtube` scheme (formerly `nestling`) (Expo dev-client requirement) and the Android
   manifest has the matching `VIEW` intent filter, but the app registers **no** `Linking` handler, so a
   URL can only launch the app into Kid Mode — it cannot select content, start playback, or open Parent
   Mode. Nothing parses a URL for content except `parentContentSearchService`, which is parent-only.

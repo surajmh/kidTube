@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo, WatchHistory } from '../types';
-import { ContentCategory, resolvedCategoryIds } from '../phase4Types';
+import { ContentCategory, resolvedCategoryIds } from '../parentalControlsTypes';
 import { contentAccessService } from './contentAccessService';
 
 /**

@@ -1,5 +1,5 @@
-import { approvalRepository } from '../repositories/phase4Repository';
-import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../phase4Types';
+import { approvalRepository } from '../repositories/parentalControlsRepository';
+import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 import { approvalExpired, approvalMatchesTarget } from './contentAccessService';
 import { approvalExpiry } from './approvalRules';

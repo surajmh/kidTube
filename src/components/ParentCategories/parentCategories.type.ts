@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentCategory } from '../../phase4Types';
+import { ContentCategory } from '../../parentalControlsTypes';
 
 /** How much content sits in a category. */
 export type CategoryCounts = { videos: number; channels: number };

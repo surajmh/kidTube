@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../types';
-import { ContentCandidate } from '../phase4Types';
+import { ContentCandidate } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 
 /**
@@ -79,7 +79,7 @@ export function parseChannelCandidate(query: string, context: SearchContext): Co
 export class LinkEntryProvider implements ContentSearchProvider {
   readonly id = 'link-entry';
   readonly label = 'Paste a link';
-  readonly description = 'Paste a YouTube video or channel link. Nestling reads the ID from the link — nothing is uploaded.';
+  readonly description = 'Paste a YouTube video or channel link. kidTube reads the ID from the link — nothing is uploaded.';
 
   async search(query: string, context: SearchContext): Promise<ContentCandidate[]> {
     const video = parseVideoCandidate(query, context);

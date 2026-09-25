@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentCandidate } from '../../phase4Types';
+import { ContentCandidate } from '../../parentalControlsTypes';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../ParentFilter/parentFilter.constant';
 import { PARENT_CONTENT_COPY } from './parentContent.constant';

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ProfilePolicyOverrides } from '../../phase4Types';
+import { ProfilePolicyOverrides } from '../../parentalControlsTypes';
 import { describeProfilePolicy } from '../../services/profilePolicyService';
 import { activeOverridesFor, approvalsFor, childRulesFor } from './parentChildren.helper';
 import { ParentChildrenProps } from './parentChildren.type';

@@ -45,7 +45,7 @@ export function ParentOverrideSheet({
           ) : null}
 
           {!session ? (
-            <PinEntry pin={pin} onChange={setPin} onSubmit={() => void verify()} error={error} submitLabel="Unlock override" />
+            <PinEntry pin={pin} onChange={setPin} onSubmit={() => void verify()} error={error} busy={busy} submitLabel="Unlock override" />
           ) : (
             <>
               <View style={styles.presets}>

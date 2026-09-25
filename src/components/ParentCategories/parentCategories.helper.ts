@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { resolvedCategoryIds } from '../../phase4Types';
+import { resolvedCategoryIds } from '../../parentalControlsTypes';
 import { CategoryCounts } from './parentCategories.type';
 
 /**

@@ -1,4 +1,4 @@
-import { ContentRequest } from '../../phase4Types';
+import { ContentRequest } from '../../parentalControlsTypes';
 import { ParentContentMode, ParentSection } from './parentShell.type';
 import { NEAR_BOTTOM_THRESHOLD } from './parentShell.constant';
 

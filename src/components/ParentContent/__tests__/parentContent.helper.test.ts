@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import { ContentApproval, ContentCandidate, fallbackCategoryId } from '../../../phase4Types';
+import { ContentApproval, ContentCandidate, fallbackCategoryId } from '../../../parentalControlsTypes';
 import { ParentFilters } from '../../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../../ParentFilter/parentFilter.constant';
 import {

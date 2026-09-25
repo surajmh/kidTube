@@ -1,5 +1,5 @@
-import { Phase3Settings, PlaybackDecision, ScreenTimeUsage } from '../phase3Types';
-import { ProfilePolicyOverrides } from '../phase4Types';
+import { PlaybackSettings, PlaybackDecision, ScreenTimeUsage } from '../playbackTypes';
+import { ProfilePolicyOverrides } from '../parentalControlsTypes';
 import { ContentAccessOutcome } from './contentAccessService';
 import { mergeProfilePolicy } from './profilePolicyService';
 
@@ -27,7 +27,7 @@ export type PlaybackCheckInput = {
 };
 
 export type PlaybackPolicyHydration = {
-  settings: Phase3Settings;
+  settings: PlaybackSettings;
   screenTime: ScreenTimeUsage[];
   profiles?: { id: string }[];
   profilePolicies?: Record<string, ProfilePolicyOverrides>;
@@ -89,7 +89,7 @@ export type OverrideResolver = (profileId: string, now: Date) => OverrideWindow;
  * parent override window -> screen time -> allowed hours -> bedtime.
  */
 export class PlaybackPolicyService {
-  private settings!: Phase3Settings;
+  private settings!: PlaybackSettings;
   private usage = new Map<string, ScreenTimeUsage>();
   private profiles: { id: string }[] = [];
   private profilePolicies: Record<string, ProfilePolicyOverrides> = {};
@@ -105,7 +105,7 @@ export class PlaybackPolicyService {
     this.hydrated = true;
   }
 
-  setSettings(settings: Phase3Settings) {
+  setSettings(settings: PlaybackSettings) {
     this.settings = settings;
   }
 

@@ -1,10 +1,10 @@
 import { channelRepository } from '../repositories/channelRepository';
 import { profileRepository } from '../repositories/profileRepository';
 import { videoRepository } from '../repositories/videoRepository';
-import { settingsRepository } from '../repositories/phase3Repository';
+import { settingsRepository } from '../repositories/playbackSettingsRepository';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../types';
-import { Phase3Settings } from '../phase3Types';
-import { ContentCandidate } from '../phase4Types';
+import { PlaybackSettings } from '../playbackTypes';
+import { ContentCandidate } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 
 export class ParentContentError extends Error {
@@ -26,7 +26,7 @@ export const parentContentService = {
     return profiles;
   },
 
-  async saveSettings(session: ParentSession, settings: Phase3Settings) {
+  async saveSettings(session: ParentSession, settings: PlaybackSettings) {
     parentSessionService.require('change playback settings');
     await settingsRepository.save(settings);
     return settings;

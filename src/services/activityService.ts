@@ -1,6 +1,6 @@
 import { ApprovedVideo, WatchHistory } from '../types';
-import { ScreenTimeUsage } from '../phase3Types';
-import { ContentApproval, ContentCategory, ContentRequest, resolvedCategoryIds } from '../phase4Types';
+import { ScreenTimeUsage } from '../playbackTypes';
+import { ContentApproval, ContentCategory, ContentRequest, resolvedCategoryIds } from '../parentalControlsTypes';
 import { localDayKey } from './playbackPolicyService';
 
 /**

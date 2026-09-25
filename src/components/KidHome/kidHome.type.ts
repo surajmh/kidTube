@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../phase4Types';
+import { ContentRequest, RequestType } from '../../parentalControlsTypes';
 import { KidLibrary } from '../../services/kidContentLibraryService';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 

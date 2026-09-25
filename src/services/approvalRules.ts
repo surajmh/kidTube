@@ -1,4 +1,4 @@
-import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../phase4Types';
+import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../parentalControlsTypes';
 
 /**
  * Dependency-free approval rules.

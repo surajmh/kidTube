@@ -1,6 +1,6 @@
 import React from 'react';
 import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../../types';
-import { Phase3Settings, ScreenTimeUsage } from '../../phase3Types';
+import { PlaybackSettings, ScreenTimeUsage } from '../../playbackTypes';
 import {
   ContentApproval,
   ContentCandidate,
@@ -8,7 +8,7 @@ import {
   ContentRequest,
   PlaybackOverride,
   ProfilePolicyOverrides,
-} from '../../phase4Types';
+} from '../../parentalControlsTypes';
 import { ChildRulesMap } from '../../services/childRulesService';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 import { OverridePreset } from '../../services/playbackOverrideService';
@@ -39,7 +39,7 @@ export type ParentShellData = {
   childRules: ChildRulesMap;
   profilePolicies: Record<string, ProfilePolicyOverrides>;
   overrides: PlaybackOverride[];
-  settings: Phase3Settings;
+  settings: PlaybackSettings;
   screenTimeUsage: ScreenTimeUsage[];
   history: WatchHistory[];
 };
@@ -76,7 +76,7 @@ export type ParentShellActions = {
   onRevokeOverride: (profileId: string) => Promise<void>;
   onRevokeApproval: (approval: ContentApproval) => Promise<void>;
   onProfilesChange: (profiles: ChildProfile[]) => Promise<void>;
-  onSettingsChange: (settings: Phase3Settings) => Promise<void>;
+  onSettingsChange: (settings: PlaybackSettings) => Promise<void>;
   accessFor: (profileId: string, target: { videoId?: string; channelId?: string }) => boolean;
 };
 

@@ -1,15 +1,15 @@
-import { screenTimeRepository } from '../repositories/phase3Repository';
+import { screenTimeRepository } from '../repositories/playbackSettingsRepository';
 import {
   approvalRepository,
   childRulesRepository,
   overrideRepository,
   profilePolicyRepository,
   requestRepository,
-} from '../repositories/phase4Repository';
+} from '../repositories/parentalControlsRepository';
 import { watchHistoryRepository } from '../repositories/watchHistoryRepository';
 import { ChildProfile, WatchHistory } from '../types';
-import { ScreenTimeUsage } from '../phase3Types';
-import { ContentApproval, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../phase4Types';
+import { ScreenTimeUsage } from '../playbackTypes';
+import { ContentApproval, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
 import { ChildRulesMap } from './childRulesService';
 
