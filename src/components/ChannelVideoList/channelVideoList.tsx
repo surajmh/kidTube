@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedVideo } from '../../types';
 import { describeChannelSync } from '../../services/content/channelSyncRules';
@@ -148,7 +149,7 @@ export function ChannelVideoList({
   );
 }
 
-function ChannelVideoRow({
+const ChannelVideoRow = React.memo(function ChannelVideoRow({
   video,
   index,
 }: {
@@ -174,4 +175,4 @@ function ChannelVideoRow({
       </View>
     </View>
   );
-}
+});

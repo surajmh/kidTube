@@ -8,10 +8,13 @@ import {
   categoryRepository,
   childRulesRepository,
   overrideRepository,
+  parentalControlsKeys,
   profilePolicyRepository,
   requestRepository,
 } from '../repositories/parentalControlsRepository';
-import { channelSyncRepository, ChannelSyncMap } from '../repositories/channelSyncRepository';
+import { channelSyncRepository, channelSyncKeys, ChannelSyncMap } from '../repositories/channelSyncRepository';
+import { primeStorage, storageKeys } from '../repositories/storage';
+import { playbackSettingsKeys } from '../repositories/playbackSettingsRepository';
 import { channelSyncService } from '../services/channelSyncService';
 import { SyncMode } from '../services/content/channelSyncRules';
 import { ParentSession, parentSessionService } from '../services/auth/parentSession';
@@ -106,6 +109,24 @@ export function useLibrary({
     }
 
     async function hydrateLibrary(profiles: ChildProfile[]) {
+      // One native round trip for every key these `getAll()` calls are about to read individually,
+      // instead of each repository hitting AsyncStorage on its own.
+      await primeStorage([
+        storageKeys.channels,
+        storageKeys.videos,
+        storageKeys.history,
+        playbackSettingsKeys.settings,
+        storageKeys.screenTime,
+        parentalControlsKeys.requests,
+        parentalControlsKeys.approvals,
+        parentalControlsKeys.categories,
+        parentalControlsKeys.childRules,
+        parentalControlsKeys.profilePolicies,
+        parentalControlsKeys.overrides,
+        channelSyncKeys.state,
+      ]);
+      if (cancelled) return;
+
       const [
         storedChannels,
         storedVideos,
@@ -188,17 +209,26 @@ export function useLibrary({
         await Promise.all(changed.map((collection) => persist[collection]()));
       }
 
+      // A grant or override can expire while the app is closed, and an old resolved request
+      // never gets a second look; drop all three now rather than carrying dead entries until
+      // something else happens to touch these lists.
+      const [prunedApprovals, prunedOverrides, prunedRequests] = await Promise.all([
+        approvalService.pruneExpired(),
+        playbackOverrideService.pruneExpired(),
+        requestService.pruneResolved(snapshot.requests),
+      ]);
+
       setChannels(snapshot.channels);
       setVideos(snapshot.videos);
       setHistory(snapshot.history);
       setPlaybackSettings(snapshot.settings);
       setScreenTimeUsage(snapshot.screenTime);
-      setRequests(snapshot.requests);
-      setApprovals(snapshot.approvals);
+      setRequests(prunedRequests);
+      setApprovals(prunedApprovals);
       setCategories(snapshot.categories);
       setChildRules(snapshot.childRules);
       setProfilePolicies(snapshot.profilePolicies);
-      setOverrides(snapshot.overrides);
+      setOverrides(prunedOverrides);
       setChannelSyncStates(snapshot.channelSync);
     }
 
@@ -277,25 +307,14 @@ export function useLibrary({
    * profile, pushed into the module so the decoder itself refuses anything else. Screen time, allowed
    * hours and bedtime stay in `PlaybackPolicy` because they change minute by minute; this list exists
    * so that a bridge call can never reach content the child is not approved for at all.
+   *
+   * `kidLibrary.videos` already is exactly this set (`KidContentLibraryService.build` runs the
+   * same `evaluate` check per video) — deriving from it instead of re-evaluating every video a
+   * second time here avoids doing the same O(videos) access check twice on every relevant change.
    */
   const nativeAllowedVideoIds = useMemo(
-    () =>
-      activeProfile
-        ? videos
-            .filter(
-              (video) =>
-                contentAccessService.evaluate(activeProfile.id, {
-                  videoId: video.youtubeVideoId,
-                  channelId: video.channelId,
-                  categoryIds: video.categoryIds,
-                }) === 'allowed',
-            )
-            .map((video) => video.youtubeVideoId)
-        : [],
-    // `evaluate` already decides approval, candidates and child rules, so the list must not
-    // second-guess it: a video fetched from an approved channel is intentionally not
-    // individually approved (`approved: false`) and has to stay playable.
-    [activeProfile, videos, childRules, approvals],
+    () => kidLibrary.videos.map((video) => video.youtubeVideoId),
+    [kidLibrary],
   );
 
   useEffect(() => {

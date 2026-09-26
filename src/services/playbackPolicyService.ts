@@ -148,17 +148,17 @@ export class PlaybackPolicyService {
     return this.overrides(profileId, now).additionalSeconds;
   }
 
-  private screenTimeDecision(profileId: string, now: Date): PlaybackDecision {
+  private screenTimeDecision(profileId: string, now: Date, override: OverrideWindow): PlaybackDecision {
     const settings = this.getEffectiveSettings(profileId);
     if (settings.dailyLimitMinutes === null) return { allowed: true };
-    const limit = settings.dailyLimitMinutes * 60 + this.getOverrideSeconds(profileId, now);
+    const limit = settings.dailyLimitMinutes * 60 + override.additionalSeconds;
     if (this.getUsage(profileId) >= limit) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
     return { allowed: true };
   }
 
-  private scheduleDecision(profileId: string, now: Date): PlaybackDecision {
+  private scheduleDecision(profileId: string, now: Date, override: OverrideWindow): PlaybackDecision {
     const settings = this.getEffectiveSettings(profileId);
-    if (this.overrides(profileId, now).grantsScheduleAccess) return { allowed: true };
+    if (override.grantsScheduleAccess) return { allowed: true };
     if (settings.bedtimeEnabled && isInWindow(currentMinutes(now), settings.bedtimeStartMinutes, settings.bedtimeEndMinutes)) {
       return { allowed: false, reason: 'BEDTIME' };
     }
@@ -189,17 +189,22 @@ export class PlaybackPolicyService {
     if (!contentDecision.allowed) return contentDecision;
 
     // 5-7. Screen time, allowed hours, bedtime (skipped while a parent override is live).
-    const schedule = this.scheduleDecision(input.profileId, new Date());
+    // Resolved once and shared: `scheduleDecision`/`screenTimeDecision` used to each call the
+    // (injected, possibly non-trivial) override resolver independently for the same instant.
+    const now = new Date();
+    const override = this.overrides(input.profileId, now);
+    const schedule = this.scheduleDecision(input.profileId, now, override);
     if (!schedule.allowed) return schedule;
-    return this.screenTimeDecision(input.profileId, new Date());
+    return this.screenTimeDecision(input.profileId, now, override);
   }
 
   /** Re-checked while playback is already running (no content re-check needed). */
   canContinuePlayback(profileId: string, now = new Date()): PlaybackDecision {
     if (!this.hydrated || !this.settings) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
-    const schedule = this.scheduleDecision(profileId, now);
+    const override = this.overrides(profileId, now);
+    const schedule = this.scheduleDecision(profileId, now, override);
     if (!schedule.allowed) return schedule;
-    return this.screenTimeDecision(profileId, now);
+    return this.screenTimeDecision(profileId, now, override);
   }
 
   shouldAutoplay(profileId: string) {

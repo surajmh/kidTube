@@ -38,20 +38,35 @@ export function approvalMatchesTarget(approval: ContentApproval, videoId?: strin
   return Boolean(channelId) && approval.target.youtubeChannelId === channelId;
 }
 
+/** `evaluate()` runs once per video/channel in the whole library, so its id-list lookups are
+ * indexed into Sets once per rule change rather than `Array.includes`d from scratch every call —
+ * turning what was an O(videos × rules) scan into O(videos + rules). */
+type IndexedChildRules = {
+  rules: ChildContentRules;
+  blockedVideoIds: Set<string>;
+  blockedChannelIds: Set<string>;
+  grantedVideoIds: Set<string>;
+  grantedChannelIds: Set<string>;
+  blockedCategoryIds: Set<string>;
+};
+
 export class ContentAccessService {
   private rules = new Map<string, ChildContentRules>();
   private approvals: ContentApproval[] = [];
   /** Approvals indexed by target id; `evaluate` looks each one up per video. */
   private videoApprovals = new Map<string, ContentApproval[]>();
   private channelApprovals = new Map<string, ContentApproval[]>();
+  private indexedRules = new Map<string, IndexedChildRules>();
 
   hydrate(input: { rules?: Record<string, ChildContentRules>; approvals?: ContentApproval[] }) {
     this.rules = new Map(Object.entries(input.rules ?? {}));
+    this.indexedRules = new Map();
     this.setApprovals(input.approvals ?? []);
   }
 
   setRules(rules: Record<string, ChildContentRules>) {
     this.rules = new Map(Object.entries(rules));
+    this.indexedRules = new Map();
   }
 
   setApprovals(approvals: ContentApproval[]) {
@@ -71,6 +86,22 @@ export class ContentAccessService {
 
   getRules(profileId: string): ChildContentRules {
     return this.rules.get(profileId) ?? defaultChildContentRules(profileId);
+  }
+
+  private getIndexedRules(profileId: string): IndexedChildRules {
+    const cached = this.indexedRules.get(profileId);
+    if (cached) return cached;
+    const rules = this.getRules(profileId);
+    const indexed: IndexedChildRules = {
+      rules,
+      blockedVideoIds: new Set(rules.blockedVideoIds),
+      blockedChannelIds: new Set(rules.blockedChannelIds),
+      grantedVideoIds: new Set(rules.grantedVideoIds),
+      grantedChannelIds: new Set(rules.grantedChannelIds),
+      blockedCategoryIds: new Set(rules.blockedCategoryIds),
+    };
+    this.indexedRules.set(profileId, indexed);
+    return indexed;
   }
 
   /** Approvals that apply to this profile (its own plus family-wide ones). */
@@ -105,30 +136,38 @@ export class ContentAccessService {
     return this.resolveApprovalState(profileId, input, now) === 'allowed';
   }
 
-  resolveIdentifiers(input: ContentAccessInput) {
+  /** Resolves the video record once, alongside the ids `evaluate` needs — avoids the two
+   * independent `whitelistService.findVideo` lookups this used to do for the same call. */
+  private resolveVideoAndIdentifiers(input: ContentAccessInput) {
     const video = whitelistService.findVideo(input.videoId);
     const channelId = input.channelId ?? video?.channelId;
-    return { videoId: input.videoId, channelId };
+    return { video, videoId: input.videoId, channelId };
+  }
+
+  resolveIdentifiers(input: ContentAccessInput) {
+    const { videoId, channelId } = this.resolveVideoAndIdentifiers(input);
+    return { videoId, channelId };
   }
 
   /** True when the child's own rules grant this exact item. */
   isChildGranted(profileId: string, input: { videoId?: string; channelId?: string }) {
-    const rules = this.getRules(profileId);
+    const indexed = this.getIndexedRules(profileId);
     return Boolean(
-      (input.videoId && rules.grantedVideoIds.includes(input.videoId)) ||
-        (input.channelId && rules.grantedChannelIds.includes(input.channelId)),
+      (input.videoId && indexed.grantedVideoIds.has(input.videoId)) ||
+        (input.channelId && indexed.grantedChannelIds.has(input.channelId)),
     );
   }
 
   evaluate(profileId: string, input: ContentAccessInput, now = new Date()): ContentAccessOutcome {
-    const rules = this.getRules(profileId);
-    const { videoId, channelId } = this.resolveIdentifiers(input);
+    const indexed = this.getIndexedRules(profileId);
+    const { rules } = indexed;
+    const { video, videoId, channelId } = this.resolveVideoAndIdentifiers(input);
 
     // 1. Explicit child blocks always win.
-    if (videoId && rules.blockedVideoIds.includes(videoId)) return 'child_blocked';
-    if (channelId && rules.blockedChannelIds.includes(channelId)) return 'child_blocked';
+    if (videoId && indexed.blockedVideoIds.has(videoId)) return 'child_blocked';
+    if (channelId && indexed.blockedChannelIds.has(channelId)) return 'child_blocked';
 
-    const isCandidate = input.isCandidate ?? whitelistService.findVideo(videoId)?.candidate === true;
+    const isCandidate = input.isCandidate ?? video?.candidate === true;
     const approvalState = this.resolveApprovalState(profileId, { videoId, channelId }, now);
     const childGranted = this.isChildGranted(profileId, { videoId, channelId });
 
@@ -143,7 +182,7 @@ export class ContentAccessService {
 
     // 4. Disabled category for this child.
     const categoryIds = input.categoryIds ?? whitelistService.categoryIdsFor(videoId, channelId);
-    if (categoryIds.some((categoryId) => rules.blockedCategoryIds.includes(categoryId))) return 'category_blocked';
+    if (categoryIds.some((categoryId) => indexed.blockedCategoryIds.has(categoryId))) return 'category_blocked';
 
     return 'allowed';
   }

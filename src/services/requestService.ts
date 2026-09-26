@@ -123,6 +123,9 @@ export function upsertApprovedContent(
   };
 }
 
+/** A resolved request stays visible in the inbox for a while, then is dropped automatically. */
+const resolvedRetentionMs = 30 * 24 * 60 * 60 * 1000;
+
 export class RequestService {
   pending(requests: ContentRequest[]) {
     return requests.filter((request) => request.status === 'pending');
@@ -245,6 +248,20 @@ export class RequestService {
   async clearResolved(session: ParentSession, requests: ContentRequest[]) {
     parentSessionService.require('clear resolved content requests');
     const next = requests.filter((request) => request.status === 'pending');
+    await requestRepository.saveAll(next);
+    return next;
+  }
+
+  /**
+   * Drops resolved requests once they age out, so an inbox nobody clears by hand does not
+   * grow forever. Pending requests are never touched — only a parent's decision ages out.
+   */
+  async pruneResolved(requests: ContentRequest[], now = new Date()) {
+    const next = requests.filter(
+      (request) => request.status === 'pending' || !request.resolvedAt ||
+        now.getTime() - new Date(request.resolvedAt).getTime() < resolvedRetentionMs,
+    );
+    if (next.length === requests.length) return requests;
     await requestRepository.saveAll(next);
     return next;
   }

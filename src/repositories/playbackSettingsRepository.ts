@@ -4,6 +4,8 @@ import { readJson, storageKeys, writeJson } from './storage';
 // Historical key name — renaming it would orphan saved settings on existing installs.
 const settingsKey = '@nestling/phase3-settings';
 
+export const playbackSettingsKeys = { settings: settingsKey } as const;
+
 export const settingsRepository = {
   async get(): Promise<PlaybackSettings> {
     const stored = await readJson<Partial<PlaybackSettings> | null>(settingsKey, null);

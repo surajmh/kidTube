@@ -1,7 +1,10 @@
-import React from 'react';
-import { Image, Text, TextInput, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { channelVideosFrom, describeChannelSync } from '../../services/content/channelSyncRules';
+import { ApprovedChannel, ApprovedVideo } from '../../types';
+import { ContentApproval, ContentCategory } from '../../parentalControlsTypes';
+import { ChannelSyncState, channelVideosFrom, describeChannelSync } from '../../services/content/channelSyncRules';
 import { colors, cardTints } from '../theme';
 import { FocusablePressable } from '../tv';
 import { ParentFilterButton, ParentFilterDrawer } from '../ParentFilter';
@@ -14,6 +17,206 @@ import { PARENT_CONTENT_COPY, PARENT_CONTENT_TITLES } from './parentContent.cons
 import { ContentTab, ParentContentMode, ParentContentProps } from './parentContent.type';
 
 export type { ContentTab, ParentContentMode };
+
+/** The category-toggle chips shown under an expanded channel or video row. */
+function CategoryEditor<T extends { categoryIds?: string[] }>({
+  item,
+  categories,
+  onToggle,
+}: {
+  item: T;
+  categories: ContentCategory[];
+  onToggle: (item: T, categoryId: string, assigned: boolean) => void;
+}) {
+  return (
+    <View style={styles.categoryEditor}>
+      {categories.map((category) => {
+        const assigned = Boolean(item.categoryIds?.includes(category.id));
+        return (
+          <FocusablePressable
+            key={category.id}
+            accessibilityLabel={`Toggle ${category.name}`}
+            style={[styles.chip, assigned && styles.chipActive]}
+            onPress={() => onToggle(item, category.id, assigned)}
+          >
+            <Text style={[styles.chipText, assigned && styles.chipTextActive]}>{category.name}</Text>
+          </FocusablePressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * One row of the Channels tab. Memoized so toggling `expanded` on one channel, or any other local
+ * panel state (search text, filters), does not force every other row to re-render and re-run its
+ * category/expiry derivations too.
+ */
+const ParentChannelRow = React.memo(function ParentChannelRow({
+  channel,
+  videos,
+  approvals,
+  categories,
+  expanded,
+  syncState,
+  onOpenChannel,
+  onToggleExpanded,
+  onToggleCategory,
+  onRemove,
+}: {
+  channel: ApprovedChannel;
+  videos: ApprovedVideo[];
+  approvals: ContentApproval[];
+  categories: ContentCategory[];
+  expanded: boolean;
+  syncState: ChannelSyncState | undefined;
+  onOpenChannel: (channel: ApprovedChannel) => void;
+  onToggleExpanded: (id: string) => void;
+  onToggleCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => void;
+  onRemove: (channel: ApprovedChannel) => void;
+}) {
+  const expiry = useMemo(
+    () => approveLabelFor(approvals, { channelId: channel.channelId }),
+    [approvals, channel.channelId],
+  );
+  const channelVideos = useMemo(
+    () => channelVideosFrom(videos, channel.channelId),
+    [videos, channel.channelId],
+  );
+
+  return (
+    <View style={styles.row}>
+      {channel.thumbnailUrl ? (
+        <Image source={{ uri: channel.thumbnailUrl }} style={styles.thumb} />
+      ) : (
+        <View style={styles.thumbFallback}><Feather name="radio" size={18} color={colors.ink} /></View>
+      )}
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowTitle} numberOfLines={1}>{channel.name}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {channel.approved
+            ? describeChannelSync(syncState)
+            : `${channel.channelId} · awaiting approval`}
+        </Text>
+        <View style={styles.tagRow}>
+          <View style={styles.approvalTag}>
+            <Feather name={channel.approved ? 'check' : 'clock'} size={11} color={colors.mintDark} />
+            <Text style={styles.approvalTagText}>{channel.approved ? 'Approved' : 'Candidate'}</Text>
+          </View>
+          {/* Never claim "0 videos": an unloaded channel is unknown, not empty. */}
+          {channel.approved && (channelVideos.length > 0 || syncState?.fetchedAt) ? (
+            <View style={styles.videoCountTag}>
+              <Feather name="play-circle" size={11} color={colors.ink} />
+              <Text style={styles.videoCountText}>
+                {channelVideos.length} {channelVideos.length === 1 ? 'video' : 'videos'}
+              </Text>
+            </View>
+          ) : channel.approved ? (
+            <View style={styles.expiryTag}>
+              <Text style={styles.expiryTagText}>{PARENT_CONTENT_COPY.videosNotLoaded}</Text>
+            </View>
+          ) : null}
+          {expiry.map((label, index) => (
+            <View key={`${label}-${index}`} style={styles.expiryTag}>
+              <Text style={styles.expiryTagText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      {channel.approved ? (
+        <FocusablePressable
+          accessibilityLabel={`Open ${channel.name}`}
+          style={styles.iconButton}
+          onPress={() => onOpenChannel(channel)}
+        >
+          <Feather name="chevron-right" size={18} color={colors.ink} />
+        </FocusablePressable>
+      ) : null}
+      <FocusablePressable
+        accessibilityLabel={`Edit categories for ${channel.name}`}
+        style={styles.iconButton}
+        onPress={() => onToggleExpanded(channel.id)}
+      >
+        <Feather name="tag" size={16} color={colors.muted} />
+      </FocusablePressable>
+      <FocusablePressable
+        accessibilityLabel={`Remove ${channel.name}`}
+        style={styles.iconButton}
+        onPress={() => void onRemove(channel)}
+      >
+        <Feather name="trash-2" size={16} color={colors.danger} />
+      </FocusablePressable>
+      {expanded ? <CategoryEditor item={channel} categories={categories} onToggle={onToggleCategory} /> : null}
+    </View>
+  );
+});
+
+/** One row of the Videos tab. Memoized for the same reason as {@link ParentChannelRow}. */
+const ParentVideoRow = React.memo(function ParentVideoRow({
+  video,
+  approvals,
+  categories,
+  expanded,
+  onToggleExpanded,
+  onToggleCategory,
+  onRemove,
+}: {
+  video: ApprovedVideo;
+  approvals: ContentApproval[];
+  categories: ContentCategory[];
+  expanded: boolean;
+  onToggleExpanded: (id: string) => void;
+  onToggleCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => void;
+  onRemove: (video: ApprovedVideo) => void;
+}) {
+  const expiry = useMemo(
+    () => approveLabelFor(approvals, { videoId: video.youtubeVideoId, channelId: video.channelId }),
+    [approvals, video.youtubeVideoId, video.channelId],
+  );
+
+  return (
+    <View style={styles.row}>
+      {video.thumbnailUrl ? (
+        <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} />
+      ) : (
+        <View style={styles.thumbFallback}><Feather name="play" size={18} color={colors.ink} /></View>
+      )}
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowTitle} numberOfLines={1}>{video.title}</Text>
+        <Text style={styles.rowMeta} numberOfLines={1}>
+          {video.channelName ?? video.youtubeVideoId}
+          {video.duration ? ` · ${Math.round(video.duration / 60)} min` : ''}
+        </Text>
+        <View style={styles.tagRow}>
+          <View style={styles.approvalTag}>
+            <Feather name={video.approved && !video.candidate ? 'check' : 'clock'} size={11} color={colors.mintDark} />
+            <Text style={styles.approvalTagText}>{video.approved && !video.candidate ? 'Approved' : 'Can be asked for'}</Text>
+          </View>
+          {expiry.map((label, index) => (
+            <View key={`${label}-${index}`} style={styles.expiryTag}>
+              <Text style={styles.expiryTagText}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      <FocusablePressable
+        accessibilityLabel={`Edit categories for ${video.title}`}
+        style={styles.iconButton}
+        onPress={() => onToggleExpanded(video.id)}
+      >
+        <Feather name="tag" size={16} color={colors.muted} />
+      </FocusablePressable>
+      <FocusablePressable
+        accessibilityLabel={`Remove ${video.title}`}
+        style={styles.iconButton}
+        onPress={() => void onRemove(video)}
+      >
+        <Feather name="trash-2" size={16} color={colors.danger} />
+      </FocusablePressable>
+      {expanded ? <CategoryEditor item={video} categories={categories} onToggle={onToggleCategory} /> : null}
+    </View>
+  );
+});
 
 export function ParentContentPanel({
   profiles,
@@ -144,164 +347,46 @@ export function ParentContentPanel({
             <PagedGrid
               items={filteredChannels}
               pageSize={20}
-              renderItem={(channel) => {
-                const expanded = expandedId === channel.id;
-                const expiry = approveLabelFor(approvals, { channelId: channel.channelId });
-                const state = syncStateFor(channel.channelId);
-                const channelVideos = channelVideosFrom(videos, channel.channelId);
-                return (
-                  <View key={channel.id} style={styles.row}>
-                    {channel.thumbnailUrl ? (
-                      <Image source={{ uri: channel.thumbnailUrl }} style={styles.thumb} />
-                    ) : (
-                      <View style={styles.thumbFallback}><Feather name="radio" size={18} color={colors.ink} /></View>
-                    )}
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowTitle} numberOfLines={1}>{channel.name}</Text>
-                      <Text style={styles.rowMeta} numberOfLines={1}>
-                        {channel.approved
-                          ? describeChannelSync(state)
-                          : `${channel.channelId} · awaiting approval`}
-                      </Text>
-                      <View style={styles.tagRow}>
-                        <View style={styles.approvalTag}>
-                          <Feather name={channel.approved ? 'check' : 'clock'} size={11} color={colors.mintDark} />
-                          <Text style={styles.approvalTagText}>{channel.approved ? 'Approved' : 'Candidate'}</Text>
-                        </View>
-                        {/* Never claim "0 videos": an unloaded channel is unknown, not empty. */}
-                        {channel.approved && (channelVideos.length > 0 || state?.fetchedAt) ? (
-                          <View style={styles.videoCountTag}>
-                            <Feather name="play-circle" size={11} color={colors.ink} />
-                            <Text style={styles.videoCountText}>
-                              {channelVideos.length} {channelVideos.length === 1 ? 'video' : 'videos'}
-                            </Text>
-                          </View>
-                        ) : channel.approved ? (
-                          <View style={styles.expiryTag}>
-                            <Text style={styles.expiryTagText}>{PARENT_CONTENT_COPY.videosNotLoaded}</Text>
-                          </View>
-                        ) : null}
-                        {expiry.map((label, index) => (
-                          <View key={`${label}-${index}`} style={styles.expiryTag}>
-                            <Text style={styles.expiryTagText}>{label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    {channel.approved ? (
-                      <FocusablePressable
-                        accessibilityLabel={`Open ${channel.name}`}
-                        style={styles.iconButton}
-                        onPress={() => {
-                          onSelectChannel(channel.channelId);
-                          // Opening the channel page refreshes it only if the cache is stale.
-                          onOpenChannelVideos(channel);
-                        }}
-                      >
-                        <Feather name="chevron-right" size={18} color={colors.ink} />
-                      </FocusablePressable>
-                    ) : null}
-                    <FocusablePressable
-                      accessibilityLabel={`Edit categories for ${channel.name}`}
-                      style={styles.iconButton}
-                      onPress={() => content.toggleExpanded(channel.id)}
-                    >
-                      <Feather name="tag" size={16} color={colors.muted} />
-                    </FocusablePressable>
-                    <FocusablePressable
-                      accessibilityLabel={`Remove ${channel.name}`}
-                      style={styles.iconButton}
-                      onPress={() => void onRemoveChannel(channel)}
-                    >
-                      <Feather name="trash-2" size={16} color={colors.danger} />
-                    </FocusablePressable>
-                    {expanded ? (
-                      <View style={styles.categoryEditor}>
-                        {categories.map((category) => {
-                          const assigned = Boolean(channel.categoryIds?.includes(category.id));
-                          return (
-                            <FocusablePressable
-                              key={category.id}
-                              accessibilityLabel={`Toggle ${category.name}`}
-                              style={[styles.chip, assigned && styles.chipActive]}
-                              onPress={() => void onToggleChannelCategory(channel, category.id, assigned)}
-                            >
-                              <Text style={[styles.chipText, assigned && styles.chipTextActive]}>{category.name}</Text>
-                            </FocusablePressable>
-                          );
-                        })}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              }}
+              renderItem={(channel) => (
+                <ParentChannelRow
+                  key={channel.id}
+                  channel={channel}
+                  videos={videos}
+                  approvals={approvals}
+                  categories={categories}
+                  expanded={expandedId === channel.id}
+                  syncState={syncStateFor(channel.channelId)}
+                  onOpenChannel={(target) => {
+                    onSelectChannel(target.channelId);
+                    // Opening the channel page refreshes it only if the cache is stale.
+                    onOpenChannelVideos(target);
+                  }}
+                  onToggleExpanded={content.toggleExpanded}
+                  onToggleCategory={(target, categoryId, assigned) =>
+                    void onToggleChannelCategory(target, categoryId, assigned)
+                  }
+                  onRemove={onRemoveChannel}
+                />
+              )}
             />
           ) : (
             <PagedGrid
               items={filteredVideos}
               pageSize={20}
-              renderItem={(video) => {
-                const expanded = expandedId === video.id;
-                const expiry = approveLabelFor(approvals, { videoId: video.youtubeVideoId, channelId: video.channelId });
-                return (
-                  <View key={video.id} style={styles.row}>
-                    {video.thumbnailUrl ? (
-                      <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} />
-                    ) : (
-                      <View style={styles.thumbFallback}><Feather name="play" size={18} color={colors.ink} /></View>
-                    )}
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowTitle} numberOfLines={1}>{video.title}</Text>
-                      <Text style={styles.rowMeta} numberOfLines={1}>
-                        {video.channelName ?? video.youtubeVideoId}
-                        {video.duration ? ` · ${Math.round(video.duration / 60)} min` : ''}
-                      </Text>
-                      <View style={styles.tagRow}>
-                        <View style={styles.approvalTag}>
-                          <Feather name={video.approved && !video.candidate ? 'check' : 'clock'} size={11} color={colors.mintDark} />
-                          <Text style={styles.approvalTagText}>{video.approved && !video.candidate ? 'Approved' : 'Can be asked for'}</Text>
-                        </View>
-                        {expiry.map((label, index) => (
-                          <View key={`${label}-${index}`} style={styles.expiryTag}>
-                            <Text style={styles.expiryTagText}>{label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <FocusablePressable
-                      accessibilityLabel={`Edit categories for ${video.title}`}
-                      style={styles.iconButton}
-                      onPress={() => content.toggleExpanded(video.id)}
-                    >
-                      <Feather name="tag" size={16} color={colors.muted} />
-                    </FocusablePressable>
-                    <FocusablePressable
-                      accessibilityLabel={`Remove ${video.title}`}
-                      style={styles.iconButton}
-                      onPress={() => void onRemoveVideo(video)}
-                    >
-                      <Feather name="trash-2" size={16} color={colors.danger} />
-                    </FocusablePressable>
-                    {expanded ? (
-                      <View style={styles.categoryEditor}>
-                        {categories.map((category) => {
-                          const assigned = Boolean(video.categoryIds?.includes(category.id));
-                          return (
-                            <FocusablePressable
-                              key={category.id}
-                              accessibilityLabel={`Toggle ${category.name}`}
-                              style={[styles.chip, assigned && styles.chipActive]}
-                              onPress={() => void onToggleVideoCategory(video, category.id, assigned)}
-                            >
-                              <Text style={[styles.chipText, assigned && styles.chipTextActive]}>{category.name}</Text>
-                            </FocusablePressable>
-                          );
-                        })}
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              }}
+              renderItem={(video) => (
+                <ParentVideoRow
+                  key={video.id}
+                  video={video}
+                  approvals={approvals}
+                  categories={categories}
+                  expanded={expandedId === video.id}
+                  onToggleExpanded={content.toggleExpanded}
+                  onToggleCategory={(target, categoryId, assigned) =>
+                    void onToggleVideoCategory(target, categoryId, assigned)
+                  }
+                  onRemove={onRemoveVideo}
+                />
+              )}
             />
           )}
 

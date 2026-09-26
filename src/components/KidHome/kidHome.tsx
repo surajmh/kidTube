@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
+import { PagedGrid } from '../PagedGrid';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
 import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
 import { useKidHome } from './kidHome.hook';
@@ -186,9 +187,10 @@ export function KidHomeScreen(props: KidHomeProps) {
             ) : null}
 
             {kid.feedVideos.length ? (
-              kid.feedVideos.map((video) => (
-                <VideoCard key={video.id} video={video} onPress={onVideoPress} />
-              ))
+              <PagedGrid
+                items={kid.feedVideos}
+                renderItem={(video) => <VideoCard key={video.id} video={video} onPress={onVideoPress} />}
+              />
             ) : (
               <Empty
                 icon="play-circle"

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApprovedVideo } from '../../types';
 import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './kidHome.helper';
 import { KidHomeProps, KidTab } from './kidHome.type';
@@ -7,6 +7,9 @@ type UseKidHomeInput = Pick<
   KidHomeProps,
   'library' | 'tab' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
 >;
+
+/** Long enough to skip the search scan on every keystroke of a fast typer, short enough to feel instant. */
+const SEARCH_DEBOUNCE_MS = 200;
 
 /**
  * All of Kid Mode's view state and derivation.
@@ -26,11 +29,18 @@ export function useKidHome({
 }: UseKidHomeInput) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
+  // The library scan runs once typing pauses, not on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const results = useMemo(
-    () => searchLibrary(library.videos, library.channels, query),
-    [library.videos, library.channels, query],
+    () => searchLibrary(library.videos, library.channels, debouncedQuery),
+    [library.videos, library.channels, debouncedQuery],
   );
 
   const feedVideos = useMemo(
@@ -61,6 +71,7 @@ export function useKidHome({
   const closeSearch = useCallback(() => {
     setSearching(false);
     setQuery('');
+    setDebouncedQuery('');
   }, []);
 
   const toggleSwitcher = useCallback(() => setSwitcherOpen((open) => !open), []);
@@ -73,6 +84,7 @@ export function useKidHome({
       onTabChange('channels');
       setSearching(false);
       setQuery('');
+      setDebouncedQuery('');
     },
     [onSelectChannel, onTabChange],
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { ContentRequest, approvalDurationLabels, approvalDurationOrder } from '../../parentalControlsTypes';
 import { describeRequestTarget, requestTarget } from '../../services/requestService';

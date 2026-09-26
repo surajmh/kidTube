@@ -70,16 +70,20 @@ describe('useKidHome', () => {
   });
 
   it('clears the query when search closes, so reopening starts clean', () => {
+    jest.useFakeTimers();
     const { result } = setup();
     act(() => result.current.openSearch());
     act(() => result.current.setQuery('blender'));
     assert.equal(result.current.searching, true);
+    // The search scan is debounced: it only runs once typing pauses.
+    act(() => jest.advanceTimersByTime(250));
     assert.equal(result.current.results.channels.length, 1);
 
     act(() => result.current.closeSearch());
     assert.equal(result.current.searching, false);
     assert.equal(result.current.query, '');
     assert.deepEqual(result.current.results, { videos: [], channels: [] });
+    jest.useRealTimers();
   });
 
   it('leaves search and lands on the channel page when a result is opened', () => {

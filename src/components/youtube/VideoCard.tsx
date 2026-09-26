@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
 import { KID_COPY, MONOGRAM_TINTS } from '../KidHome/kidHome.constant';
