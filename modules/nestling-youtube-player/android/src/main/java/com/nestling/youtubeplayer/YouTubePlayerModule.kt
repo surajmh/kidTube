@@ -148,6 +148,17 @@ class YouTubePlayerModule : Module() {
       mapOf<String, Any?>("accepted" to true)
     }
 
+    /**
+     * Resolves a video's stream ahead of playing it (typically "up next"), so switching to it
+     * later skips the resolve latency. Gated by the same allow list as `play`/`resume` — this
+     * must never become a way to reach unapproved content, even speculatively.
+     */
+    AsyncFunction("prefetch") { videoId: String ->
+      if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
+      ResolvedStreamCache.prefetch(videoId)
+      mapOf<String, Any?>("accepted" to true)
+    }
+
     View(YouTubePlayerView::class) {
       Events("onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError")
 

@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
 import { yt } from '../youtube/theme';
 import { colors } from '../theme';
-import { ChannelAvatar, VideoCard as FeedVideoCard } from '../youtube/VideoCard';
+import { ChannelAvatar, Thumbnail, VideoCard as FeedVideoCard } from '../youtube/VideoCard';
 import { YouTubePlayer, isNativeYouTubePlayerAvailable } from '../../native';
 import { describePlaybackDecision } from '../../services/playbackPolicyService';
 import { formatDuration } from './player.helper';
@@ -44,6 +44,17 @@ export function PlayerScreen(props: PlayerScreenProps) {
       <PlayerHeader onBack={player.leavePlayer} />
       <View style={styles.nativePlayerStage}>
         <YouTubePlayer autoplay videoId={video.youtubeVideoId} style={styles.nativePlayer} {...player.nativeHandlers} />
+        {player.showThumbnailCover ? (
+          // The native surface still shows whatever it last rendered until this video's own
+          // stream starts — covering it with this video's thumbnail (plus a spinner) makes a
+          // video switch read as "loading the new one", not "nothing happened".
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Thumbnail video={video} />
+            <View style={[StyleSheet.absoluteFill, styles.overlayCenter]}>
+              <ActivityIndicator size="large" color={yt.text} />
+            </View>
+          </View>
+        ) : null}
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <Pressable accessibilityLabel="Show or hide player controls" style={StyleSheet.absoluteFill} onPress={player.toggleControls} />
           {player.controlsVisible || player.hasEnded ? (

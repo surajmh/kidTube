@@ -50,6 +50,15 @@ export class NativeYouTubePlayerAdapter implements PlayerAdapter {
     return requireNativePlayer().setVolume(volume).then(() => undefined);
   }
 
+  /** Best-effort: a rejection (policy-blocked, or the module being unavailable) is never an error here. */
+  async prefetch(videoId: string) {
+    try {
+      await requireNativePlayer().prefetch(videoId);
+    } catch {
+      // Nothing to do — the eventual `play()`/`resume()` just resolves normally instead.
+    }
+  }
+
   setFullscreen(fullscreen: boolean) {
     return requireNativePlayer().setFullscreen(fullscreen).then(() => undefined);
   }

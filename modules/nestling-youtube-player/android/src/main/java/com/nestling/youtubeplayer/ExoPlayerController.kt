@@ -13,10 +13,13 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.ui.PlayerView
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -71,7 +74,8 @@ class ExoPlayerController(
   }
 
   val player: ExoPlayer = ExoPlayer.Builder(context)
-    .setMediaSourceFactory(DefaultMediaSourceFactory(context))
+    .setMediaSourceFactory(cachedMediaSourceFactory())
+    .setLoadControl(loadControl())
     .setAudioAttributes(
       AudioAttributes.Builder()
         .setUsage(C.USAGE_MEDIA)
@@ -299,6 +303,16 @@ class ExoPlayerController(
     autoplay: Boolean,
     preferAdaptive: Boolean = true,
   ) {
+    // Only the normal (non-recovery) path consults the prefetch cache: a `preferAdaptive = false`
+    // call is a retry deliberately asking for the degraded fallback, and a stale adaptive-quality
+    // entry from a prefetch would be exactly the wrong thing to hand it.
+    if (preferAdaptive) {
+      val cached = ResolvedStreamCache.takeIfFresh(videoId)
+      if (cached != null) {
+        prepare(cached, startPositionMs, autoplay)
+        return
+      }
+    }
     val task = Runnable {
       val result = runCatching { resolver.resolve(videoId, preferAdaptive) }
       mainHandler.post {
@@ -415,8 +429,30 @@ class ExoPlayerController(
     else -> PlaybackCodes.PLAYBACK_FAILURE
   }
 
+  private fun cachedMediaSourceFactory() =
+    DefaultMediaSourceFactory(MediaCache.dataSourceFactory(context), DefaultExtractorsFactory())
+
+  /**
+   * Raises only the buffer ceiling above the default; start-up and rebuffer-resume thresholds stay
+   * at ExoPlayer's own values, which are already fast (1s / 2s).
+   *
+   * `AuthorizedPlaybackResolver`'s fallback progressive streams are throttled server-side: they
+   * trickle bytes just fast enough to avoid a read-timeout, but the rate is bursty rather than
+   * flat, so a bigger reserve absorbs a temporary dip instead of draining into the buffer-stall
+   * watchdog for what would have recovered on its own a second later.
+   */
+  private fun loadControl(): LoadControl =
+    DefaultLoadControl.Builder()
+      .setBufferDurationsMs(
+        DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+        120_000,
+        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+      )
+      .build()
+
   private fun createMediaSource(info: PlaybackInfo): MediaSource? {
-    val factory = DefaultMediaSourceFactory(context)
+    val factory = cachedMediaSourceFactory()
     val videoUrl = info.videoUrl
     val audioUrl = info.audioUrl
 
@@ -424,16 +460,26 @@ class ExoPlayerController(
     // ExoPlayer plays as one by merging them.
     if (info.manifestUrl == null && videoUrl != null && audioUrl != null) {
       return MergingMediaSource(
-        factory.createMediaSource(mediaItem(info.videoId, videoUrl, info.mimeType)),
-        factory.createMediaSource(mediaItem(info.videoId, audioUrl, null)),
+        factory.createMediaSource(mediaItem(info.videoId, videoUrl, info.mimeType, "video-${info.height ?: 0}")),
+        factory.createMediaSource(mediaItem(info.videoId, audioUrl, null, "audio")),
       )
     }
 
     val single = info.manifestUrl ?: videoUrl ?: audioUrl ?: return null
-    return factory.createMediaSource(mediaItem(info.videoId, single, info.mimeType))
+    val variant = if (info.manifestUrl != null) "hls" else "muxed-${info.height ?: 0}"
+    return factory.createMediaSource(mediaItem(info.videoId, single, info.mimeType, variant))
   }
 
-  private fun mediaItem(videoId: String, uri: String, mimeType: String?): MediaItem {
+  /**
+   * `variant` distinguishes the video/audio/muxed/HLS-manifest track and (where relevant) its
+   * resolved quality, so a video-only and an audio-only fetch for the same video — or the same
+   * video resolved at two different qualities across retries — never collide on one cache entry.
+   */
+  private fun mediaItem(videoId: String, uri: String, mimeType: String?, variant: String): MediaItem {
+    // The resolved URL is short-lived and re-signed on every resolve, so it cannot be the cache
+    // key itself — this lets `MediaCache`'s `CacheKeyFactory` recover a key that stays the same
+    // across resolves of the same video/track/quality, which is what makes a replay a cache hit.
+    MediaCache.registerStableKey(uri, "$videoId:$variant")
     val builder = MediaItem.Builder()
       .setMediaId(videoId)
       .setUri(uri)

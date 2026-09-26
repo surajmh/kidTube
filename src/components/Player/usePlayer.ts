@@ -57,6 +57,12 @@ export function usePlayer({
   const [error, setError] = useState<PlayerError | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasEnded, setHasEnded] = useState(false);
+  // A switch to a new video (or the very first one) leaves the native surface showing whatever
+  // frame it last rendered until the new stream actually starts — with no error and no visible
+  // change, a tap on "next" or "up next" looked like it had done nothing. Covering the surface
+  // with this video's own thumbnail until real playback starts (`onReady`/`onPlay`) gives instant
+  // feedback that the switch happened, the same way YouTube's own player does.
+  const [showThumbnailCover, setShowThumbnailCover] = useState(true);
   const [segments, setSegments] = useState<SponsorSegment[]>([]);
   const [policyMessage, setPolicyMessage] = useState('');
   const [timeBlocked, setTimeBlocked] = useState(false);
@@ -74,6 +80,8 @@ export function usePlayer({
   const accountingQueue = useRef(Promise.resolve());
   const recoveryAttempt = useRef(0);
   const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Guards against re-issuing the same prefetch on every progress tick past the threshold. */
+  const hasPrefetchedNext = useRef(false);
   const accessDecision = profile
     ? playbackPolicy.canPlay({ profileId: profile.id, videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds })
     : ({ allowed: false, reason: 'VIDEO_NOT_APPROVED' } as PlaybackDecision);
@@ -91,11 +99,13 @@ export function usePlayer({
     setTimeBlocked(false);
     setHasEnded(false);
     setControlsVisible(true);
+    setShowThumbnailCover(true);
     progressRef.current = 0;
     lastPlayheadMs.current = null;
     recoveryAttempt.current = 0;
     lastSkippedSegment.current = null;
     stoppedByPolicy.current = false;
+    hasPrefetchedNext.current = false;
   }, [video.youtubeVideoId]);
 
   // A new video is a new playback session: the recovery budget starts over.
@@ -126,6 +136,7 @@ export function usePlayer({
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
     recoveryTimer.current = null;
     setRecoveryMessage('');
+    setShowThumbnailCover(false);
     void playerAdapter.stop().catch(() => undefined);
     explainDecision(decision);
   }
@@ -265,6 +276,7 @@ export function usePlayer({
     setPolicyMessage('');
     setRecoveryMessage('');
     setTimeBlocked(false);
+    setShowThumbnailCover(true);
     stoppedByPolicy.current = false;
     lastPlayheadMs.current = null;
     void playerAdapter
@@ -338,6 +350,7 @@ export function usePlayer({
     onLoad: () => { setError(null); setIsBuffering(true); },
     onReady: (event: { nativeEvent: { duration?: number } }) => {
       setIsBuffering(false);
+      setShowThumbnailCover(false);
       setRecoveryMessage('');
       if (event.nativeEvent.duration) setDurationMs(event.nativeEvent.duration);
     },
@@ -354,6 +367,9 @@ export function usePlayer({
       );
     },
     onPlay: () => {
+      // A real onPlay means the stream is rendering frames, whatever happens next (including a
+      // policy block below) — the frozen-old-frame/blank moment this covers for is over.
+      setShowThumbnailCover(false);
       const decision = profile ? playbackPolicy.canContinuePlayback(profile.id) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
       if (!decision.allowed) { stopForPolicy(decision); return; }
       stoppedByPolicy.current = false;
@@ -383,6 +399,12 @@ export function usePlayer({
       progressRef.current = nextProgress;
       setDurationMs(nextDuration);
       setProgress(nextProgress);
+      // Resolving "up next" now (instead of when it's actually selected) hides the resolve
+      // latency behind however much of this video is left — comfortably enough time at 80%.
+      if (!hasPrefetchedNext.current && nextVideo && nextProgress >= 0.8) {
+        hasPrefetchedNext.current = true;
+        void playerAdapter.prefetch?.(nextVideo.youtubeVideoId);
+      }
       const buffered = event.nativeEvent.bufferedPosition ?? 0;
       setBufferedMs((current) => (Math.abs(buffered - current) >= 1000 ? buffered : current));
       const segment = sponsorBlockService.isInsideSegment(positionMs / 1000, segments);
@@ -420,6 +442,7 @@ export function usePlayer({
       isPlayingRef.current = false;
       setIsPlaying(false);
       setIsBuffering(false);
+      setShowThumbnailCover(false);
       handlePlayerError(normalizePlayerError(event.nativeEvent));
     },
   };
@@ -433,6 +456,7 @@ export function usePlayer({
     error,
     isBuffering,
     hasEnded,
+    showThumbnailCover,
     policyMessage,
     timeBlocked,
     warningMessage,

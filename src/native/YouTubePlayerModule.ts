@@ -73,6 +73,12 @@ declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModu
   stop(): Promise<PlayerCommandResult>;
   setVolume(volume: number): Promise<PlayerCommandResult>;
   setFullscreen(fullscreen: boolean): Promise<PlayerCommandResult>;
+  /**
+   * Best-effort: resolves a stream ahead of time (e.g. the "up next" video) so switching to it
+   * later skips the resolve latency. Never approves anything by itself — still gated by the
+   * allow list, and a miss/failure here just means the eventual `play()` resolves normally.
+   */
+  prefetch(videoId: string): Promise<PlayerCommandResult>;
 }
 
 export default requireOptionalNativeModule<NestlingYouTubePlayerModule>('NestlingYouTubePlayer');

@@ -8,6 +8,12 @@ export interface PlayerAdapter {
   pause(): Promise<void>;
   seek(position: number): Promise<void>;
   stop(): Promise<void>;
+  /**
+   * Best-effort, optional: resolves a video's stream ahead of actually playing it. Never required
+   * for correctness — a caller that skips it, or an adapter that doesn't implement it, just gets
+   * the normal resolve latency when `play`/`resume` is eventually called.
+   */
+  prefetch?(videoId: string): Promise<void>;
 }
 
 export interface ResumablePlayerAdapter extends PlayerAdapter {
