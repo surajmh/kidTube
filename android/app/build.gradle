@@ -104,15 +104,23 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (project.findProperty('KIDTUBE_STORE_FILE') != null) {
+                storeFile file(project.findProperty('KIDTUBE_STORE_FILE'))
+                storePassword project.findProperty('KIDTUBE_STORE_PASSWORD')
+                keyAlias project.findProperty('KIDTUBE_KEY_ALIAS')
+                keyPassword project.findProperty('KIDTUBE_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Falls back to debug signing when KIDTUBE_STORE_FILE is not set
+            // in ~/.gradle/gradle.properties — never ship that build.
+            signingConfig project.findProperty('KIDTUBE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

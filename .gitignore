@@ -13,3 +13,5 @@ ios/Pods/
 # Local environment
 .env
 .env.local
+
+android/kidtube-release.keystore
