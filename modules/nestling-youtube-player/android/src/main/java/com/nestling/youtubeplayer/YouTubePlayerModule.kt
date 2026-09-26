@@ -1,5 +1,6 @@
 package com.nestling.youtubeplayer
 
+import android.util.Log
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -93,7 +94,12 @@ class YouTubePlayerModule : Module() {
         pendingPlayVideoId = videoId
         return@AsyncFunction mapOf<String, Any?>("accepted" to true, "pending" to true)
       }
-      view.controller.play(videoId, true)
+      try {
+        view.controller.play(videoId, true)
+      } catch (error: Throwable) {
+        Log.e(TAG, "play($videoId) failed", error)
+        throw error
+      }
       mapOf<String, Any?>("accepted" to true)
     }
 
@@ -104,7 +110,21 @@ class YouTubePlayerModule : Module() {
 
     AsyncFunction("resume") { videoId: String ->
       if (!allowedVideoIds.contains(videoId)) return@AsyncFunction policyBlocked(videoId)
-      requireView().controller.resume(videoId)
+      val view = activeView?.get()
+      if (view == null) {
+        // Backgrounding can tear down and rebuild the underlying SurfaceView-hosting view without
+        // React ever re-applying props, which is the only thing that re-registers `activeView`.
+        // Falling back to `play()`'s own pending-queue path lets it recover the same way a fresh
+        // mount does, instead of a hard, unrecoverable failure.
+        pendingPlayVideoId = videoId
+        return@AsyncFunction mapOf<String, Any?>("accepted" to true, "pending" to true)
+      }
+      try {
+        view.controller.resume(videoId)
+      } catch (error: Throwable) {
+        Log.e(TAG, "resume($videoId) failed", error)
+        throw error
+      }
       mapOf<String, Any?>("accepted" to true)
     }
 
@@ -189,6 +209,10 @@ class YouTubePlayerModule : Module() {
 
   private fun requireView(): YouTubePlayerView =
     activeView?.get() ?: throw IllegalStateException("NestlingYouTubePlayer view is not mounted")
+
+  private companion object {
+    const val TAG = "YouTubePlayerModule"
+  }
 
   /** Mirrors the JS-side decision without restating any rule: this id is simply not approved. */
   private fun policyBlocked(videoId: String): Map<String, Any?> = mapOf(

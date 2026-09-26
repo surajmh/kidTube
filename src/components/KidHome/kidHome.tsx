@@ -1,20 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../parentalControlsTypes';
 import { FocusablePressable } from '../tv';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
 import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
 import { useKidHome } from './kidHome.hook';
-import { ChannelAvailability, KidHomeProps, KidSearchResults } from './kidHome.type';
+import { KidHomeProps } from './kidHome.type';
+import { Chip, Empty } from './kidHome.primitives';
+import { ChannelPage, ChannelRow } from './kidHome.channelPage';
+import { SearchResults } from './kidHome.search';
+import { AskPanel } from './kidHome.askPanel';
 import styles from './kidHome.style';
 
 /**
  * Kid Mode.
  *
  * Presentation only: every derivation lives in `useKidHome`, and the rules it depends on live in
- * `helpers.ts` so they are covered by tests rather than only by rendering.
+ * `helpers.ts` so they are covered by tests rather than only by rendering. Each section of the
+ * screen (search, a channel's page, the ask-a-parent form, …) is its own file alongside this one.
  */
 export function KidHomeScreen(props: KidHomeProps) {
   const {
@@ -269,273 +272,6 @@ export function KidHomeScreen(props: KidHomeProps) {
           );
         })}
       </View>
-    </View>
-  );
-}
-
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <FocusablePressable
-      accessibilityLabel={label}
-      style={[styles.chip, active && styles.chipActive]}
-      onPress={onPress}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </FocusablePressable>
-  );
-}
-
-function ChannelRow({
-  channel,
-  videoCount,
-  onOpen,
-  subtitle,
-}: {
-  channel: ApprovedChannel;
-  videoCount?: number;
-  onOpen: (channelId: string) => void;
-  subtitle?: string;
-}) {
-  return (
-    <FocusablePressable
-      accessibilityLabel={`Open ${channel.name}`}
-      style={styles.channelRow}
-      onPress={() => onOpen(channel.channelId)}
-    >
-      <ChannelAvatar name={channel.name} uri={channel.thumbnailUrl} size={48} />
-      <View style={styles.channelRowText}>
-        <Text style={styles.channelRowName} numberOfLines={1}>{channel.name}</Text>
-        <Text style={styles.channelRowMeta}>{subtitle ?? `${videoCount ?? 0} videos`}</Text>
-      </View>
-      <Feather name="chevron-right" size={20} color={ICON.inkDim} />
-    </FocusablePressable>
-  );
-}
-
-function SearchResults({
-  query,
-  results,
-  onVideoPress,
-  onSelectChannel,
-}: {
-  query: string;
-  results: KidSearchResults;
-  onVideoPress: (video: ApprovedVideo) => void;
-  onSelectChannel: (channelId: string) => void;
-}) {
-  if (!query.trim()) {
-    return <Empty icon="search" title={KID_COPY.searchIdleTitle} body={KID_COPY.searchIdleBody} />;
-  }
-  if (!results.videos.length && !results.channels.length) {
-    return <Empty icon="search" title={KID_COPY.searchEmptyTitle} body={KID_COPY.searchEmptyBody} />;
-  }
-  return (
-    <>
-      {results.channels.map((channel) => (
-        <ChannelRow
-          key={`result-${channel.id}`}
-          channel={channel}
-          subtitle="Channel"
-          onOpen={onSelectChannel}
-        />
-      ))}
-      {results.videos.map((video) => (
-        <VideoCard key={`result-${video.id}`} video={video} onPress={onVideoPress} />
-      ))}
-    </>
-  );
-}
-
-/**
- * A channel's page. Reads cached sync state only -- refreshing is a Parent Mode control -- and
- * never shows provider wording, error codes or host names.
- */
-function ChannelPage({
-  channel,
-  videos,
-  availability,
-  onBack,
-  onVideoPress,
-}: {
-  channel: ApprovedChannel;
-  videos: ApprovedVideo[];
-  availability: ChannelAvailability;
-  onBack: () => void;
-  onVideoPress: (video: ApprovedVideo) => void;
-}) {
-  return (
-    <>
-      <FocusablePressable
-        accessibilityLabel="Back to channels"
-        style={styles.backRow}
-        onPress={onBack}
-      >
-        <Feather name="arrow-left" size={20} color={ICON.ink} />
-        <Text style={styles.channelRowName}>Channels</Text>
-      </FocusablePressable>
-
-      <View style={styles.channelHero}>
-        <ChannelAvatar name={channel.name} uri={channel.thumbnailUrl} size={64} />
-        <Text style={styles.channelHeroName}>{channel.name}</Text>
-        <Text style={styles.channelHeroMeta}>{`${videos.length} videos`}</Text>
-      </View>
-
-      {availability === 'unavailable' ? (
-        <Empty icon="wifi-off" title={KID_COPY.channelUnavailableTitle} body={KID_COPY.channelUnavailableBody} />
-      ) : null}
-      {availability === 'stale-with-cache' ? (
-        <View style={styles.notice}>
-          <Feather name="info" size={16} color={ICON.ink} />
-          <Text style={styles.noticeText}>{KID_COPY.channelStaleNotice}</Text>
-        </View>
-      ) : null}
-      {availability === 'not-loaded' ? (
-        <Empty icon="clock" title={KID_COPY.channelNotLoadedTitle} body={KID_COPY.channelNotLoadedBody} />
-      ) : null}
-
-      {videos.map((video) => (
-        <VideoCard key={`channel-${video.id}`} video={video} onPress={onVideoPress} />
-      ))}
-    </>
-  );
-}
-
-/** Ask a Parent. No browsing and no search: saved-but-unapproved items, or the child's own words. */
-function AskPanel({
-  activeProfile,
-  askableVideos,
-  askableChannels,
-  requests,
-  onSubmit,
-  onRequestVideo,
-  onRequestChannel,
-}: {
-  activeProfile?: ChildProfile;
-  askableVideos: ApprovedVideo[];
-  askableChannels: ApprovedChannel[];
-  requests: ContentRequest[];
-  onSubmit: (input: { type: RequestType; title: string }) => Promise<void>;
-  onRequestVideo: (video: ApprovedVideo) => Promise<void>;
-  onRequestChannel: (channel: ApprovedChannel) => Promise<void>;
-}) {
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const mine = activeProfile ? requests.filter((request) => request.profileId === activeProfile.id) : [];
-
-  async function run(action: () => Promise<void>) {
-    setBusy(true);
-    setMessage('');
-    try {
-      await action();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'That request did not go through.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <View style={styles.ask}>
-      <Text style={styles.askTitle}>Ask a grown-up</Text>
-      <Text style={styles.askBody}>
-        Tell them what you would like to watch. They decide what gets added.
-      </Text>
-
-      <View style={styles.askForm}>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="What would you like to watch?"
-          placeholderTextColor={ICON.inkDim}
-          style={styles.askInput}
-          accessibilityLabel="What would you like to watch?"
-        />
-        <FocusablePressable
-          accessibilityLabel="Send request"
-          disabled={busy || !title.trim()}
-          style={[styles.askSend, (busy || !title.trim()) && styles.askSendDisabled]}
-          onPress={() =>
-            run(async () => {
-              await onSubmit({ type: 'video', title: title.trim() });
-              setTitle('');
-            })
-          }
-        >
-          <Text style={styles.askSendText}>Ask</Text>
-        </FocusablePressable>
-      </View>
-      {message ? <Text style={styles.askError}>{message}</Text> : null}
-
-      {askableVideos.length > 0 ? (
-        <>
-          <Text style={styles.askSection}>Saved videos you can ask for</Text>
-          {askableVideos.map((video) => (
-            <AskRow
-              key={`ask-${video.id}`}
-              label={video.title}
-              busy={busy}
-              onPress={() => run(() => onRequestVideo(video))}
-            />
-          ))}
-        </>
-      ) : null}
-
-      {askableChannels.length > 0 ? (
-        <>
-          <Text style={styles.askSection}>Saved channels you can ask for</Text>
-          {askableChannels.map((channel) => (
-            <AskRow
-              key={`ask-${channel.id}`}
-              label={channel.name}
-              busy={busy}
-              onPress={() => run(() => onRequestChannel(channel))}
-            />
-          ))}
-        </>
-      ) : null}
-
-      {mine.length > 0 ? (
-        <>
-          <Text style={styles.askSection}>What you asked for</Text>
-          {mine.map((request) => (
-            <View
-              key={request.id}
-              style={styles.askRow}
-            >
-              <Text style={styles.askRowLabel} numberOfLines={2}>{request.title}</Text>
-              <Text style={styles.askStatus}>{request.status}</Text>
-            </View>
-          ))}
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-function AskRow({ label, busy, onPress }: { label: string; busy: boolean; onPress: () => void }) {
-  return (
-    <View style={styles.askRow}>
-      <Text style={styles.askRowLabel} numberOfLines={2}>{label}</Text>
-      <FocusablePressable
-        accessibilityLabel={`Ask for ${label}`}
-        disabled={busy}
-        style={styles.askRowButton}
-        onPress={onPress}
-      >
-        <Text style={styles.askRowButtonText}>Ask</Text>
-      </FocusablePressable>
-    </View>
-  );
-}
-
-function Empty({ icon, title, body }: { icon: keyof typeof Feather.glyphMap; title: string; body: string }) {
-  return (
-    <View style={styles.empty}>
-      <Feather name={icon} size={30} color={ICON.inkDim} />
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
     </View>
   );
 }

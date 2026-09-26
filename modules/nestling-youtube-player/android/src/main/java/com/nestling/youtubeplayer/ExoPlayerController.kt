@@ -39,6 +39,7 @@ class ExoPlayerController(
   private val resolver: YouTubePlaybackResolver = AuthorizedPlaybackResolver(),
   private val retryPolicy: PlaybackRetryPolicy = PlaybackRetryPolicy(),
   private val mainHandler: Handler = Handler(Looper.getMainLooper()),
+  private val bufferStallTimeoutMs: Long = 15_000L,
   executor: ExecutorService = Executors.newSingleThreadExecutor(),
 ) {
   private val resolverExecutor: ExecutorService = executor
@@ -55,6 +56,19 @@ class ExoPlayerController(
   private var fullscreenActive = false
 
   private val retryRunnable = Runnable { refreshAndResume() }
+
+  /**
+   * A throttled stream can connect and trickle bytes just fast enough to never trip ExoPlayer's
+   * own HTTP read-timeout, yet never fast enough to leave `STATE_BUFFERING` — the known failure
+   * mode `AuthorizedPlaybackResolver`'s fallback progressive URLs describe. Without this, that
+   * looks identical to "still loading" forever, with no error and no retry. This watchdog gives
+   * every buffering spell a bounded window before treating it as the network failure it is,
+   * which routes it through the existing bounded retry policy instead of hanging indefinitely.
+   */
+  private val bufferStallRunnable = Runnable {
+    Log.w(TAG, "buffering stalled for ${bufferStallTimeoutMs}ms, treating as a network failure")
+    handlePlaybackFailure(PlaybackCodes.NETWORK_ERROR)
+  }
 
   val player: ExoPlayer = ExoPlayer.Builder(context)
     .setMediaSourceFactory(DefaultMediaSourceFactory(context))
@@ -80,15 +94,21 @@ class ExoPlayerController(
       exoPlayer.addListener(object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
           when (playbackState) {
-            Player.STATE_BUFFERING -> emit("onBuffer", event())
+            Player.STATE_BUFFERING -> {
+              emit("onBuffer", event())
+              armBufferStallWatchdog()
+            }
             Player.STATE_READY -> {
               recovering = false
+              cancelBufferStallWatchdog()
               emit("onReady", event())
             }
             Player.STATE_ENDED -> {
+              cancelBufferStallWatchdog()
               resumePositionMs = 0L
               emit("onEnd", event())
             }
+            Player.STATE_IDLE -> cancelBufferStallWatchdog()
           }
         }
 
@@ -105,7 +125,10 @@ class ExoPlayerController(
         }
 
         override fun onPlayerError(error: Media3PlaybackException) {
-          handlePlaybackFailure(classifyPlaybackError(error))
+          val code = classifyPlaybackError(error)
+          Log.w(TAG, "onPlayerError videoId=$currentVideoId errorCode=${error.errorCode} (${error.errorCodeName}) -> $code", error)
+          cancelBufferStallWatchdog()
+          handlePlaybackFailure(code)
         }
       })
     }
@@ -139,13 +162,23 @@ class ExoPlayerController(
     attachedView = null
   }
 
-  fun play(videoId: String, autoplay: Boolean = true) {
+  /**
+   * `play`/`pause`/`resume`/`seek`/`setVolume`/`setFullscreen`/`stop` are called both from the
+   * view's own main-thread key listener and from the module's `AsyncFunction`s — which Expo runs
+   * on a dedicated background queue, never the main thread. ExoPlayer instances may only be
+   * touched from the thread that created them (the main thread here); calling any of them
+   * directly from that queue throws `IllegalStateException: Player is accessed on the wrong
+   * thread` — silently, since these are void, fire-and-forget commands whose result arrives later
+   * via events. Every entry point below hops onto `mainHandler` first so callers never need to
+   * know or care which thread they were invoked from.
+   */
+  fun play(videoId: String, autoplay: Boolean = true) = onMainThread {
     val normalizedId = videoId.trim()
     if (normalizedId.isEmpty()) {
       emitError(PlaybackCodes.INVALID_VIDEO_ID)
-      return
+      return@onMainThread
     }
-    if (destroyed) return
+    if (destroyed) return@onMainThread
 
     cancelPendingRetry()
     // A new play request restores the retry budget; recovery chains never reset it.
@@ -157,18 +190,18 @@ class ExoPlayerController(
     resolveAndPrepare(normalizedId, ++requestGeneration, startPositionMs = 0L, autoplay = autoplay)
   }
 
-  fun pause() {
+  fun pause() = onMainThread {
     updatePositionTracking()
     player.pause()
   }
 
-  fun resume(videoId: String) {
+  fun resume(videoId: String) = onMainThread {
     val normalizedId = videoId.trim()
     if (currentVideoId != normalizedId) {
       play(normalizedId, true)
-      return
+      return@onMainThread
     }
-    if (destroyed) return
+    if (destroyed) return@onMainThread
 
     val failed = player.playerError != null || player.playbackState == Player.STATE_IDLE
     if (failed) {
@@ -176,33 +209,39 @@ class ExoPlayerController(
       retryAttempt = 0
       recovering = false
       resolveAndPrepare(normalizedId, ++requestGeneration, resumePositionMs, autoplay = true)
-      return
+      return@onMainThread
     }
     player.play()
   }
 
-  fun seek(positionMs: Long) {
+  fun seek(positionMs: Long) = onMainThread {
     player.seekTo(positionMs.coerceAtLeast(0L))
     updatePositionTracking()
   }
 
-  fun seekBy(deltaMs: Long) = seek(player.currentPosition + deltaMs)
+  fun seekBy(deltaMs: Long) = onMainThread { seek(player.currentPosition + deltaMs) }
 
-  fun setVolume(volume: Float) {
+  fun setVolume(volume: Float) = onMainThread {
     player.volume = volume.coerceIn(0f, 1f)
   }
 
-  fun setFullscreen(fullscreen: Boolean) {
+  fun setFullscreen(fullscreen: Boolean) = onMainThread {
     fullscreenActive = fullscreen
     applyFullscreen(fullscreen)
   }
 
-  fun toggle() {
+  fun toggle() = onMainThread {
     if (player.isPlaying) pause() else player.play()
   }
 
-  fun stop() {
+  /** Runs `body` on `mainHandler` now if already there, or posts it, so it never re-enters twice. */
+  private inline fun onMainThread(crossinline body: () -> Unit) {
+    if (Looper.myLooper() == mainHandler.looper) body() else mainHandler.post { body() }
+  }
+
+  fun stop() = onMainThread {
     cancelPendingRetry()
+    cancelBufferStallWatchdog()
     requestGeneration++
     retryAttempt = 0
     recovering = false
@@ -238,6 +277,7 @@ class ExoPlayerController(
     destroyed = true
     ticking = false
     cancelPendingRetry()
+    cancelBufferStallWatchdog()
     mainHandler.removeCallbacksAndMessages(null)
     detach()
     if (fullscreenActive) applyFullscreen(false)
@@ -282,6 +322,7 @@ class ExoPlayerController(
   private fun prepare(info: PlaybackInfo, startPositionMs: Long, autoplay: Boolean) {
     val source = createMediaSource(info)
     if (source == null) {
+      Log.w(TAG, "prepare(${info.videoId}) resolved but no playable source: $info")
       emitError(PlaybackCodes.UNSUPPORTED_FORMAT)
       return
     }
@@ -332,6 +373,16 @@ class ExoPlayerController(
 
   private fun cancelPendingRetry() {
     mainHandler.removeCallbacks(retryRunnable)
+  }
+
+  /** Each buffering spell gets its own fresh window; entering `STATE_BUFFERING` again re-arms it. */
+  private fun armBufferStallWatchdog() {
+    mainHandler.removeCallbacks(bufferStallRunnable)
+    mainHandler.postDelayed(bufferStallRunnable, bufferStallTimeoutMs)
+  }
+
+  private fun cancelBufferStallWatchdog() {
+    mainHandler.removeCallbacks(bufferStallRunnable)
   }
 
   private fun updatePositionTracking() {
@@ -429,6 +480,7 @@ class ExoPlayerController(
   }
 
   companion object {
+    private const val TAG = "ExoPlayerController"
     private const val GENERIC_ERROR_MESSAGE = "This video can't be played right now."
   }
 }

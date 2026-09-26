@@ -86,9 +86,18 @@ class YouTubePlayerView(
     controllerRef = null
   }
 
+  /**
+   * Backgrounding an Activity can tear down and recreate this SurfaceView's underlying surface
+   * without the controller itself being destroyed (that only happens in `onDetachedFromWindow`,
+   * and Android doesn't always reach that on a mere background/foreground cycle). `controller`'s
+   * getter only (re)creates a controller when the old one is gone — it never rebinds a *surviving*
+   * one to the surface that now exists, so playback kept rendering to a dead surface and silently
+   * went nowhere on return. Calling `attach` unconditionally re-binds every time, and is a no-op
+   * safety net when nothing actually changed.
+   */
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
-    controller
+    controller.attach(playerView)
     requestFocus()
   }
 
