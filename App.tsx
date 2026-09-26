@@ -30,7 +30,7 @@ import {
   requestRepository,
 } from './src/repositories/parentalControlsRepository';
 import { channelSyncRepository, ChannelSyncMap } from './src/repositories/channelSyncRepository';
-import { channelSyncService } from './src/services/channelSyncService';
+import { channelSyncService, ResolvedChannel } from './src/services/channelSyncService';
 import { SyncMode } from './src/services/content/channelSyncRules';
 import { parentPinService } from './src/services/auth/parentPinService';
 import { ParentSession, ParentSignInResult, parentSessionService } from './src/services/auth/parentSession';
@@ -1138,6 +1138,10 @@ function App() {
                   void syncNewlyApprovedChannel(channel);
                 }}
                 onAddVideo={(video) => saveVideos([video, ...videos])}
+                onLookupChannel={async (input) => {
+                  if (!parentSession) throw new Error('Parent mode is required.');
+                  return channelSyncService.resolveChannel(parentSession, input);
+                }}
               />
             }
             profilesSlot={
@@ -1345,12 +1349,12 @@ function ProfileManager({ profiles, activeProfileId, setActiveProfileId, onChang
   );
 }
 
-function ManualAddSection({ channels, onAddChannel, onAddVideo }: { channels: ApprovedChannel[]; onAddChannel: (channel: ApprovedChannel) => Promise<void>; onAddVideo: (video: ApprovedVideo) => Promise<void> }) {
+function ManualAddSection({ channels, onAddChannel, onAddVideo, onLookupChannel }: { channels: ApprovedChannel[]; onAddChannel: (channel: ApprovedChannel) => Promise<void>; onAddVideo: (video: ApprovedVideo) => Promise<void>; onLookupChannel: (input: string) => Promise<ResolvedChannel> }) {
   const [adding, setAdding] = useState<'channel' | 'video' | null>(null);
   return (
     <View style={styles.manualSection}>
-      <Text style={styles.listLabel}>ADD MANUALLY BY ID</Text>
-      {adding === 'channel' ? <ChannelForm onCancel={() => setAdding(null)} onSave={async (channel) => { await onAddChannel(channel); setAdding(null); }} /> : null}
+      <Text style={styles.listLabel}>ADD CONTENT</Text>
+      {adding === 'channel' ? <ChannelAddFlow existingChannels={channels} onCancel={() => setAdding(null)} onSave={async (channel) => { await onAddChannel(channel); setAdding(null); }} onLookupChannel={onLookupChannel} /> : null}
       {adding === 'video' ? <VideoForm channels={channels} onCancel={() => setAdding(null)} onSave={async (video) => { await onAddVideo(video); setAdding(null); }} /> : null}
       {!adding && (
         <View style={styles.addActions}>
@@ -1359,6 +1363,64 @@ function ManualAddSection({ channels, onAddChannel, onAddVideo }: { channels: Ap
         </View>
       )}
     </View>
+  );
+}
+
+/**
+ * Channel lookup by text: one pasted link, @handle or UC… id resolves the real
+ * name and thumbnail on-device. The full manual form stays available as a
+ * fallback — e.g. when the native extractor can't reach YouTube.
+ */
+function ChannelAddFlow({ existingChannels, onCancel, onSave, onLookupChannel }: { existingChannels: ApprovedChannel[]; onCancel: () => void; onSave: (channel: ApprovedChannel) => Promise<void>; onLookupChannel: (input: string) => Promise<ResolvedChannel> }) {
+  const [mode, setMode] = useState<'lookup' | 'manual'>('lookup');
+  if (mode === 'manual') return <ChannelForm onCancel={onCancel} onSave={onSave} />;
+  return <ChannelLookupForm existingChannels={existingChannels} onCancel={onCancel} onSave={onSave} onLookup={onLookupChannel} onSwitchToManual={() => setMode('manual')} />;
+}
+
+function ChannelLookupForm({ existingChannels, onCancel, onSave, onLookup, onSwitchToManual }: { existingChannels: ApprovedChannel[]; onCancel: () => void; onSave: (channel: ApprovedChannel) => Promise<void>; onLookup: (input: string) => Promise<ResolvedChannel>; onSwitchToManual: () => void }) {
+  const [input, setInput] = useState('');
+  const [resolved, setResolved] = useState<ResolvedChannel | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function lookUp() {
+    setBusy(true);
+    setError('');
+    setResolved(null);
+    try {
+      setResolved(await onLookup(input));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'That channel could not be looked up.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const duplicate = resolved ? existingChannels.find((channel) => channel.channelId === resolved.youtubeChannelId) : undefined;
+  return (
+    <FormCard title="Add approved channel" subtitle="Paste a channel link, @handle or UC… ID. kidTube looks it up and fills in the name and thumbnail." onCancel={onCancel} onSave={async () => {
+      if (!resolved) { setError('Look up the channel first.'); return; }
+      if (duplicate) { setError(`${duplicate.name} is already in your library.`); return; }
+      await onSave({ id: id('channel'), name: resolved.name, channelId: resolved.youtubeChannelId, thumbnailUrl: resolved.thumbnailUrl, sourceUrl: `https://www.youtube.com/channel/${resolved.youtubeChannelId}`, approved: true });
+    }}>
+      <View style={styles.lookupRow}>
+        <View style={styles.lookupTextArea}><Field label="YouTube channel link, handle or ID" value={input} onChangeText={(value) => { setInput(value); setResolved(null); setError(''); }} placeholder="https://youtube.com/@channel…" autoCapitalize="none" keyboardType="url" /></View>
+        <FocusablePressable accessibilityLabel="Look up channel" disabled={busy || !input.trim()} style={styles.smallAction} onPress={() => void lookUp()}>
+          {busy ? <ActivityIndicator size="small" color={colors.ink} /> : <Text style={styles.smallActionText}>Look up</Text>}
+        </FocusablePressable>
+      </View>
+      {resolved ? (
+        <View style={styles.resolvedRow}>
+          <ChannelAvatar name={resolved.name} uri={resolved.thumbnailUrl} size={42} />
+          <View style={styles.profileRowInfo}>
+            <Text style={styles.rowTitle}>{resolved.name}</Text>
+            <Text style={styles.rowSubtitle}>{resolved.youtubeChannelId}</Text>
+          </View>
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <FocusablePressable accessibilityLabel="Add manually instead" onPress={onSwitchToManual}>
+        <Text style={styles.manualFormLink}>Add manually instead</Text>
+      </FocusablePressable>
+    </FormCard>
   );
 }
 
@@ -2109,7 +2171,7 @@ function AddButton({ label, icon, onPress }: { label: string; icon: keyof typeof
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.canvas }, safeAreaDark: { backgroundColor: yt.bg }, screen: { flex: 1 }, centered: { alignItems: 'center', justifyContent: 'center' }, loadingText: { color: colors.muted, fontSize: 16, marginTop: 14 },
   setupFlex: { flex: 1 }, setupScreen: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 18, justifyContent: 'space-between', paddingBottom: 22 }, brandRow: { alignItems: 'center', flexDirection: 'row', gap: 9 }, logoMark: { height: 54, width: 54 }, logoMarkSmall: { height: 34, width: 34 }, brandName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.8 }, setupHero: { alignItems: 'center', marginVertical: 20, paddingHorizontal: 16 }, heroOrb: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 42, height: 84, justifyContent: 'center', marginBottom: 20, width: 84 }, eyebrow: { color: colors.ink, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, heroTitle: { color: colors.ink, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 9, textAlign: 'center' }, heroBody: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 16, maxWidth: 350, textAlign: 'center' }, formCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 24, borderWidth: 1, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 }, inputLabel: { color: colors.ink, fontSize: 13, fontWeight: '800', marginBottom: 8 }, pinInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, color: colors.ink, fontSize: 28, fontWeight: '800', height: 58, letterSpacing: 11, paddingHorizontal: 18, textAlign: 'center' }, textInput: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 13, borderWidth: 1, color: colors.ink, fontSize: 16, height: 50, paddingHorizontal: 14 }, inputError: { borderColor: colors.danger }, helperText: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 8 }, errorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 8 }, primaryButton: { alignItems: 'center', backgroundColor: colors.purple, borderRadius: 14, flexDirection: 'row', gap: 10, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, buttonPressed: { opacity: 0.78 }, buttonDisabled: { opacity: 0.55 }, avatarPicker: { flexDirection: 'row', gap: 11 }, avatarOption: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 }, avatarOptionSelected: { backgroundColor: colors.lavender, borderColor: colors.line },
-  parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' },
+  parentSectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' }, parentSectionBody: { color: colors.muted, fontSize: 13, marginTop: 4 }, sectionIntro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 }, addActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, addButton: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 7, height: 50, justifyContent: 'center' }, addButtonText: { color: colors.ink, flex: 1, fontSize: 13, fontWeight: '800' }, manualSection: { marginTop: 6 }, listLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1.1, marginBottom: 9, marginTop: 26 }, profileRow: { alignItems: 'center', backgroundColor: colors.card, borderColor: colors.line, borderRadius: 15, borderWidth: 1, flexDirection: 'row', marginBottom: 8, minHeight: 68, padding: 9 }, profileRowInfo: { flex: 1, paddingHorizontal: 11 }, rowTitle: { color: colors.ink, fontSize: 14, fontWeight: '800' }, rowSubtitle: { color: colors.muted, fontSize: 12, marginTop: 4 }, iconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 42 }, formPanel: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, formPanelHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }, formPanelTitle: { color: colors.ink, fontSize: 18, fontWeight: '800' }, formPanelSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, maxWidth: 280 }, field: { marginBottom: 12 }, twoFields: { flexDirection: 'row', gap: 10 }, halfField: { flex: 1 }, formButtonRow: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 5 }, secondaryButton: { alignItems: 'center', borderColor: colors.line, borderRadius: 14, borderWidth: 1, height: 50, justifyContent: 'center', marginTop: 18, paddingHorizontal: 18 }, secondaryButtonText: { color: colors.ink, fontSize: 14, fontWeight: '800' }, profileManagerCard: { backgroundColor: colors.card, borderColor: colors.line, borderRadius: 20, borderWidth: 1, marginTop: 18, padding: 16 }, smallAction: { backgroundColor: colors.lavender, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 }, smallActionText: { color: colors.ink, fontSize: 12, fontWeight: '800' }, lookupRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 10 }, lookupTextArea: { flex: 1 }, resolvedRow: { alignItems: 'center', backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 14, borderWidth: 1, flexDirection: 'row', marginBottom: 12, minHeight: 58, padding: 8 }, manualFormLink: { color: colors.purple, fontSize: 13, fontWeight: '800', marginBottom: 12, marginTop: 4 },
   playerScreen: { backgroundColor: yt.bg, flex: 1 }, playerTopBar: { alignItems: 'center', flexDirection: 'row', height: 52, paddingHorizontal: 4 }, nativeBadge: { alignItems: 'center', backgroundColor: colors.mint, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, nativePlayerStage: { aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden', width: '100%' }, nativePlayer: { flex: 1 }, nativeHint: { color: yt.textDim, fontSize: 12.5, marginTop: 10 }, backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48 }, mockBadge: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 10, flexDirection: 'row', gap: 5, paddingHorizontal: 8, paddingVertical: 6 }, mockDot: { backgroundColor: colors.purple, borderRadius: 4, height: 7, width: 7 }, mockBadgeText: { color: colors.ink, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, playerInfo: { paddingHorizontal: 12, paddingTop: 14 }, playerTitle: { color: yt.text, fontSize: 17, fontWeight: '600', lineHeight: 23 }, playerChannel: { color: yt.textDim, fontSize: 13 }, warningText: { color: yt.text, fontSize: 13, fontWeight: '700', marginTop: 10 }, overlayCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' }, overlayPlayDisc: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.45)', borderRadius: 32, height: 64, justifyContent: 'center', width: 64 }, overlayBottom: { backgroundColor: 'rgba(0, 0, 0, 0.5)', paddingBottom: 10, paddingHorizontal: 10, paddingTop: 6 }, overlayTimeRow: { alignItems: 'center', flexDirection: 'row', gap: 10 }, overlayTime: { color: yt.text, fontSize: 12, width: 44 }, overlayControlsRow: { alignItems: 'center', flexDirection: 'row', gap: 14, marginTop: 4 }, overlayButton: { alignItems: 'center', height: 40, justifyContent: 'center', width: 40 }, overlaySpacer: { flex: 1 }, scrubber: { flex: 1, height: 22, justifyContent: 'center' }, scrubTrack: { backgroundColor: 'rgba(255, 255, 255, 0.32)', borderRadius: 2, height: 4, overflow: 'hidden' }, scrubFill: { borderRadius: 2, height: 4, position: 'absolute' }, scrubBuffered: { backgroundColor: 'rgba(255, 255, 255, 0.55)' }, scrubPlayed: { backgroundColor: yt.accent }, scrubThumb: { backgroundColor: yt.accent, borderRadius: 7, height: 14, marginLeft: -7, position: 'absolute', top: 4, width: 14 }, overrideButton: { alignItems: 'center', backgroundColor: yt.accent, borderRadius: 22, flexDirection: 'row', gap: 9, height: 44, justifyContent: 'center', marginTop: 14 }, overrideButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }, blockedPlayer: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 14, margin: 12, padding: 28 }, blockedIcon: { alignItems: 'center', backgroundColor: colors.peach, borderRadius: 30, height: 60, justifyContent: 'center', width: 60 }, blockedTitle: { color: yt.text, fontSize: 18, fontWeight: '700', marginTop: 16, textAlign: 'center' }, blockedBody: { color: yt.textDim, fontSize: 13.5, lineHeight: 20, marginTop: 8, textAlign: 'center' }, playerErrorText: { color: colors.danger, fontSize: 13, lineHeight: 19, marginTop: 10 }, playerChannelRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 12 }, upNextLabel: { color: yt.text, fontSize: 14, fontWeight: '700', paddingBottom: 10, paddingHorizontal: 12, paddingTop: 22 }, modalScrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 }, pinModal: { maxHeight: '92%', width: '100%' }, pinModalContent: { backgroundColor: colors.card, borderRadius: 24, padding: 20 }, modalIcon: { alignItems: 'center', backgroundColor: colors.lavender, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 }, modalTitle: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 15 }, modalBody: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 16, marginTop: 6 }, modalCancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 12 }, modalCancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
   resetCard: { backgroundColor: colors.canvas, borderColor: colors.line, borderRadius: 16, borderWidth: 1, marginTop: 6, padding: 14 },
   resetLabelMargin: { marginTop: 14 },
