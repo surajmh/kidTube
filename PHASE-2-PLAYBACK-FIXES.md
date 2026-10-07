@@ -40,3 +40,29 @@ Saved measurements: [structured comparison](docs/playback-fixes-2026-10-07.json)
 Raw events/actions and screenshots: `/tmp/kidtube-phase2/rapid-switch-02/` and
 `/tmp/kidtube-phase2/device-setup/switch-3.png`. Preserve these before OS cleanup.
 The earlier empty capture `rapid-switch-01` is excluded: it contained no playback starts.
+
+## Pause intent and recovery follow-up
+
+Native preparation now reads the latest play intent instead of the initial autoplay
+argument. Pause cancels scheduled native retries; retry callbacks and late resolution
+completion cannot start playback while paused. Backgrounding also pauses a resolving
+player. JavaScript tracks play intent separately from actual rendering, exposes Pause
+while loading, and cancels automatic retries on pause, backgrounding or a video switch.
+Foreground resume and manual Play still pass through the existing parental policy.
+
+Phone check: pause was received 376 ms after native start, before resolution completed.
+Media3 then reached READY at position zero with `playWhenReady=false`; no playing event
+occurred until manual Play. Returning from the background while paused kept Play controls
+visible. Manual Play worked. A subsequent playing background/foreground cycle resumed
+at 20189 ms from 20181 ms. The app was returned to the video list afterward.
+
+Validation: TypeScript and all 25 Jest suites / 243 tests passed, including the hook
+regression for loading pause, cancelled retry, late play, video switch and background
+recovery. The native downloader regression and release build passed. The full native
+run also executed the existing live extraction spike: `resolvesAndServesBytes` failed
+because no sample produced a fetchable stream; its other three checks passed. This
+external-stream failure remains unresolved and is not represented as a passing check.
+An actual network-outage/pause recovery scenario remains to be tested on the phone.
+
+Saved evidence: [pause intent capture](docs/pause-intent-2026-10-07.json).
+Raw capture, screenshots and previous APK: `/tmp/kidtube-phase2/pause-intent/`.

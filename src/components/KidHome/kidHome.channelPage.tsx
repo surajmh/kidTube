@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
-import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
+import { ChannelAvatar } from '../youtube/VideoCard';
 import { ICON, KID_COPY } from './kidHome.constant';
 import { ChannelAvailability } from './kidHome.type';
 import { Empty } from './kidHome.primitives';
@@ -40,18 +40,16 @@ export function ChannelRow({
  * A channel's page. Reads cached sync state only -- refreshing is a Parent Mode control -- and
  * never shows provider wording, error codes or host names.
  */
-export function ChannelPage({
+export function ChannelHeader({
   channel,
   videos,
   availability,
   onBack,
-  onVideoPress,
 }: {
   channel: ApprovedChannel;
   videos: ApprovedVideo[];
   availability: ChannelAvailability;
   onBack: () => void;
-  onVideoPress: (video: ApprovedVideo) => void;
 }) {
   return (
     <>
@@ -83,9 +81,6 @@ export function ChannelPage({
         <Empty icon="clock" title={KID_COPY.channelNotLoadedTitle} body={KID_COPY.channelNotLoadedBody} />
       ) : null}
 
-      {videos.map((video) => (
-        <VideoCard key={`channel-${video.id}`} video={video} onPress={onVideoPress} />
-      ))}
     </>
   );
 }

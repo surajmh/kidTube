@@ -19,7 +19,7 @@ export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?
         source={{ uri: source }}
         recyclingKey={primary}
         style={styles.thumb}
-        resizeMode="cover"
+        contentFit="cover"
         onError={() => setFailedPrimary(primary)}
       />
       {duration ? (

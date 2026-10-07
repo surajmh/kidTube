@@ -58,6 +58,7 @@ class ExoPlayerController(
   private var resolutionTask: Future<*>? = null
   private var retryAttempt = 0
   private var resumePositionMs = 0L
+  private var wantsPlayback = false
   private var recovering = false
   private var ticking = false
   @Volatile private var destroyed = false
@@ -224,6 +225,7 @@ class ExoPlayerController(
     // A new play request restores the retry budget; recovery chains never reset it.
     retryAttempt = 0
     recovering = false
+    wantsPlayback = autoplay
     currentVideoId = normalizedId
     diagnosticStartedAt = SystemClock.elapsedRealtime()
     diagnosticSession = "${System.identityHashCode(this)}:$diagnosticStartedAt"
@@ -231,11 +233,14 @@ class ExoPlayerController(
     diagnostic("start")
     resumePositionMs = 0L
     emit("onLoad", event())
-    resolveAndPrepare(normalizedId, ++requestGeneration, startPositionMs = 0L, autoplay = autoplay)
+    resolveAndPrepare(normalizedId, ++requestGeneration, startPositionMs = 0L)
   }
 
   fun pause() = onMainThread {
     diagnostic("pause_command")
+    wantsPlayback = false
+    cancelPendingRetry()
+    recovering = false
     updatePositionTracking()
     player.pause()
   }
@@ -249,12 +254,13 @@ class ExoPlayerController(
     }
     if (destroyed) return@onMainThread
 
+    wantsPlayback = true
     val failed = player.playerError != null || player.playbackState == Player.STATE_IDLE
     if (failed) {
       cancelPendingRetry()
       retryAttempt = 0
       recovering = false
-      resolveAndPrepare(normalizedId, ++requestGeneration, resumePositionMs, autoplay = true)
+      resolveAndPrepare(normalizedId, ++requestGeneration, resumePositionMs)
       return@onMainThread
     }
     player.play()
@@ -278,7 +284,7 @@ class ExoPlayerController(
   }
 
   fun toggle() = onMainThread {
-    if (player.isPlaying) pause() else player.play()
+    if (wantsPlayback) pause() else currentVideoId?.let { resume(it) }
   }
 
   /** Runs `body` on `mainHandler` now if already there, or posts it, so it never re-enters twice. */
@@ -288,6 +294,7 @@ class ExoPlayerController(
 
   fun stop() = onMainThread {
     diagnostic("stop")
+    wantsPlayback = false
     cancelPendingRetry()
     cancelBufferStallWatchdog()
     requestGeneration++
@@ -308,9 +315,8 @@ class ExoPlayerController(
    * that is where the parental playback policy lives and the native player must not bypass it.
    */
   fun onActivityBackground() {
-    if (destroyed || !player.isPlaying) return
-    updatePositionTracking()
-    player.pause()
+    if (destroyed) return
+    pause()
   }
 
   /** Idempotent: repeated calls must not create a second progress stream. */
@@ -349,7 +355,6 @@ class ExoPlayerController(
     videoId: String,
     generation: Long,
     startPositionMs: Long,
-    autoplay: Boolean,
     preferAdaptive: Boolean = true,
   ) {
     resolutionTask?.cancel(true)
@@ -359,10 +364,10 @@ class ExoPlayerController(
     // call is a retry deliberately asking for the degraded fallback, and a stale adaptive-quality
     // entry from a prefetch would be exactly the wrong thing to hand it.
     if (preferAdaptive) {
-      val cached = ResolvedStreamCache.takeIfFresh(videoId)
+      val cached = ResolvedStreamCache.getIfFresh(videoId)
       if (cached != null) {
         diagnostic("resolve_end", mapOf("cached" to true, "generation" to generation))
-        prepare(cached, startPositionMs, autoplay)
+        prepare(cached, startPositionMs)
         return
       }
     }
@@ -375,7 +380,8 @@ class ExoPlayerController(
         result
           .onSuccess { info ->
             diagnostic("resolve_end", mapOf("cached" to false, "generation" to generation))
-            prepare(info, startPositionMs, autoplay)
+            if (preferAdaptive) ResolvedStreamCache.put(info)
+            prepare(info, startPositionMs)
           }
           .onFailure { error ->
             Log.w("NestlingResolver", "resolveAndPrepare($videoId) threw", error)
@@ -391,7 +397,7 @@ class ExoPlayerController(
     }
   }
 
-  private fun prepare(info: PlaybackInfo, startPositionMs: Long, autoplay: Boolean) {
+  private fun prepare(info: PlaybackInfo, startPositionMs: Long) {
     diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) "hls" else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
     val source = createMediaSource(info)
     if (source == null) {
@@ -399,19 +405,20 @@ class ExoPlayerController(
       emitError(PlaybackCodes.UNSUPPORTED_FORMAT)
       return
     }
-    // A fresh MediaSource is always created: stream URLs are short-lived and never reused.
+    // Each preparation gets a fresh MediaSource; resolved URLs stay in the bounded memory cache.
     player.setMediaSource(source, startPositionMs.coerceAtLeast(0L))
     player.prepare()
-    player.playWhenReady = autoplay
+    player.playWhenReady = wantsPlayback
   }
 
   private fun handlePlaybackFailure(code: String) {
     if (destroyed) return
+    currentVideoId?.let { ResolvedStreamCache.invalidate(it) }
     diagnostic("failure", mapOf("code" to code, "attempt" to retryAttempt))
     updatePositionTracking()
     player.playWhenReady = false
 
-    if (!retryPolicy.isRecoverable(code) || retryAttempt >= retryPolicy.maxAttempts) {
+    if (!wantsPlayback || !retryPolicy.isRecoverable(code) || retryAttempt >= retryPolicy.maxAttempts) {
       recovering = false
       emitError(code)
       return
@@ -437,12 +444,12 @@ class ExoPlayerController(
 
   /** Refreshes playback information and continues from the last known position. */
   private fun refreshAndResume() {
-    if (destroyed || !recovering) return
+    if (destroyed || !recovering || !wantsPlayback) return
     val videoId = currentVideoId ?: return
     emit("onBuffer", event())
     // The adaptive stream is what just failed, so recovery takes the plain progressive route:
     // 360p and throttled-proof, and better than a retry loop that re-requests a dead manifest.
-    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, autoplay = true, preferAdaptive = false)
+    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, preferAdaptive = false)
   }
 
   private fun cancelPendingRetry() {
