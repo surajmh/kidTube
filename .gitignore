@@ -10,6 +10,8 @@ build/
 .cxx/
 ios/Pods/
 
+.DS_Store
+
 # Local environment
 .env
 .env.local

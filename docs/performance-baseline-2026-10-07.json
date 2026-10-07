@@ -1,0 +1,1543 @@
+{
+  "status": "Initial Wi-Fi baseline captured; extended matrix pending",
+  "device": {
+    "model": "SM-G780G",
+    "android": "13",
+    "installedApkSha256": "64f25b8b74f658f39ba7cb96b16f9ecacdc8c5062ca839fc2e3d74caccb48875",
+    "signerSha256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "network": "Wi-Fi validated",
+    "charging": true,
+    "initialBatteryPercent": 94,
+    "initialBatteryCelsius": 31.2,
+    "initialActivityColdLaunchMs": 1459,
+    "coldLaunchCaveat": "Activity launch timing, not fully interactive app or video first frame",
+    "oldApk": "/tmp/kidtube-baseline/device-setup/installed-before.apk"
+  },
+  "runs": {
+    "warm-open-replay-01": {
+      "sessions": {
+        "93562087:113964570": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113964570
+            },
+            {
+              "event": "resolve_start",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113964571,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113968276,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113968276,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113968279,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113969017,
+              "nativeStartToFrameMs": 4446
+            },
+            {
+              "event": "state",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113969081,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113969082,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "stop",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113980466
+            },
+            {
+              "event": "playing",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113980467,
+              "playing": false,
+              "positionMs": 10689
+            },
+            {
+              "event": "state",
+              "session": "93562087:113964570",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113980467,
+              "state": 1,
+              "positionMs": 10689,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "93562087:113964570",
+              "videoId": "",
+              "elapsedMs": 113980470
+            },
+            {
+              "event": "release",
+              "session": "93562087:113964570",
+              "videoId": "",
+              "elapsedMs": 113980558
+            }
+          ],
+          "nativeStartToFrameMs": 4446,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 802,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "96811537:113983166": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113983166
+            },
+            {
+              "event": "resolve_start",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113983166,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113984960,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113984960,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113984962,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113985138,
+              "nativeStartToFrameMs": 1970
+            },
+            {
+              "event": "state",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113985159,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113985159,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "release",
+              "session": "96811537:113983166",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113991391
+            }
+          ],
+          "nativeStartToFrameMs": 1970,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 197,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "99157343:113993985": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113993985
+            },
+            {
+              "event": "resolve_start",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113993985,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996255,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996255,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996258,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996468,
+              "nativeStartToFrameMs": 2482
+            },
+            {
+              "event": "state",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996491,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 113996495,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "stop",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114002085
+            },
+            {
+              "event": "playing",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114002087,
+              "playing": false,
+              "positionMs": 5229
+            },
+            {
+              "event": "state",
+              "session": "99157343:113993985",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114002089,
+              "state": 1,
+              "positionMs": 5229,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "99157343:113993985",
+              "videoId": "",
+              "elapsedMs": 114002090
+            },
+            {
+              "event": "release",
+              "session": "99157343:113993985",
+              "videoId": "",
+              "elapsedMs": 114002186
+            }
+          ],
+          "nativeStartToFrameMs": 2482,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 233,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "253949736:114004916": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114004916
+            },
+            {
+              "event": "resolve_start",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114004916,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007314,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007314,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007315,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007441,
+              "nativeStartToFrameMs": 2524
+            },
+            {
+              "event": "state",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007460,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114007461,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "stop",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114012987
+            },
+            {
+              "event": "playing",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114012987,
+              "playing": false,
+              "positionMs": 5168
+            },
+            {
+              "event": "state",
+              "session": "253949736:114004916",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114012988,
+              "state": 1,
+              "positionMs": 5168,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "253949736:114004916",
+              "videoId": "",
+              "elapsedMs": 114012988
+            },
+            {
+              "event": "release",
+              "session": "253949736:114004916",
+              "videoId": "",
+              "elapsedMs": 114013072
+            }
+          ],
+          "nativeStartToFrameMs": 2524,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 145,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "80464550:114015806": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114015806
+            },
+            {
+              "event": "resolve_start",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114015807,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018158,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018158,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018159,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018310,
+              "nativeStartToFrameMs": 2504
+            },
+            {
+              "event": "state",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018332,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114018333,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 2504,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 173,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        }
+      },
+      "nativeStartToFrameMedianMs": 2504,
+      "firstFrameSamples": 5,
+      "malformedLines": 1,
+      "rawCaptureDirectory": "/tmp/kidtube-baseline/warm-open-replay-01",
+      "medianFirstResolveMs": 2351,
+      "preparedSources": [
+        "progressive",
+        "progressive",
+        "progressive",
+        "progressive",
+        "progressive"
+      ],
+      "uiFrames": 995,
+      "uiJankyFrames": 18,
+      "uiJankPercent": "1.81%",
+      "endPssKiB": 219334
+    },
+    "process-cold-open-01": {
+      "sessions": {
+        "8203348:114193810": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114193810
+            },
+            {
+              "event": "resolve_start",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114193811,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197033,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197034,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197043,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197288,
+              "nativeStartToFrameMs": 3477
+            },
+            {
+              "event": "state",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197325,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "8203348:114193810",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114197326,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 3477,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 282,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "12881125:114204174": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114204174
+            },
+            {
+              "event": "resolve_start",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114204175,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207286,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207286,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207295,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207473,
+              "nativeStartToFrameMs": 3298
+            },
+            {
+              "event": "state",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207494,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "12881125:114204174",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114207494,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 3298,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 199,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "241983254:114214488": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114214488
+            },
+            {
+              "event": "resolve_start",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114214489,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217623,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217624,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217633,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217801,
+              "nativeStartToFrameMs": 3311
+            },
+            {
+              "event": "state",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217837,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "241983254:114214488",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114217838,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 3311,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 204,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "221612653:114224874": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114224874
+            },
+            {
+              "event": "resolve_start",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114224875,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114227831,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114227831,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114227834,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114227994,
+              "nativeStartToFrameMs": 3119
+            },
+            {
+              "event": "state",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114228029,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "221612653:114224874",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114228030,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 3119,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 195,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "165704605:114235171": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "start",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114235171
+            },
+            {
+              "event": "resolve_start",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114235172,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238384,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238384,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238386,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238588,
+              "nativeStartToFrameMs": 3415
+            },
+            {
+              "event": "state",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238603,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114238606,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "stop",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114277239
+            },
+            {
+              "event": "playing",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114277241,
+              "playing": false,
+              "positionMs": 38459
+            },
+            {
+              "event": "state",
+              "session": "165704605:114235171",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114277243,
+              "state": 1,
+              "positionMs": 38459,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "165704605:114235171",
+              "videoId": "",
+              "elapsedMs": 114277243
+            },
+            {
+              "event": "release",
+              "session": "165704605:114235171",
+              "videoId": "",
+              "elapsedMs": 114277334
+            }
+          ],
+          "nativeStartToFrameMs": 3415,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 217,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        }
+      },
+      "nativeStartToFrameMedianMs": 3311,
+      "firstFrameSamples": 5,
+      "malformedLines": 1,
+      "rawCaptureDirectory": "/tmp/kidtube-baseline/process-cold-open-01",
+      "medianFirstResolveMs": 3134,
+      "preparedSources": [
+        "progressive",
+        "progressive",
+        "progressive",
+        "progressive",
+        "progressive"
+      ],
+      "uiFrames": 252,
+      "uiJankyFrames": 9,
+      "uiJankPercent": "3.57%",
+      "endPssKiB": 228473
+    },
+    "switching-foreground-01": {
+      "sessions": {
+        "80464550:114015806": {
+          "videoId": "LuJe0ad1Ygk",
+          "events": [
+            {
+              "event": "stop",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114038640
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114038641,
+              "playing": false,
+              "positionMs": 19948
+            },
+            {
+              "event": "state",
+              "session": "80464550:114015806",
+              "videoId": "LuJe0ad1Ygk",
+              "elapsedMs": 114038642,
+              "state": 1,
+              "positionMs": 19948,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "80464550:114015806",
+              "videoId": "",
+              "elapsedMs": 114038660
+            }
+          ],
+          "nativeStartToFrameMs": null,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [],
+          "openBufferingSinceMs": null,
+          "startedInCapture": false
+        },
+        "80464550:114038661": {
+          "videoId": "GzIObE7uR8Q",
+          "events": [
+            {
+              "event": "start",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114038661
+            },
+            {
+              "event": "resolve_start",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114038661,
+              "generation": 4,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041443,
+              "cached": false,
+              "generation": 4
+            },
+            {
+              "event": "prepare",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041443,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041445,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041613,
+              "nativeStartToFrameMs": 2951
+            },
+            {
+              "event": "state",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041635,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114041635,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114056325,
+              "playing": false,
+              "positionMs": 14351
+            },
+            {
+              "event": "pause_command",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114056329
+            },
+            {
+              "event": "resume_command",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114066420
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114066420,
+              "playing": true,
+              "positionMs": 14354
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114083820,
+              "playing": false,
+              "positionMs": 31739
+            },
+            {
+              "event": "dropped_frames",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114083825,
+              "count": 6,
+              "intervalMs": 17399
+            },
+            {
+              "event": "pause_command",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114083832
+            },
+            {
+              "event": "resume_command",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114093984
+            },
+            {
+              "event": "playing",
+              "session": "80464550:114038661",
+              "videoId": "GzIObE7uR8Q",
+              "elapsedMs": 114093985,
+              "playing": true,
+              "positionMs": 31745
+            }
+          ],
+          "nativeStartToFrameMs": 2951,
+          "reportedDroppedFrames": 6,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 190,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        }
+      },
+      "nativeStartToFrameMedianMs": 2951,
+      "firstFrameSamples": 1,
+      "malformedLines": 1,
+      "rawCaptureDirectory": "/tmp/kidtube-baseline/switching-foreground-01",
+      "medianFirstResolveMs": 2782,
+      "preparedSources": [
+        "progressive"
+      ],
+      "uiFrames": 253,
+      "uiJankyFrames": 8,
+      "uiJankPercent": "3.16%",
+      "endPssKiB": 172701
+    },
+    "library-scroll-01": {
+      "sessions": {},
+      "nativeStartToFrameMedianMs": null,
+      "firstFrameSamples": 0,
+      "malformedLines": 0,
+      "rawCaptureDirectory": "/tmp/kidtube-baseline/library-scroll-01",
+      "medianFirstResolveMs": null,
+      "preparedSources": [],
+      "uiFrames": 1386,
+      "uiJankyFrames": 3,
+      "uiJankPercent": "0.22%",
+      "endPssKiB": 218289
+    },
+    "third-video-rapid-switch-01": {
+      "sessions": {
+        "195844459:114344200": {
+          "videoId": "uBweptmCYZg",
+          "events": [
+            {
+              "event": "start",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114344200
+            },
+            {
+              "event": "resolve_start",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114344201,
+              "generation": 1,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346373,
+              "cached": false,
+              "generation": 1
+            },
+            {
+              "event": "prepare",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346373,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346375,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346531,
+              "nativeStartToFrameMs": 2331
+            },
+            {
+              "event": "state",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346551,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114346551,
+              "playing": true,
+              "positionMs": 0
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114352213
+            },
+            {
+              "event": "playing",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114352214,
+              "playing": false,
+              "positionMs": 5483
+            },
+            {
+              "event": "state",
+              "session": "195844459:114344200",
+              "videoId": "uBweptmCYZg",
+              "elapsedMs": 114352214,
+              "state": 1,
+              "positionMs": 5483,
+              "playWhenReady": false
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114344200",
+              "videoId": "",
+              "elapsedMs": 114352215
+            }
+          ],
+          "nativeStartToFrameMs": 2331,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 176,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "195844459:114352215": {
+          "videoId": "2QtoaV22rpY",
+          "events": [
+            {
+              "event": "start",
+              "session": "195844459:114352215",
+              "videoId": "2QtoaV22rpY",
+              "elapsedMs": 114352215
+            },
+            {
+              "event": "resolve_start",
+              "session": "195844459:114352215",
+              "videoId": "2QtoaV22rpY",
+              "elapsedMs": 114352215,
+              "generation": 4,
+              "adaptive": true
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114352215",
+              "videoId": "2QtoaV22rpY",
+              "elapsedMs": 114352955
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114352215",
+              "videoId": "",
+              "elapsedMs": 114352957
+            }
+          ],
+          "nativeStartToFrameMs": null,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "195844459:114352958": {
+          "videoId": "iHP8FGwzjJg",
+          "events": [
+            {
+              "event": "start",
+              "session": "195844459:114352958",
+              "videoId": "iHP8FGwzjJg",
+              "elapsedMs": 114352958
+            },
+            {
+              "event": "resolve_start",
+              "session": "195844459:114352958",
+              "videoId": "iHP8FGwzjJg",
+              "elapsedMs": 114352958,
+              "generation": 7,
+              "adaptive": true
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114352958",
+              "videoId": "iHP8FGwzjJg",
+              "elapsedMs": 114353680
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114352958",
+              "videoId": "",
+              "elapsedMs": 114353681
+            }
+          ],
+          "nativeStartToFrameMs": null,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "195844459:114353683": {
+          "videoId": "LLgTFZP3IQQ",
+          "events": [
+            {
+              "event": "start",
+              "session": "195844459:114353683",
+              "videoId": "LLgTFZP3IQQ",
+              "elapsedMs": 114353683
+            },
+            {
+              "event": "resolve_start",
+              "session": "195844459:114353683",
+              "videoId": "LLgTFZP3IQQ",
+              "elapsedMs": 114353683,
+              "generation": 10,
+              "adaptive": true
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114353683",
+              "videoId": "LLgTFZP3IQQ",
+              "elapsedMs": 114354412
+            },
+            {
+              "event": "stop",
+              "session": "195844459:114353683",
+              "videoId": "",
+              "elapsedMs": 114354413
+            }
+          ],
+          "nativeStartToFrameMs": null,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        },
+        "195844459:114354415": {
+          "videoId": "YaFSwBg1qvg",
+          "events": [
+            {
+              "event": "start",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114354415
+            },
+            {
+              "event": "resolve_start",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114354416,
+              "generation": 13,
+              "adaptive": true
+            },
+            {
+              "event": "resolve_end",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363479,
+              "cached": false,
+              "generation": 13
+            },
+            {
+              "event": "prepare",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363479,
+              "positionMs": 0,
+              "source": "progressive"
+            },
+            {
+              "event": "state",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363481,
+              "state": 2,
+              "positionMs": 0,
+              "playWhenReady": false
+            },
+            {
+              "event": "first_frame",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363959,
+              "nativeStartToFrameMs": 9543
+            },
+            {
+              "event": "state",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363971,
+              "state": 3,
+              "positionMs": 0,
+              "playWhenReady": true
+            },
+            {
+              "event": "playing",
+              "session": "195844459:114354415",
+              "videoId": "YaFSwBg1qvg",
+              "elapsedMs": 114363972,
+              "playing": true,
+              "positionMs": 0
+            }
+          ],
+          "nativeStartToFrameMs": 9543,
+          "reportedDroppedFrames": 0,
+          "failures": [],
+          "bufferingSpells": [
+            {
+              "durationMs": 490,
+              "playWhenReady": false,
+              "closedBy": "state"
+            }
+          ],
+          "openBufferingSinceMs": null,
+          "startedInCapture": true
+        }
+      },
+      "nativeStartToFrameMedianMs": 5937.0,
+      "firstFrameSamples": 2,
+      "malformedLines": 1,
+      "rawCaptureDirectory": "/tmp/kidtube-baseline/third-video-rapid-switch-01",
+      "medianFirstResolveMs": 5617.5,
+      "preparedSources": [
+        "progressive",
+        "progressive"
+      ],
+      "uiFrames": 884,
+      "uiJankyFrames": 3,
+      "uiJankPercent": "0.34%",
+      "endPssKiB": 219502
+    }
+  },
+  "limitations": [
+    "No external tap-to-picture measurement",
+    "No 10-minute sustained or weak/mobile-network run",
+    "No full-library item count or expanded large-library stress test",
+    "Rapid-switch intermediate requests were intentionally superseded",
+    "Cold-run gfxinfo only describes the last surviving process; do not aggregate it across launches",
+    "Paused return verified visually outside the timed capture",
+    "Different video IDs and cache history prevent interpreting run differences as optimization gains"
+  ]
+}

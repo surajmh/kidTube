@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
 import android.util.Log
@@ -13,6 +14,9 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import org.json.JSONObject
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
@@ -23,6 +27,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.ui.PlayerView
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.RejectedExecutionException
 
 /**
@@ -49,14 +54,18 @@ class ExoPlayerController(
   private val progressIntervalMs = 500L
 
   private var currentVideoId: String? = null
-  private var requestGeneration = 0L
+  @Volatile private var requestGeneration = 0L
+  private var resolutionTask: Future<*>? = null
   private var retryAttempt = 0
   private var resumePositionMs = 0L
   private var recovering = false
   private var ticking = false
-  private var destroyed = false
+  @Volatile private var destroyed = false
   private var attachedView: PlayerView? = null
   private var fullscreenActive = false
+  private var diagnosticSession = ""
+  private var diagnosticStartedAt = 0L
+  private var diagnosticFirstFrame = false
 
   private val retryRunnable = Runnable { refreshAndResume() }
 
@@ -97,6 +106,7 @@ class ExoPlayerController(
       )
       exoPlayer.addListener(object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
+          diagnostic("state", mapOf("state" to playbackState, "positionMs" to exoPlayer.currentPosition, "playWhenReady" to exoPlayer.playWhenReady))
           when (playbackState) {
             Player.STATE_BUFFERING -> {
               emit("onBuffer", event())
@@ -117,6 +127,7 @@ class ExoPlayerController(
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+          diagnostic("playing", mapOf("playing" to isPlaying, "positionMs" to exoPlayer.currentPosition))
           if (isPlaying) {
             recovering = false
             updatePositionTracking()
@@ -135,7 +146,32 @@ class ExoPlayerController(
           handlePlaybackFailure(code)
         }
       })
+      exoPlayer.addAnalyticsListener(object : AnalyticsListener {
+        override fun onRenderedFirstFrame(eventTime: AnalyticsListener.EventTime, output: Any, renderTimeMs: Long) {
+          if (eventTime.timeline.isEmpty) return
+          val mediaId = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem.mediaId
+          if (mediaId != currentVideoId || diagnosticFirstFrame || diagnosticSession.isEmpty()) return
+          diagnosticFirstFrame = true
+          diagnostic("first_frame", mapOf("nativeStartToFrameMs" to (renderTimeMs - diagnosticStartedAt)))
+        }
+
+        override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+          diagnostic("dropped_frames", mapOf("count" to droppedFrames, "intervalMs" to elapsedMs))
+        }
+      })
     }
+
+  // Enabled only for a local capture: adb shell setprop log.tag.KidTubePerf DEBUG.
+  private fun diagnostic(name: String, extra: Map<String, Any> = emptyMap()) {
+    if (!Log.isLoggable("KidTubePerf", Log.DEBUG) || diagnosticSession.isEmpty()) return
+    Log.i("KidTubePerf", JSONObject(buildMap<String, Any> {
+      put("event", name)
+      put("session", diagnosticSession)
+      put("videoId", currentVideoId.orEmpty())
+      put("elapsedMs", SystemClock.elapsedRealtime())
+      putAll(extra)
+    }).toString())
+  }
 
   fun isDestroyed() = destroyed
 
@@ -189,17 +225,23 @@ class ExoPlayerController(
     retryAttempt = 0
     recovering = false
     currentVideoId = normalizedId
+    diagnosticStartedAt = SystemClock.elapsedRealtime()
+    diagnosticSession = "${System.identityHashCode(this)}:$diagnosticStartedAt"
+    diagnosticFirstFrame = false
+    diagnostic("start")
     resumePositionMs = 0L
     emit("onLoad", event())
     resolveAndPrepare(normalizedId, ++requestGeneration, startPositionMs = 0L, autoplay = autoplay)
   }
 
   fun pause() = onMainThread {
+    diagnostic("pause_command")
     updatePositionTracking()
     player.pause()
   }
 
   fun resume(videoId: String) = onMainThread {
+    diagnostic("resume_command")
     val normalizedId = videoId.trim()
     if (currentVideoId != normalizedId) {
       play(normalizedId, true)
@@ -219,6 +261,7 @@ class ExoPlayerController(
   }
 
   fun seek(positionMs: Long) = onMainThread {
+    diagnostic("seek_command", mapOf("targetMs" to positionMs))
     player.seekTo(positionMs.coerceAtLeast(0L))
     updatePositionTracking()
   }
@@ -244,9 +287,12 @@ class ExoPlayerController(
   }
 
   fun stop() = onMainThread {
+    diagnostic("stop")
     cancelPendingRetry()
     cancelBufferStallWatchdog()
     requestGeneration++
+    resolutionTask?.cancel(true)
+    resolutionTask = null
     retryAttempt = 0
     recovering = false
     resumePositionMs = 0L
@@ -278,6 +324,7 @@ class ExoPlayerController(
 
   fun release() {
     if (destroyed) return
+    diagnostic("release")
     destroyed = true
     ticking = false
     cancelPendingRetry()
@@ -285,6 +332,8 @@ class ExoPlayerController(
     mainHandler.removeCallbacksAndMessages(null)
     detach()
     if (fullscreenActive) applyFullscreen(false)
+    resolutionTask?.cancel(true)
+    resolutionTask = null
     resolverExecutor.shutdownNow()
     player.release()
   }
@@ -303,22 +352,31 @@ class ExoPlayerController(
     autoplay: Boolean,
     preferAdaptive: Boolean = true,
   ) {
+    resolutionTask?.cancel(true)
+    resolutionTask = null
+    diagnostic("resolve_start", mapOf("generation" to generation, "adaptive" to preferAdaptive))
     // Only the normal (non-recovery) path consults the prefetch cache: a `preferAdaptive = false`
     // call is a retry deliberately asking for the degraded fallback, and a stale adaptive-quality
     // entry from a prefetch would be exactly the wrong thing to hand it.
     if (preferAdaptive) {
       val cached = ResolvedStreamCache.takeIfFresh(videoId)
       if (cached != null) {
+        diagnostic("resolve_end", mapOf("cached" to true, "generation" to generation))
         prepare(cached, startPositionMs, autoplay)
         return
       }
     }
     val task = Runnable {
+      // Cancellation is cooperative; reject stale queued work before it makes any requests.
+      if (destroyed || generation != requestGeneration || Thread.currentThread().isInterrupted) return@Runnable
       val result = runCatching { resolver.resolve(videoId, preferAdaptive) }
       mainHandler.post {
         if (destroyed || generation != requestGeneration) return@post
         result
-          .onSuccess { info -> prepare(info, startPositionMs, autoplay) }
+          .onSuccess { info ->
+            diagnostic("resolve_end", mapOf("cached" to false, "generation" to generation))
+            prepare(info, startPositionMs, autoplay)
+          }
           .onFailure { error ->
             Log.w("NestlingResolver", "resolveAndPrepare($videoId) threw", error)
             val code = (error as? PlaybackException)?.code ?: PlaybackCodes.RESOLVER_UNAVAILABLE
@@ -327,13 +385,14 @@ class ExoPlayerController(
       }
     }
     try {
-      resolverExecutor.execute(task)
+      resolutionTask = resolverExecutor.submit(task)
     } catch (rejected: RejectedExecutionException) {
       Log.w("NestlingResolver", "executor rejected id=$videoId", rejected)
     }
   }
 
   private fun prepare(info: PlaybackInfo, startPositionMs: Long, autoplay: Boolean) {
+    diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) "hls" else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
     val source = createMediaSource(info)
     if (source == null) {
       Log.w(TAG, "prepare(${info.videoId}) resolved but no playable source: $info")
@@ -348,6 +407,7 @@ class ExoPlayerController(
 
   private fun handlePlaybackFailure(code: String) {
     if (destroyed) return
+    diagnostic("failure", mapOf("code" to code, "attempt" to retryAttempt))
     updatePositionTracking()
     player.playWhenReady = false
 

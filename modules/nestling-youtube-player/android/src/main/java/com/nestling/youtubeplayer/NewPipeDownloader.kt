@@ -1,6 +1,7 @@
 package com.nestling.youtubeplayer
 
 import java.util.concurrent.TimeUnit
+import java.io.InterruptedIOException
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.downloader.Downloader
@@ -20,6 +21,8 @@ class NewPipeDownloader(
 ) : Downloader() {
 
   override fun execute(request: Request): Response {
+    // Stop superseded extraction between HTTP calls without cancelling unrelated metadata/prefetch.
+    if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Extraction cancelled")
     val builder = okhttp3.Request.Builder()
       .method(request.httpMethod(), request.dataToSend()?.toRequestBody())
       .url(request.url())

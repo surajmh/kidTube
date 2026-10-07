@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-07",
+  "device": "Samsung SM-G780G / Android 13",
+  "conditions": "Wi-Fi, power connected, existing app/media cache retained; no clearing",
+  "apks": {
+    "baselineSha256": "64f25b8b74f658f39ba7cb96b16f9ecacdc8c5062ca839fc2e3d74caccb48875",
+    "candidateSha256": "ea5e6f7cf0445198f7b8b3c581e06fc31977e216ad7f318d0a969e18dc47a63a",
+    "matchingCertificate": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+  },
+  "baselineFinalNativeStartToFrameMs": [
+    9543
+  ],
+  "candidateFinalNativeStartToFrameMs": [
+    2693,
+    2358,
+    2338
+  ],
+  "sequence": [
+    "uBweptmCYZg",
+    "2QtoaV22rpY",
+    "iHP8FGwzjJg",
+    "LLgTFZP3IQQ",
+    "YaFSwBg1qvg"
+  ],
+  "sessions": {
+    "20868801:115047270": {
+      "videoId": "uBweptmCYZg",
+      "nativeStartToFrameMs": 4103,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "20868801:115055341": {
+      "videoId": "2QtoaV22rpY",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "20868801:115056065": {
+      "videoId": "iHP8FGwzjJg",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "20868801:115056774": {
+      "videoId": "LLgTFZP3IQQ",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "20868801:115057507": {
+      "videoId": "YaFSwBg1qvg",
+      "nativeStartToFrameMs": 2693,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "121808386:115070326": {
+      "videoId": "uBweptmCYZg",
+      "nativeStartToFrameMs": 2466,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "121808386:115078434": {
+      "videoId": "2QtoaV22rpY",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "121808386:115079143": {
+      "videoId": "iHP8FGwzjJg",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "121808386:115079860": {
+      "videoId": "LLgTFZP3IQQ",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "121808386:115080570": {
+      "videoId": "YaFSwBg1qvg",
+      "nativeStartToFrameMs": 2358,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "103876898:115093196": {
+      "videoId": "uBweptmCYZg",
+      "nativeStartToFrameMs": 2218,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "103876898:115101279": {
+      "videoId": "2QtoaV22rpY",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "103876898:115102006": {
+      "videoId": "iHP8FGwzjJg",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "103876898:115102728": {
+      "videoId": "LLgTFZP3IQQ",
+      "nativeStartToFrameMs": null,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    },
+    "103876898:115103382": {
+      "videoId": "YaFSwBg1qvg",
+      "nativeStartToFrameMs": 2338,
+      "reportedDroppedFrames": 0,
+      "failures": []
+    }
+  },
+  "rawCapture": "/tmp/kidtube-phase2/rapid-switch-02",
+  "limitations": [
+    "One baseline repetition versus three candidate repetitions; not a randomized comparison",
+    "Native timings exclude initial tap/JS scheduling",
+    "Nine intermediate starts were intentionally superseded, not failed playback",
+    "No weak-network or long-playback speed claim"
+  ]
+}

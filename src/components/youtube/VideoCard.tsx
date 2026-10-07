@@ -10,15 +10,17 @@ import { yt } from './theme';
 /** A 16:9 thumbnail that quietly falls back when the preferred rendition is missing. */
 export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?: number }) {
   const { primary, fallback } = thumbnailUrls(video);
-  const [source, setSource] = useState(primary);
+  const [failedPrimary, setFailedPrimary] = useState<string | null>(null);
+  const source = failedPrimary === primary ? fallback : primary;
   const duration = formatDuration(video.duration);
   return (
     <View style={[styles.thumbWrap, { borderRadius: radius }]}>
       <Image
         source={{ uri: source }}
+        recyclingKey={primary}
         style={styles.thumb}
         resizeMode="cover"
-        onError={() => setSource((current) => (current === fallback ? current : fallback))}
+        onError={() => setFailedPrimary(primary)}
       />
       {duration ? (
         <View style={styles.badge}>
