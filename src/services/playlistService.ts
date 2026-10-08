@@ -1,6 +1,7 @@
 import { ApprovedVideo, CuratedPlaylist } from '../types';
-import { readJson, storageKeys, writeJson } from '../repositories/storage';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import { saveQuietly, useAppStore } from '../store/appStore';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { id } from '../utils/id';
 
 /** Membership never approves content: always resolve against the child's filtered library. */
@@ -30,16 +31,20 @@ export function nextQueuedVideo(queueIds: string[], currentId: string, allowedVi
   return undefined;
 }
 
+/** Drops anything in storage that is not a well-formed, uniquely identified playlist. */
+export function sanitizePlaylists(stored: unknown): CuratedPlaylist[] {
+  if (!Array.isArray(stored)) return [];
+  const seen = new Set<string>();
+  return stored.flatMap((row) => {
+    if (!row || typeof row.id !== 'string' || !row.id.trim() || seen.has(row.id) || typeof row.name !== 'string' || !row.name.trim() || !Array.isArray(row.videoIds)) return [];
+    seen.add(row.id);
+    return [{ id: row.id, name: row.name.trim().slice(0, 80), videoIds: [...new Set<string>(row.videoIds.filter((value: unknown) => typeof value === 'string'))] }];
+  });
+}
+
 export const playlistService = {
   async getAll(): Promise<CuratedPlaylist[]> {
-    const stored = await readJson<unknown>(storageKeys.playlists, []);
-    if (!Array.isArray(stored)) return [];
-    const seen = new Set<string>();
-    return stored.flatMap((row) => {
-      if (!row || typeof row.id !== 'string' || !row.id.trim() || seen.has(row.id) || typeof row.name !== 'string' || !row.name.trim() || !Array.isArray(row.videoIds)) return [];
-      seen.add(row.id);
-      return [{ id: row.id, name: row.name.trim().slice(0, 80), videoIds: [...new Set<string>(row.videoIds.filter((value: unknown) => typeof value === 'string'))] }];
-    });
+    return sanitizePlaylists(useAppStore.getState().playlists);
   },
   async save(session: ParentSession, draft: CuratedPlaylist, playlists: CuratedPlaylist[], videos: ApprovedVideo[]) {
     parentSessionService.require('edit playlists');
@@ -49,13 +54,13 @@ export const playlistService = {
     if (draft.videoIds.some((id) => !known.has(id))) throw new Error('A video in this playlist is no longer in your library.');
     const playlist = { id: draft.id || id('playlist'), name, videoIds: [...new Set(draft.videoIds)] };
     const next = [...playlists.filter((item) => item.id !== playlist.id), playlist];
-    await writeJson(storageKeys.playlists, next);
+    await saveQuietly({ playlists: next });
     return next;
   },
   async remove(session: ParentSession, playlistId: string, playlists: CuratedPlaylist[]) {
     parentSessionService.require('delete playlists');
     const next = playlists.filter((item) => item.id !== playlistId);
-    await writeJson(storageKeys.playlists, next);
+    await saveQuietly({ playlists: next });
     return next;
   },
 };

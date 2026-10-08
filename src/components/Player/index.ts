@@ -1,2 +1,2 @@
-export { PlayerScreen } from './Player';
-export type { PlayerScreenProps } from './usePlayer';
+export { PlayerScreen } from './player';
+export type { PlayerScreenProps } from './player.type';

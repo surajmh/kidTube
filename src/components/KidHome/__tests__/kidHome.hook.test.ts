@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { act, renderHook } from '@testing-library/react-native';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import { KidLibrary } from '../../../services/kidContentLibraryService';
-import { ChannelSyncState } from '../../../services/content/channelSyncRules';
+import type { KidLibrary } from '../../../services/kidContentLibraryService.type';
+import type { ChannelSyncState } from '../../../services/content/channelSyncRules.type';
 import { useKidHome } from '../kidHome.hook';
 
 const channelA = 'UCaaaaaaaaaaaaaaaaaaaaaa';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { ContentApproval, PlaybackOverride } from '../../../parentalControlsTypes';
-import { ChildRulesMap } from '../../../services/childRulesService';
+import type { ContentApproval, PlaybackOverride } from '../../../types';
+import type { ChildRulesMap } from '../../../services/childRulesService.type';
 import {
   activeOverridesFor,
   approvalsFor,

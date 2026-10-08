@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApprovedVideo } from '../../types';
 import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './kidHome.helper';
-import { KidHomeProps, KidTab } from './kidHome.type';
-
-type UseKidHomeInput = Pick<
-  KidHomeProps,
-  'library' | 'tab' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
->;
+import { KidTab } from './kidHome.type';
+import type { UseKidHomeInput } from './kidHome.type';
 
 /** Long enough to skip the search scan on every keystroke of a fast typer, short enough to feel instant. */
 const SEARCH_DEBOUNCE_MS = 200;

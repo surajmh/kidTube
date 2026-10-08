@@ -1,4 +1,4 @@
-import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../parentalControlsTypes';
+import type { ApprovalDuration, ApprovalTarget, ContentApproval } from '../types';
 
 /**
  * Dependency-free approval rules.
@@ -49,4 +49,15 @@ export function describeApprovalExpiry(approval: ContentApproval, now = new Date
 
 export function describeApprovalTarget(target: ApprovalTarget) {
   return target.type === 'video' ? target.youtubeVideoId : target.youtubeChannelId;
+}
+
+/** Milliseconds until the first approval that has not expired yet does, or null if none ever will. */
+export function msUntilNextExpiry(approvals: ContentApproval[], now = Date.now()): number | null {
+  let soonest = Infinity;
+  for (const approval of approvals) {
+    if (!approval.expiresAt) continue;
+    const at = new Date(approval.expiresAt).getTime();
+    if (at > now && at < soonest) soonest = at;
+  }
+  return Number.isFinite(soonest) ? soonest - now : null;
 }

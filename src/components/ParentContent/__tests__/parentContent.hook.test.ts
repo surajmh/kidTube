@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import { ContentCandidate } from '../../../parentalControlsTypes';
+import type { ContentCandidate } from '../../../types';
 import { useParentContent } from '../parentContent.hook';
 import { PARENT_CONTENT_COPY } from '../parentContent.constant';
 

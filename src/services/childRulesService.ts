@@ -1,9 +1,10 @@
 import { childRulesRepository } from '../repositories/parentalControlsRepository';
-import { ChildContentRules, defaultChildContentRules } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import type { ChildContentRules } from '../types';
+import { defaultChildContentRules } from '../utils/parentalControls.helper';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { toggleCategoryId } from './categoryService';
-
-export type ChildRulesMap = Record<string, ChildContentRules>;
+import type { ChildRulesMap } from './childRulesService.type';
 
 /**
  * Global approvals stay intact; these rules only add or remove access for a

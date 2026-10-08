@@ -1,31 +1,7 @@
-import { ChildContentRules, ContentApproval, defaultChildContentRules } from '../parentalControlsTypes';
+import type { ChildContentRules, ContentApproval } from '../types';
+import { defaultChildContentRules } from '../utils/parentalControls.helper';
 import { whitelistService } from './whitelistService';
-
-/**
- * Single source of truth for "may this profile see/play this content?".
- *
- * Both `PlaybackPolicyService` (before handing a video to the native player) and
- * `KidContentLibraryService` (when building the Kid Mode library) call this, so
- * the child never sees content the policy would refuse, and vice versa.
- *
- * Layer order:
- *  1. explicit child blocks            -> child_blocked
- *  2. parent candidates (unapproved)   -> not_approved
- *  3. global whitelist approval, or a child/family grant -> allowed
- *  4. expired grant                    -> expired
- *  5. disabled category                -> category_blocked
- */
-export type ContentAccessOutcome = 'allowed' | 'expired' | 'not_approved' | 'category_blocked' | 'child_blocked';
-
-export type ContentAccessInput = {
-  videoId?: string;
-  channelId?: string;
-  categoryIds?: string[];
-  /** Unapproved library rows a parent added as "ask a parent" candidates. */
-  isCandidate?: boolean;
-};
-
-export type ApprovalState = 'allowed' | 'expired' | 'none';
+import type { ContentAccessOutcome, ContentAccessInput, ApprovalState, IndexedChildRules } from './contentAccessService.type';
 
 export function approvalExpired(approval: ContentApproval, now = new Date()) {
   if (approval.expiresAt && new Date(approval.expiresAt).getTime() <= now.getTime()) return true;
@@ -37,18 +13,6 @@ export function approvalMatchesTarget(approval: ContentApproval, videoId?: strin
   if (approval.target.type === 'video') return Boolean(videoId) && approval.target.youtubeVideoId === videoId;
   return Boolean(channelId) && approval.target.youtubeChannelId === channelId;
 }
-
-/** `evaluate()` runs once per video/channel in the whole library, so its id-list lookups are
- * indexed into Sets once per rule change rather than `Array.includes`d from scratch every call —
- * turning what was an O(videos × rules) scan into O(videos + rules). */
-type IndexedChildRules = {
-  rules: ChildContentRules;
-  blockedVideoIds: Set<string>;
-  blockedChannelIds: Set<string>;
-  grantedVideoIds: Set<string>;
-  grantedChannelIds: Set<string>;
-  blockedCategoryIds: Set<string>;
-};
 
 export class ContentAccessService {
   private rules = new Map<string, ChildContentRules>();

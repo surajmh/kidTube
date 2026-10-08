@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ChildProfile } from '../../types';
-import { ContentCategory } from '../../parentalControlsTypes';
+import type { ContentCategory } from '../../types';
 import { FocusablePressable } from '../tv';
 import { yt } from '../youtube/theme';
 import styles from './parentFilter.style';

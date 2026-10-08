@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { act, renderHook } from '@testing-library/react-native';
 import { ChildProfile } from '../../../types';
-import { PlaybackSettings } from '../../../playbackTypes';
-import { ContentApproval, PlaybackOverride } from '../../../parentalControlsTypes';
-import { ChildRulesMap } from '../../../services/childRulesService';
+import type { PlaybackSettings } from '../../../types';
+import type { ContentApproval, PlaybackOverride } from '../../../types';
+import type { ChildRulesMap } from '../../../services/childRulesService.type';
 import { useParentChildren } from '../parentChildren.hook';
 
 const milo: ChildProfile = { id: 'milo', name: 'Milo', avatar: 'sun' };

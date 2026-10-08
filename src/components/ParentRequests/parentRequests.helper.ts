@@ -1,5 +1,5 @@
 import { ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest } from '../../parentalControlsTypes';
+import type { ContentRequest } from '../../types';
 import { PARENT_REQUESTS_COPY } from './parentRequests.constant';
 
 const MINUTE_MS = 60_000;

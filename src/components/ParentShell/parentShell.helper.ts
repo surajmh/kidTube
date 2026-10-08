@@ -1,13 +1,7 @@
-import { ContentRequest } from '../../parentalControlsTypes';
+import type { ContentRequest } from '../../types';
 import { ParentContentMode, ParentSection } from './parentShell.type';
+import type { ScrollMetrics } from './parentShell.type';
 import { NEAR_BOTTOM_THRESHOLD } from './parentShell.constant';
-
-/** The scroll geometry a near-bottom check needs, matching NativeScrollEvent's shape. */
-export type ScrollMetrics = {
-  layoutMeasurement: { height: number };
-  contentOffset: { y: number };
-  contentSize: { height: number };
-};
 
 /** Sections that render the content panel rather than a standalone page. */
 export function isContentPage(section: ParentSection): boolean {

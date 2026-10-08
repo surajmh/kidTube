@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import { fallbackCategoryId } from '../../../parentalControlsTypes';
+import { fallbackCategoryId } from '../../../constants/parentalControls.constant';
 import { categoryCounts } from '../parentCategories.helper';
 
 const videos = [

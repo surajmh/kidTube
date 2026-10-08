@@ -1,3 +1,4 @@
+import { ApprovedVideo } from '../../types';
 import { KidDestination } from './kidHome.type';
 
 /** Four destinations. Categories live as filter chips on the feed instead. */
@@ -42,3 +43,6 @@ export const ICON = {
 
 /** Monogram tints for channels with no artwork. */
 export const MONOGRAM_TINTS = ['#3D5AFE', '#00897B', '#8E24AA', '#F4511E', '#5E6BC0', '#00838F'] as const;
+
+/** Stable empty list so FlatList data does not change identity between renders. */
+export const EMPTY_VIDEOS: ApprovedVideo[] = [];

@@ -1,13 +1,8 @@
 import { ApprovedVideo } from '../../types';
-import {
-  YouTubeChannel,
-  YouTubeProviderError,
-  YouTubeVideo,
-  YouTubeVideoPage,
-  readDurationSeconds,
-  readString,
-} from './youtubeContentProvider';
+import { YouTubeProviderError, readDurationSeconds, readString } from './youtubeContentProvider';
+import type { YouTubeChannel, YouTubeVideo, YouTubeVideoPage } from './youtubeContentProvider.type';
 import { isValidChannelId, isValidVideoId, youtubeChannelIdPattern } from '../contentValidation';
+import type { ChannelReference, ChannelSyncState, SyncMode, MergeResult, SyncOutcome } from './channelSyncRules.type';
 
 /**
  * Channel sync rules.
@@ -24,12 +19,6 @@ export const channelCacheTtlMs = 6 * 60 * 60 * 1000;
 export const channelFailureBackoffMs = 60 * 1000;
 /** YouTube allows up to 50 per page; 30 keeps the first page fast and cheap. */
 export const channelPageSize = 30;
-
-export type ChannelReference =
-  | { kind: 'channelId'; id: string }
-  | { kind: 'handle'; handle: string }
-  | { kind: 'legacyUser'; user: string }
-  | { kind: 'unknown' };
 
 const handlePattern = /^@[A-Za-z0-9._-]{3,60}$/;
 const legacyNamePattern = /^[A-Za-z0-9._-]{1,60}$/;
@@ -120,24 +109,9 @@ export function channelReferenceLabel(reference: ChannelReference): string {
   }
 }
 
-export type ChannelSyncState = {
-  channelId: string;
-  uploadsPlaylistId?: string;
-  /** Continue-from token for `Load more`. Absent once the channel is fully paged in. */
-  nextPageToken?: string;
-  /** Last successful fetch. Drives the cache policy. */
-  fetchedAt?: string;
-  lastAttemptAt?: string;
-  lastError?: { code: string; message: string; at: string };
-  pagesFetched: number;
-  videoCount: number;
-};
-
 export function emptyChannelSyncState(channelId: string): ChannelSyncState {
   return { channelId, pagesFetched: 0, videoCount: 0 };
 }
-
-export type SyncMode = 'initial' | 'refresh' | 'more';
 
 /**
  * Cache policy (§7):
@@ -269,14 +243,6 @@ export function toApprovedVideo(
   };
 }
 
-export type MergeResult = {
-  videos: ApprovedVideo[];
-  added: number;
-  updated: number;
-  /** The videos this fetch touched, in fetch order. */
-  synced: ApprovedVideo[];
-};
-
 /**
  * Merges a fetched page into the local library.
  *
@@ -343,12 +309,6 @@ export function isSyncOwned(video: ApprovedVideo): boolean {
 export function syncOwnedVideos(videos: ApprovedVideo[], channelId: string): ApprovedVideo[] {
   return videos.filter((video) => video.channelId === channelId && isSyncOwned(video));
 }
-
-export type SyncOutcome = {
-  state: ChannelSyncState;
-  result: MergeResult;
-  channelMetadata?: Partial<YouTubeChannel>;
-};
 
 /**
  * Applies one successful fetch to the library and the sync state. Pure, so the

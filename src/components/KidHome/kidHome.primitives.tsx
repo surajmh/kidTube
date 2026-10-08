@@ -17,6 +17,24 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
   );
 }
 
+export function Notice({ notice, action }: { notice: string; action?: { label: string; onPress: () => void } | null }) {
+  return (
+    <View style={styles.notice}>
+      <Feather name="info" size={16} color={ICON.ink} />
+      <Text style={styles.noticeText}>{notice}</Text>
+      {action ? (
+        <FocusablePressable
+          accessibilityLabel={action.label}
+          style={styles.noticeAction}
+          onPress={action.onPress}
+        >
+          <Text style={styles.noticeActionText}>{action.label}</Text>
+        </FocusablePressable>
+      ) : null}
+    </View>
+  );
+}
+
 export function Empty({ icon, title, body }: { icon: keyof typeof Feather.glyphMap; title: string; body: string }) {
   return (
     <View style={styles.empty}>

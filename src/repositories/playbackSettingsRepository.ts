@@ -1,26 +1,23 @@
-import { PlaybackSettings, defaultPlaybackSettings } from '../playbackTypes';
-import { readJson, storageKeys, writeJson } from './storage';
+import type { PlaybackSettings, ScreenTimeUsage } from '../types';
+import { defaultPlaybackSettings } from '../constants/playback.constant';
+import { saveQuietly, useAppStore } from '../store/appStore';
 
-// Historical key name — renaming it would orphan saved settings on existing installs.
-const settingsKey = '@nestling/phase3-settings';
-
-export const playbackSettingsKeys = { settings: settingsKey } as const;
+/** Stored settings may predate newer fields, so fill the gaps from the defaults. */
+export function normaliseSettings(stored: Partial<PlaybackSettings>): PlaybackSettings {
+  return {
+    ...defaultPlaybackSettings,
+    ...stored,
+    sponsorBlockCategories: stored.sponsorBlockCategories ?? defaultPlaybackSettings.sponsorBlockCategories,
+    schedules: { ...defaultPlaybackSettings.schedules, ...(stored.schedules ?? {}) },
+  };
+}
 
 export const settingsRepository = {
-  async get(): Promise<PlaybackSettings> {
-    const stored = await readJson<Partial<PlaybackSettings> | null>(settingsKey, null);
-    if (!stored) return defaultPlaybackSettings;
-    return {
-      ...defaultPlaybackSettings,
-      ...stored,
-      sponsorBlockCategories: stored.sponsorBlockCategories ?? defaultPlaybackSettings.sponsorBlockCategories,
-      schedules: { ...defaultPlaybackSettings.schedules, ...(stored.schedules ?? {}) },
-    };
-  },
-  save: (settings: PlaybackSettings) => writeJson(settingsKey, settings),
+  get: async () => normaliseSettings(useAppStore.getState().playbackSettings),
+  save: (playbackSettings: PlaybackSettings) => saveQuietly({ playbackSettings }),
 };
 
 export const screenTimeRepository = {
-  getAll: () => readJson<import('../playbackTypes').ScreenTimeUsage[]>(storageKeys.screenTime, []),
-  saveAll: (records: import('../playbackTypes').ScreenTimeUsage[]) => writeJson(storageKeys.screenTime, records),
+  getAll: async () => useAppStore.getState().screenTimeUsage,
+  saveAll: (screenTimeUsage: ScreenTimeUsage[]) => saveQuietly({ screenTimeUsage }),
 };

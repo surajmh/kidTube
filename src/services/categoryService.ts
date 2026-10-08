@@ -1,7 +1,9 @@
 import { categoryRepository } from '../repositories/parentalControlsRepository';
 import { ApprovedChannel, ApprovedVideo } from '../types';
-import { ContentCategory, defaultCategories } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import type { ContentCategory } from '../types';
+import { defaultCategories } from '../constants/parentalControls.constant';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 
 export class CategoryError extends Error {
   constructor(message: string) {

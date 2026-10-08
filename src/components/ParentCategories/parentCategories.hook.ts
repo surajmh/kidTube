@@ -1,8 +1,6 @@
 import { useCallback, useState } from 'react';
 import { PARENT_CATEGORIES_COPY } from './parentCategories.constant';
-import { ParentCategoriesProps } from './parentCategories.type';
-
-type UseParentCategoriesInput = Pick<ParentCategoriesProps, 'onCreate' | 'onRename'>;
+import type { UseParentCategoriesInput } from './parentCategories.type';
 
 /** Create-or-rename state for the category editor. One field serves both. */
 export function useParentCategories({ onCreate, onRename }: UseParentCategoriesInput) {

@@ -1,13 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ProfilePolicyOverrides } from '../../parentalControlsTypes';
+import type { ProfilePolicyOverrides } from '../../types';
 import { describeProfilePolicy } from '../../services/profilePolicyService';
 import { activeOverridesFor, approvalsFor, childRulesFor } from './parentChildren.helper';
-import { ParentChildrenProps } from './parentChildren.type';
-
-type UseParentChildrenInput = Pick<
-  ParentChildrenProps,
-  'profiles' | 'initialProfileId' | 'rules' | 'policyOverrides' | 'globalSettings' | 'overrides' | 'approvals' | 'onSetPolicy'
->;
+import type { UseParentChildrenInput } from './parentChildren.type';
 
 /**
  * Which child is being edited, and everything that follows from it.

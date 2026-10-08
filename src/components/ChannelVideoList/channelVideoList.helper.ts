@@ -24,3 +24,9 @@ export function channelListState(input: {
 export function isLoadingMore(busy: boolean, videoCount: number): boolean {
   return busy && videoCount > 0;
 }
+
+/** "3 videos" / "1 video"; empty for zero so the status line stays blank. */
+export function videoCountLabel(count: number): string {
+  if (!count) return '';
+  return `${count} ${count === 1 ? 'video' : 'videos'}`;
+}

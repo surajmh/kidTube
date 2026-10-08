@@ -1,7 +1,7 @@
-export { LoadingScreen, Brand } from './LoadingScreen';
-export { PinSetup, ProfileSetup } from './AppOnboarding';
-export { ProfileManager } from './ProfileManager';
-export { ManualAddSection } from './ManualAddContent';
-export { ParentPinModal } from './ParentPinModal';
-export { PrimaryButton, SecondaryButton, AddButton, Field, FormCard } from './AppFormControls';
+export { LoadingScreen, Brand } from './loadingScreen';
+export { PinSetup, ProfileSetup } from './appOnboarding';
+export { ProfileManager } from './profileManager';
+export { ManualAddSection } from './manualAddContent';
+export { ParentPinModal } from './parentPinModal';
+export { PrimaryButton, SecondaryButton, AddButton, Field, FormCard } from './appFormControls';
 export { styles as appShellStyles } from './appShell.style';

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { parentPinService } from '../services/auth/parentPinService';
-import { ParentSession, ParentSignInResult, parentSessionService } from '../services/auth/parentSession';
+import { parentSessionService } from '../services/auth/parentSession';
+import type { ParentSession, ParentSignInResult } from '../services/auth/parentSession.type';
 import { parentResetService } from '../services/auth/parentResetService';
-
-type Screen = 'kid' | 'parent' | 'player';
+import type { Screen } from './useKidNavigation.type';
 
 /**
  * Parent-mode sign-in: the PIN keypad, session lifetime, lockout countdown and the destructive

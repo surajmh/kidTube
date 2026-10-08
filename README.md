@@ -160,6 +160,11 @@ PHASE-*.md                              design docs per milestone
 ## Known limitations
 
 - **Android only.** The playback engine is a local Android module; iOS is out of scope.
+- **Daily screen time, allowed hours and bedtime follow the phone's clock.** A child who can change
+  the date can start a new day. In Android settings, turn on **Automatic date & time** and keep
+  children out of Date & time settings. The parent PIN lockout does not depend on the date: it is
+  timed with the time since boot, so changing the date does not shorten it (a reboot falls back to
+  the stored date).
 - Content availability depends on YouTube's public endpoints (via NewPipe). Breakage in
   extraction is possible whenever YouTube changes, and is fixed by updating the extractor.
 - Downloads need a connection until they show **Ready for travel**. Reopen the app to resume

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
-import { downloadService, SavedVideo } from '../services/downloadService';
+import { downloadService } from '../services/downloadService';
+import type { SavedVideo } from '../services/downloadService.type';
 
 export function useDownloads() {
   const [downloads, setDownloads] = useState<SavedVideo[]>([]);

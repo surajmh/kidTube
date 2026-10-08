@@ -1,4 +1,4 @@
-import { PlayerAdapter } from './playerAdapter';
+import type { PlayerAdapter } from './playerAdapter.type';
 
 export class MockPlayerAdapter implements PlayerAdapter {
   private playing = false;

@@ -1,60 +1,59 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { channelRepository } from '../repositories/channelRepository';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { profileRepository } from '../repositories/profileRepository';
-import { videoRepository } from '../repositories/videoRepository';
-import { watchHistoryRepository } from '../repositories/watchHistoryRepository';
-import {
-  approvalRepository,
-  categoryRepository,
-  childRulesRepository,
-  overrideRepository,
-  parentalControlsKeys,
-  profilePolicyRepository,
-  requestRepository,
-} from '../repositories/parentalControlsRepository';
-import { channelSyncRepository, channelSyncKeys, ChannelSyncMap } from '../repositories/channelSyncRepository';
-import { primeStorage, storageKeys } from '../repositories/storage';
-import { playbackSettingsKeys } from '../repositories/playbackSettingsRepository';
+import type { Screen } from './useKidNavigation.type';
+import type { AppData } from '../store/appStore.type';
+import { fieldSetter,loadAppData,useAppStore } from '../store/appStore';
+import { withDefaultCategories } from '../repositories/parentalControlsRepository';
 import { channelSyncService } from '../services/channelSyncService';
-import { SyncMode } from '../services/content/channelSyncRules';
-import { ParentSession, parentSessionService } from '../services/auth/parentSession';
+import type { SyncMode } from '../services/content/channelSyncRules.type';
+import { parentSessionService } from '../services/auth/parentSession';
+import type { ParentSession } from '../services/auth/parentSession.type';
 import { parentPinService } from '../services/auth/parentPinService';
 import { whitelistService } from '../services/whitelistService';
 import { contentAccessService } from '../services/contentAccessService';
 import { approvalService } from '../services/approvalService';
+import { msUntilNextExpiry } from '../services/approvalRules';
 import { categoryService } from '../services/categoryService';
-import { ChildRulesMap, childRulesService } from '../services/childRulesService';
-import { profilePolicyService, mergeProfilePolicy } from '../services/profilePolicyService';
-import { OverridePreset, playbackOverrideService } from '../services/playbackOverrideService';
+import { childRulesService } from '../services/childRulesService';
+import { profilePolicyService,mergeProfilePolicy } from '../services/profilePolicyService';
+import { playbackOverrideService } from '../services/playbackOverrideService';
+import type { OverridePreset } from '../services/playbackOverrideService.type';
 import { kidContentLibraryService } from '../services/kidContentLibraryService';
 import { enrichLibrary } from '../services/content/nativeVideoMetadata';
 import { parentContentSearchService } from '../services/parentContentSearchService';
 import { parentContentService } from '../services/parentContentService';
 import { requestService } from '../services/requestService';
 import { playerAdapter } from '../services/playerAdapterInstance';
-import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../types';
-import { PlaybackSettings, ScreenTimeUsage, defaultPlaybackSettings } from '../playbackTypes';
-import {
-  ContentApproval,
-  ContentCandidate,
-  ContentCategory,
-  ContentRequest,
-  PlaybackOverride,
-  ProfilePolicyOverrides,
-  RequestType,
-  defaultCategories,
-} from '../parentalControlsTypes';
-import { settingsRepository, screenTimeRepository } from '../repositories/playbackSettingsRepository';
+import { ApprovedChannel,ApprovedVideo,ChildProfile } from '../types';
+import type { PlaybackSettings } from '../types';
+import { defaultPlaybackSettings } from '../constants/playback.constant';
+import type { ContentApproval,ContentCandidate,ProfilePolicyOverrides,RequestType } from '../types';
+import { defaultCategories } from '../constants/parentalControls.constant';
+import { normaliseSettings } from '../repositories/playbackSettingsRepository';
 import { playbackPolicy } from '../services/playbackPolicyService';
-import { RepairableCollection, repairLocalData } from '../services/dataIntegrityService';
+import { repairLocalData } from '../services/dataIntegrityService';
+import type { RepairableCollection } from '../services/dataIntegrityService.type';
 import { profileLifecycleService } from '../services/profileLifecycleService';
 import { RequestDecisionInput } from '../components/ParentRequests';
 import { downloadService } from '../services/downloadService';
-import { playlistService } from '../services/playlistService';
+import { playlistService,sanitizePlaylists } from '../services/playlistService';
 import { CuratedPlaylist } from '../types';
 import { id } from '../utils/id';
 
-type Screen = 'kid' | 'parent' | 'player';
+const setProfiles = fieldSetter('profiles');
+const setChannels = fieldSetter('channels');
+const setVideos = fieldSetter('videos');
+const setPlaylists = fieldSetter('playlists');
+const setHistory = fieldSetter('history');
+const setPlaybackSettings = fieldSetter('playbackSettings');
+const setScreenTimeUsage = fieldSetter('screenTimeUsage');
+const setRequests = fieldSetter('requests');
+const setApprovals = fieldSetter('approvals');
+const setCategories = fieldSetter('categories');
+const setChildRules = fieldSetter('childRules');
+const setProfilePolicies = fieldSetter('profilePolicies');
+const setOverrides = fieldSetter('overrides');
+const setChannelSyncStates = fieldSetter('channelSyncStates');
 
 /**
  * The persisted-content domain: profiles, approved channels/videos, categories, per-child rules,
@@ -71,26 +70,34 @@ export function useLibrary({
   onOverrideGranted: () => void;
 }) {
   const [accessClock, setAccessClock] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setAccessClock((value) => value + 1), 5000);
-    return () => clearInterval(timer);
-  }, []);
   const [hydrated, setHydrated] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [setupStep, setSetupStep] = useState<'pin' | 'profile' | null>(null);
-  const [profiles, setProfiles] = useState<ChildProfile[]>([]);
-  const [channels, setChannels] = useState<ApprovedChannel[]>([]);
-  const [videos, setVideos] = useState<ApprovedVideo[]>([]);
-  const [playlists, setPlaylists] = useState<CuratedPlaylist[]>([]);
-  const [history, setHistory] = useState<WatchHistory[]>([]);
-  const [playbackSettings, setPlaybackSettings] = useState<PlaybackSettings>(defaultPlaybackSettings);
-  const [screenTimeUsage, setScreenTimeUsage] = useState<ScreenTimeUsage[]>([]);
-  const [requests, setRequests] = useState<ContentRequest[]>([]);
-  const [approvals, setApprovals] = useState<ContentApproval[]>([]);
-  const [categories, setCategories] = useState<ContentCategory[]>(defaultCategories);
-  const [childRules, setChildRules] = useState<ChildRulesMap>({});
-  const [profilePolicies, setProfilePolicies] = useState<Record<string, ProfilePolicyOverrides>>({});
-  const [overrides, setOverrides] = useState<PlaybackOverride[]>([]);
-  const [channelSyncStates, setChannelSyncStates] = useState<ChannelSyncMap>({});
+  const profiles = useAppStore((state) => state.profiles);
+  const channels = useAppStore((state) => state.channels);
+  const videos = useAppStore((state) => state.videos);
+  const playlists = useAppStore((state) => state.playlists);
+  const history = useAppStore((state) => state.history);
+  const playbackSettings = useAppStore((state) => state.playbackSettings);
+  const screenTimeUsage = useAppStore((state) => state.screenTimeUsage);
+  const requests = useAppStore((state) => state.requests);
+  const approvals = useAppStore((state) => state.approvals);
+  const categories = useAppStore((state) => state.categories);
+  const childRules = useAppStore((state) => state.childRules);
+  const profilePolicies = useAppStore((state) => state.profilePolicies);
+  const overrides = useAppStore((state) => state.overrides);
+  const channelSyncStates = useAppStore((state) => state.channelSyncStates);
+
+  // Content access only changes with time when an approval runs out, so wake exactly then rather
+  // than re-checking the whole library on a fixed tick. Each tick re-arms the timer for the next one.
+  useEffect(() => {
+    const wait = msUntilNextExpiry(approvals);
+    if (wait === null) return undefined;
+    // setTimeout caps at ~24.8 days; an early wake-up just re-arms.
+    const timer = setTimeout(() => setAccessClock((value) => value + 1), Math.min(wait + 100, 2_147_483_647));
+    return () => clearTimeout(timer);
+  }, [approvals, accessClock]);
   const [busyChannelIds, setBusyChannelIds] = useState<string[]>([]);
   const [activeProfileId, setActiveProfileId] = useState('');
   const [repairNotice, setRepairNotice] = useState('');
@@ -105,85 +112,48 @@ export function useLibrary({
     let cancelled = false;
 
     async function hydrateEssential() {
-      // Only whether a PIN exists is read — the stored digest is never exposed to the UI layer.
-      const [hasPin, storedProfiles] = await Promise.all([parentPinService.hasPin(), profileRepository.getAll()]);
+      // One native read for every persisted key; nothing reaches the store until it is repaired.
+      let loaded: [boolean, AppData];
+      try {
+        loaded = await Promise.all([parentPinService.hasPin(), loadAppData()]);
+      } catch {
+        // Starting empty would let the next save overwrite a library that is only unreadable right now.
+        if (!cancelled) setLoadFailed(true);
+        return;
+      }
       if (cancelled) return;
+      const [hasPin, data] = loaded;
 
-      const profiles = storedProfiles.filter((profile) => profile?.id?.trim());
-      setSetupStep(hasPin ? (profiles.length ? null : 'profile') : 'pin');
+      // Only whether a PIN exists is read — the stored digest is never exposed to the UI layer.
+      const valid = data.profiles.filter((profile) => profile?.id?.trim());
+      const profiles = valid.length === data.profiles.length ? data.profiles : valid;
+      if (!hasPin) setSetupStep('pin');
+      else setSetupStep(profiles.length ? null : 'profile');
       setProfiles(profiles);
       setActiveProfileId(profiles[0]?.id ?? '');
       setHydrated(true);
-      void hydrateLibrary(profiles);
+      void hydrateLibrary(data, profiles);
     }
 
-    async function hydrateLibrary(profiles: ChildProfile[]) {
-      // One native round trip for every key these `getAll()` calls are about to read individually,
-      // instead of each repository hitting AsyncStorage on its own.
-      await primeStorage([
-        storageKeys.playlists,
-        storageKeys.channels,
-        storageKeys.videos,
-        storageKeys.history,
-        playbackSettingsKeys.settings,
-        storageKeys.screenTime,
-        parentalControlsKeys.requests,
-        parentalControlsKeys.approvals,
-        parentalControlsKeys.categories,
-        parentalControlsKeys.childRules,
-        parentalControlsKeys.profilePolicies,
-        parentalControlsKeys.overrides,
-        channelSyncKeys.state,
-      ]);
-      if (cancelled) return;
-
-      const [
-        storedPlaylists,
-        storedChannels,
-        storedVideos,
-        storedHistory,
-        storedSettings,
-        storedScreenTime,
-        storedRequests,
-        storedApprovals,
-        storedCategories,
-        storedChildRules,
-        storedPolicies,
-        storedOverrides,
-        storedChannelSync,
-      ] = await Promise.all([
-        playlistService.getAll(),
-        channelRepository.getAll(),
-        videoRepository.getAll(),
-        watchHistoryRepository.getAll(),
-        settingsRepository.get(),
-        screenTimeRepository.getAll(),
-        requestRepository.getAll(),
-        approvalRepository.getAll(),
-        categoryRepository.getAll(),
-        childRulesRepository.getAll(),
-        profilePolicyRepository.getAll(),
-        overrideRepository.getAll(),
-        channelSyncRepository.getAll(),
-      ]);
-      if (cancelled) return;
+    async function hydrateLibrary(data: AppData, profiles: ChildProfile[]) {
+      const input = {
+        profiles,
+        videos: data.videos,
+        channels: data.channels,
+        categories: withDefaultCategories(data.categories),
+        requests: data.requests,
+        approvals: data.approvals,
+        overrides: data.overrides,
+        childRules: data.childRules,
+        profilePolicies: data.profilePolicies,
+        history: data.history,
+        screenTime: data.screenTimeUsage,
+        settings: normaliseSettings(data.playbackSettings),
+        channelSync: data.channelSyncStates,
+      };
 
       // Repair before trusting: duplicates, orphans, impossible values and stale grants.
-      const { snapshot, repairs, changed } = repairLocalData({
-        profiles,
-        videos: storedVideos,
-        channels: storedChannels,
-        categories: storedCategories,
-        requests: storedRequests,
-        approvals: storedApprovals,
-        overrides: storedOverrides,
-        childRules: storedChildRules,
-        profilePolicies: storedPolicies,
-        history: storedHistory,
-        screenTime: storedScreenTime,
-        settings: storedSettings,
-        channelSync: storedChannelSync,
-      });
+      const { snapshot, repairs, changed } = repairLocalData(input);
 
       whitelistService.setContent(snapshot.videos, snapshot.channels);
       contentAccessService.hydrate({ rules: snapshot.childRules, approvals: snapshot.approvals });
@@ -200,26 +170,11 @@ export function useLibrary({
         profilePolicies: snapshot.profilePolicies,
       });
 
-      if (repairs.length) {
-        setRepairNotice(`Repaired local data: ${repairs.join(', ')}.`);
-        // Only rewrite what actually changed; a repair in one collection used to
-        // mean serialising all twelve on every cold start that found anything.
-        const persist: Record<RepairableCollection, () => Promise<void>> = {
-          profiles: () => profileRepository.saveAll(snapshot.profiles),
-          videos: () => videoRepository.saveAll(snapshot.videos),
-          channels: () => channelRepository.saveAll(snapshot.channels),
-          categories: () => categoryRepository.saveAll(snapshot.categories),
-          requests: () => requestRepository.saveAll(snapshot.requests),
-          approvals: () => approvalRepository.saveAll(snapshot.approvals),
-          overrides: () => overrideRepository.saveAll(snapshot.overrides),
-          childRules: () => childRulesRepository.saveAll(snapshot.childRules),
-          profilePolicies: () => profilePolicyRepository.saveAll(snapshot.profilePolicies),
-          history: () => watchHistoryRepository.saveAll(snapshot.history),
-          screenTime: () => screenTimeRepository.saveAll(snapshot.screenTime),
-          channelSync: () => channelSyncRepository.saveAll(snapshot.channelSync),
-        };
-        await Promise.all(changed.map((collection) => persist[collection]()));
-      }
+      if (repairs.length) setRepairNotice(`Repaired local data: ${repairs.join(', ')}.`);
+      // Only a repaired collection gets a new array, so the store rewrites exactly what changed
+      // rather than serialising all of them on every cold start that found anything.
+      const keep = <T,>(collection: RepairableCollection, repaired: T, original: T) =>
+        changed.includes(collection) ? repaired : original;
 
       // A grant or override can expire while the app is closed, and an old resolved request
       // never gets a second look; drop all three now rather than carrying dead entries until
@@ -230,26 +185,30 @@ export function useLibrary({
         requestService.pruneResolved(snapshot.requests),
       ]);
 
-      setPlaylists(storedPlaylists);
-      setChannels(snapshot.channels);
-      setVideos(snapshot.videos);
-      setHistory(snapshot.history);
-      setPlaybackSettings(snapshot.settings);
-      setScreenTimeUsage(snapshot.screenTime);
-      setRequests(prunedRequests);
-      setApprovals(prunedApprovals);
-      setCategories(snapshot.categories);
-      setChildRules(snapshot.childRules);
-      setProfilePolicies(snapshot.profilePolicies);
-      setOverrides(prunedOverrides);
-      setChannelSyncStates(snapshot.channelSync);
+      useAppStore.setState({
+        profiles: keep('profiles', snapshot.profiles, profiles),
+        playlists: sanitizePlaylists(data.playlists),
+        channels: keep('channels', snapshot.channels, input.channels),
+        videos: keep('videos', snapshot.videos, input.videos),
+        history: keep('history', snapshot.history, input.history),
+        playbackSettings: snapshot.settings,
+        screenTimeUsage: keep('screenTime', snapshot.screenTime, input.screenTime),
+        requests: prunedRequests,
+        approvals: prunedApprovals,
+        categories: keep('categories', snapshot.categories, input.categories),
+        childRules: keep('childRules', snapshot.childRules, input.childRules),
+        profilePolicies: keep('profilePolicies', snapshot.profilePolicies, input.profilePolicies),
+        overrides: prunedOverrides,
+        channelSyncStates: keep('channelSync', snapshot.channelSync, input.channelSync),
+      });
     }
 
+    setLoadFailed(false);
     void hydrateEssential();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadAttempt]);
 
   /**
    * Keeps the access layer in step with React state synchronously, because the derived Kid Mode
@@ -354,7 +313,7 @@ export function useLibrary({
 
   async function saveProfiles(next: ChildProfile[]) {
     if (!parentSession) return;
-    const saved = await parentContentService.saveProfiles(parentSession, next);
+    const saved = await parentContentService.saveProfiles(next);
     setProfiles(saved);
   }
 
@@ -385,13 +344,13 @@ export function useLibrary({
 
   async function saveChannels(next: ApprovedChannel[]) {
     if (!parentSession) return;
-    await parentContentService.replaceContent(parentSession, { videos, channels: next });
+    await parentContentService.replaceContent({ videos, channels: next });
     setChannels(next);
   }
 
   async function saveVideos(next: ApprovedVideo[]) {
     if (!parentSession) return;
-    await parentContentService.replaceContent(parentSession, { videos: next, channels });
+    await parentContentService.replaceContent({ videos: next, channels });
     setVideos(next);
   }
 
@@ -418,7 +377,7 @@ export function useLibrary({
 
   async function savePlaybackSettings(next: PlaybackSettings) {
     if (!parentSession) return;
-    const saved = await parentContentService.saveSettings(parentSession, next);
+    const saved = await parentContentService.saveSettings(next);
     setPlaybackSettings(saved);
     playbackPolicy.setSettings(saved);
   }
@@ -477,7 +436,7 @@ export function useLibrary({
   async function saveCandidate(candidate: ContentCandidate) {
     if (!parentSession) return;
     parentContentSearchService.assertNotPlayable(candidate);
-    const next = await parentContentService.addCandidate(parentSession, candidate, { videos, channels });
+    const next = await parentContentService.addCandidate(candidate, { videos, channels });
     setVideos(next.videos);
     setChannels(next.channels);
   }
@@ -488,9 +447,8 @@ export function useLibrary({
     if (candidate.type === 'video' && candidate.youtubeVideoId) {
       const existing = videos.find((video) => video.youtubeVideoId === candidate.youtubeVideoId);
       const next = existing
-        ? await parentContentService.setVideoApproved(parentSession, existing.id, true, videos)
+        ? await parentContentService.setVideoApproved(existing.id, true, videos)
         : await parentContentService.addVideo(
-            parentSession,
             {
               id: id('video'),
               youtubeVideoId: candidate.youtubeVideoId,
@@ -508,9 +466,8 @@ export function useLibrary({
     if (candidate.type === 'channel' && candidate.youtubeChannelId) {
       const existing = channels.find((channel) => channel.channelId === candidate.youtubeChannelId);
       const next = existing
-        ? await parentContentService.setChannelApproved(parentSession, existing.id, true, channels)
+        ? await parentContentService.setChannelApproved(existing.id, true, channels)
         : await parentContentService.addChannel(
-            parentSession,
             {
               id: id('channel'),
               name: candidate.title,
@@ -530,7 +487,7 @@ export function useLibrary({
 
   async function removeVideo(video: ApprovedVideo) {
     if (!parentSession) return;
-    setVideos(await parentContentService.removeVideo(parentSession, video.id, videos));
+    setVideos(await parentContentService.removeVideo(video.id, videos));
   }
 
   /**
@@ -541,8 +498,8 @@ export function useLibrary({
   async function removeChannel(channel: ApprovedChannel) {
     if (!parentSession) return;
     const purged = await channelSyncService.removeChannelContent(parentSession, channel.channelId, { videos, channels });
-    const next = await parentContentService.removeChannel(parentSession, channel.id, purged.channels);
-    await parentContentService.replaceContent(parentSession, { videos: purged.videos, channels: next });
+    const next = await parentContentService.removeChannel(channel.id, purged.channels);
+    await parentContentService.replaceContent({ videos: purged.videos, channels: next });
     setVideos(purged.videos);
     setChannels(next);
     setChannelSyncStates(channelSyncService.allStates());
@@ -557,7 +514,7 @@ export function useLibrary({
    */
   async function publishLibrary(nextVideos: ApprovedVideo[], nextChannels: ApprovedChannel[]) {
     if (!parentSession) return;
-    await parentContentService.replaceContent(parentSession, { videos: nextVideos, channels: nextChannels });
+    await parentContentService.replaceContent({ videos: nextVideos, channels: nextChannels });
     setVideos(nextVideos);
     setChannels(nextChannels);
     setChannelSyncStates(channelSyncService.allStates());
@@ -616,7 +573,7 @@ export function useLibrary({
     const next = assigned
       ? (video.categoryIds ?? []).filter((item) => item !== categoryId)
       : [...(video.categoryIds ?? []), categoryId];
-    setVideos(await parentContentService.setVideoCategories(parentSession, video.id, next, videos));
+    setVideos(await parentContentService.setVideoCategories(video.id, next, videos));
   }
 
   async function toggleChannelCategory(channel: ApprovedChannel, categoryId: string, assigned: boolean) {
@@ -624,7 +581,7 @@ export function useLibrary({
     const next = assigned
       ? (channel.categoryIds ?? []).filter((item) => item !== categoryId)
       : [...(channel.categoryIds ?? []), categoryId];
-    setChannels(await parentContentService.setChannelCategories(parentSession, channel.id, next, channels));
+    setChannels(await parentContentService.setChannelCategories(channel.id, next, channels));
   }
 
   async function createCategory(name: string) {
@@ -641,7 +598,7 @@ export function useLibrary({
   async function deleteCategory(categoryId: string) {
     if (!parentSession) return;
     const next = await categoryService.remove(parentSession, categoryId);
-    const cleaned = await parentContentService.stripCategoryFromContent(parentSession, categoryId, { videos, channels });
+    const cleaned = await parentContentService.stripCategoryFromContent(categoryId, { videos, channels });
     setCategories(next);
     setVideos(cleaned.videos);
     setChannels(cleaned.channels);
@@ -712,7 +669,7 @@ export function useLibrary({
   async function createFirstProfile(name: string, avatar: string, onDone: (profile: ChildProfile) => void) {
     const profile = { id: id('profile'), name: name.trim(), avatar };
     const session = parentSessionService.current();
-    if (session) await parentContentService.saveProfiles(session, [profile]);
+    if (session) await parentContentService.saveProfiles([profile]);
     else await profileRepository.saveAll([profile]);
     setProfiles([profile]);
     setActiveProfileId(profile.id);
@@ -767,6 +724,8 @@ export function useLibrary({
     savePlaylist,
     removePlaylist,
     hydrated,
+    loadFailed,
+    retryLoad: () => setLoadAttempt((value) => value + 1),
     setupStep,
     setSetupStep,
     profiles,
@@ -837,5 +796,3 @@ export function useLibrary({
     syncStateFor: (channelId: string) => channelSyncService.getState(channelId),
   };
 }
-
-export type UseLibraryResult = ReturnType<typeof useLibrary>;

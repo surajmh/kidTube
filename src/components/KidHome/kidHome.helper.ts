@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 import { ChannelAvailability, KidSearchResults } from './kidHome.type';
 // One duration formatter for the whole app; this used to exist here and in ChannelVideoList
 // with different behaviour for a missing value.
@@ -82,3 +82,5 @@ export function monogramTint(seed: string, tints: readonly string[]): string {
   for (let index = 0; index < seed.length; index += 1) hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
   return tints[hash % tints.length];
 }
+
+export const videoKey = (video: ApprovedVideo) => video.id;

@@ -1,7 +1,7 @@
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../parentalControlsTypes';
-import { KidLibrary } from '../../services/kidContentLibraryService';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ContentRequest, CuratedPlaylist, RequestType } from '../../types';
+import type { KidLibrary } from '../../services/kidContentLibraryService.type';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 
 export type KidTab = 'home' | 'categories' | 'channels' | 'recent' | 'requests' | 'playlists';
 
@@ -22,7 +22,7 @@ export type KidSearchResults = {
 };
 
 export type KidHomeProps = {
-  downloads?: import('../../services/downloadService').SavedVideo[];
+  downloads?: import('../../services/downloadService.type').SavedVideo[];
   playlists?: import('../../types').CuratedPlaylist[];
   selectedPlaylistId?: string | null;
   onSelectPlaylist?: (id: string | null) => void;
@@ -49,3 +49,10 @@ export type KidHomeProps = {
   /** Cached fetch state per channel. Kid Mode only reads this and never triggers a fetch. */
   channelSyncStateFor: (channelId: string) => ChannelSyncState | undefined;
 };
+
+export type UseKidHomeInput = Pick<
+  KidHomeProps,
+  'library' | 'tab' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
+>;
+
+export type Playlist = CuratedPlaylist & { videos: ApprovedVideo[] };

@@ -1,18 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SponsorBlockCategory } from '../playbackTypes';
-
-export type SponsorSegment = {
-  uuid?: string;
-  category: SponsorBlockCategory | string;
-  start: number;
-  end: number;
-  actionType?: string;
-};
-
-type CachedSegments = {
-  fetchedAt: number;
-  segments: SponsorSegment[];
-};
+import type { SponsorBlockCategory } from '../types';
+import type { SponsorSegment, CachedSegments } from './sponsorBlockService.type';
 
 const cachePrefix = '@nestling/sponsorblock/';
 const defaultBaseUrl = 'https://sponsor.ajay.app/api/skipSegments';

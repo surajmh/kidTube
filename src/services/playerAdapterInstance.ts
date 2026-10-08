@@ -1,4 +1,4 @@
 import { nativeYouTubePlayerAdapter } from '../native/YouTubePlayerAdapter';
-import { ResumablePlayerAdapter } from './playerAdapter';
+import type { ResumablePlayerAdapter } from './playerAdapter.type';
 
 export const playerAdapter: ResumablePlayerAdapter = nativeYouTubePlayerAdapter;

@@ -1,7 +1,8 @@
 import React from 'react';
+import type { useParentContent } from './parentContent.hook';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentApproval, ContentCandidate, ContentCategory } from '../../parentalControlsTypes';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ContentApproval, ContentCandidate, ContentCategory } from '../../types';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 
 export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';
 
@@ -40,3 +41,10 @@ export type ParentContentProps = {
   onRefreshChannel: (channel: ApprovedChannel) => void;
   onLoadMoreChannel: (channel: ApprovedChannel) => void;
 };
+
+export type UseParentContentInput = Pick<
+  ParentContentProps,
+  'videos' | 'channels' | 'mode' | 'selectedChannelId' | 'accessFor' | 'onSearch'
+>;
+
+export type UseParentContent = ReturnType<typeof useParentContent>;

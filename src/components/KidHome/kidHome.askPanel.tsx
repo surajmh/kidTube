@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../parentalControlsTypes';
+import type { ContentRequest, RequestType } from '../../types';
 import { FocusablePressable } from '../tv';
 import { ICON } from './kidHome.constant';
+import { useAskPanel } from './kidHome.askPanel.hook';
 import styles from './kidHome.style';
 
 /** Ask a Parent. No browsing and no search: saved-but-unapproved items, or the child's own words. */
@@ -24,23 +25,7 @@ export function AskPanel({
   onRequestVideo: (video: ApprovedVideo) => Promise<void>;
   onRequestChannel: (channel: ApprovedChannel) => Promise<void>;
 }) {
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const mine = activeProfile ? requests.filter((request) => request.profileId === activeProfile.id) : [];
-
-  async function run(action: () => Promise<void>) {
-    setBusy(true);
-    setMessage('');
-    try {
-      await action();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'That request did not go through.');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { title, setTitle, message, busy, mine, run } = useAskPanel(activeProfile, requests);
 
   return (
     <View style={styles.ask}>

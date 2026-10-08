@@ -1,57 +1,19 @@
 import { channelRepository } from '../repositories/channelRepository';
 import { videoRepository } from '../repositories/videoRepository';
 import { requestRepository } from '../repositories/parentalControlsRepository';
-import { ApprovedChannel, ApprovedVideo } from '../types';
-import {
-  ApprovalDuration,
-  ApprovalTarget,
-  ContentApproval,
-  ContentRequest,
-  RequestType,
-} from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import { ApprovedChannel,ApprovedVideo } from '../types';
+import type { ApprovalTarget,ContentRequest } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { approvalService } from './approvalService';
+import type { RequestSubmission,RequestWorkflowInput,RequestWorkflowResult } from './requestService.type';
+import { id } from '../utils/id';
 
 export class RequestError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'RequestError';
   }
-}
-
-export type RequestSubmission = {
-  type: RequestType;
-  /** Free text from the child. Never a URL. */
-  title: string;
-  /** Optional: must reference content already known to the parent library. */
-  videoId?: string;
-  channelId?: string;
-  thumbnailUrl?: string;
-  channelName?: string;
-};
-
-export type RequestDecision = 'approved' | 'rejected';
-
-export type RequestWorkflowInput = {
-  request: ContentRequest;
-  decision: RequestDecision;
-  /** `null` approves for every child. */
-  profileId: string | null;
-  duration: ApprovalDuration;
-  requests: ContentRequest[];
-  videos: ApprovedVideo[];
-  channels: ApprovedChannel[];
-};
-
-export type RequestWorkflowResult = {
-  requests: ContentRequest[];
-  approvals: ContentApproval[];
-  videos: ApprovedVideo[];
-  channels: ApprovedChannel[];
-};
-
-function newId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export function requestTarget(request: ContentRequest): ApprovalTarget | null {
@@ -86,7 +48,7 @@ export function upsertApprovedContent(
     return {
       videos: [
         {
-          id: newId('video'),
+          id: id('video'),
           youtubeVideoId: request.youtubeVideoId,
           title: request.title?.trim() || 'Approved video',
           thumbnailUrl: request.thumbnailUrl,
@@ -112,7 +74,7 @@ export function upsertApprovedContent(
     videos,
     channels: [
       {
-        id: newId('channel'),
+        id: id('channel'),
         name: request.channelName?.trim() || request.title?.trim() || 'Approved channel',
         channelId: request.youtubeChannelId,
         thumbnailUrl: request.thumbnailUrl,
@@ -178,7 +140,7 @@ export class RequestService {
     if (duplicate) throw new RequestError('You already asked for this one. Your grown-up will see it soon.');
 
     const request: ContentRequest = {
-      id: newId('request'),
+      id: id('request'),
       profileId,
       type: input.type,
       youtubeVideoId,
@@ -208,33 +170,33 @@ export class RequestService {
           }
         : request,
     );
+    // The grant comes first: if it fails, or the app dies between the two writes, the request stays
+    // pending and can be decided again, instead of reading "approved" with nothing behind it.
+    const result = await this.applyDecision(session, input);
     await requestRepository.saveAll(requests);
+    return { requests, ...result };
+  }
 
-    if (input.decision === 'rejected') {
-      return { requests, approvals: approvalService.all(), videos: input.videos, channels: input.channels };
-    }
-
+  private async applyDecision(session: ParentSession, input: RequestWorkflowInput) {
+    const unchanged = { approvals: approvalService.all(), videos: input.videos, channels: input.channels };
+    if (input.decision === 'rejected') return unchanged;
     const target = requestTarget(input.request);
-    if (!target) {
-      // Free-text request: nothing playable is created, the parent approved the idea.
-      return { requests, approvals: approvalService.all(), videos: input.videos, channels: input.channels };
-    }
-
+    // Free-text request: nothing playable is created, the parent approved the idea.
+    if (!target) return unchanged;
     // Family-wide permanent approval lives in the Phase 1 whitelist, not as a grant.
     if (input.duration === 'permanent' && input.profileId === null) {
       const nextContent = upsertApprovedContent(input.request, input.videos, input.channels);
       await videoRepository.saveAll(nextContent.videos);
       await channelRepository.saveAll(nextContent.channels);
-      return { requests, approvals: approvalService.all(), videos: nextContent.videos, channels: nextContent.channels };
+      return { approvals: unchanged.approvals, videos: nextContent.videos, channels: nextContent.channels };
     }
-
     const { approvals } = await approvalService.grant(session, {
       profileId: input.profileId,
       target,
       duration: input.duration,
       requestId: input.request.id,
     });
-    return { requests, approvals, videos: input.videos, channels: input.channels };
+    return { ...unchanged, approvals };
   }
 
   /** Parent-only. */

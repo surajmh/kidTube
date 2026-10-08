@@ -1,17 +1,11 @@
 import { overrideRepository } from '../repositories/parentalControlsRepository';
-import { PlaybackSettings } from '../playbackTypes';
-import { PlaybackOverride } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import type { PlaybackSettings } from '../types';
+import type { PlaybackOverride } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { endOfLocalDay } from './approvalRules';
-
-export type OverridePresetId = 'fifteen_minutes' | 'thirty_minutes' | 'until_bedtime';
-
-export type OverridePreset = {
-  id: OverridePresetId;
-  label: string;
-  additionalSeconds: number | null;
-  untilBedtime: boolean;
-};
+import type { OverridePreset } from './playbackOverrideService.type';
+import { id } from '../utils/id';
 
 export const overridePresets: OverridePreset[] = [
   { id: 'fifteen_minutes', label: '+15 minutes', additionalSeconds: 15 * 60, untilBedtime: false },
@@ -31,10 +25,6 @@ export function bedtimeStartInstant(settings: PlaybackSettings, now = new Date()
     0,
   );
   return start.getTime() > now.getTime() ? start : new Date(start.getTime() + 24 * 60 * 60 * 1000);
-}
-
-function newId() {
-  return `override-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 /**
@@ -89,7 +79,7 @@ export class PlaybackOverrideService {
     }
 
     const override: PlaybackOverride = {
-      id: newId(),
+      id: id('override'),
       profileId: input.profileId,
       additionalSeconds,
       grantedAt: now.toISOString(),

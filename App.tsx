@@ -22,7 +22,8 @@ import {
 } from './src/components/AppShell';
 import { useLibrary } from './src/hooks/useLibrary';
 import { useParentAuth } from './src/hooks/useParentAuth';
-import { useKidNavigation, Screen } from './src/hooks/useKidNavigation';
+import { useKidNavigation } from './src/hooks/useKidNavigation';
+import type { Screen } from './src/hooks/useKidNavigation.type';
 import { useWatchHistory } from './src/hooks/useWatchHistory';
 import { useScreenTimeUsage } from './src/hooks/useScreenTimeUsage';
 
@@ -81,7 +82,7 @@ function App() {
   };
 
   if (!library.hydrated) {
-    return <LoadingScreen />;
+    return <LoadingScreen onRetry={library.loadFailed ? library.retryLoad : undefined} />;
   }
 
   return (

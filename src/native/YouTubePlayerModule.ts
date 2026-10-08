@@ -1,63 +1,8 @@
 import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
-
-export type PlayerCommandResult = {
-  accepted: boolean;
-  message?: string;
-  /** `policy_blocked` means the native allow list refused the request. */
-  code?: string;
-  videoId?: string;
-};
-
-export interface YouTubePlayerModuleEvents {
-  [eventName: string]: (event: {
-    videoId?: string;
-    position?: number;
-    duration?: number;
-    bufferedPosition?: number;
-    isPlaying?: boolean;
-    message?: string;
-    code?: string;
-  }) => void;
-}
-
-/**
- * Public metadata for one video, or a failure. Asking about a video grants no ability to play it:
- * the allow list and the playback policy are untouched by this call.
- */
-export type NativeVideoMetadata = {
-  youtubeVideoId?: string;
-  title?: string;
-  channelName?: string;
-  youtubeChannelId?: string;
-  durationSeconds?: number;
-  thumbnailUrl?: string;
-  publishedAt?: string;
-  failed?: boolean;
-  code?: string;
-  message?: string;
-};
-
-export type NativeChannelMetadata = {
-  youtubeChannelId?: string;
-  name?: string;
-  thumbnailUrl?: string;
-  description?: string;
-  failed?: boolean;
-  code?: string;
-  message?: string;
-};
-
-export type NativeChannelVideoPage = {
-  channelId?: string;
-  videos?: NativeVideoMetadata[];
-  nextPageToken?: string | null;
-  failed?: boolean;
-  code?: string;
-  message?: string;
-};
+import type { PlayerCommandResult, YouTubePlayerModuleEvents, NativeVideoMetadata, NativeChannelMetadata, NativeChannelVideoPage } from './YouTubePlayerModule.type';
 
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
-  getDownloads(): Promise<import('../services/downloadService').SavedVideo[]>;
+  getDownloads(): Promise<import('../services/downloadService.type').SavedVideo[]>;
   setDownloadAuthorization(videoIds: string[], expiresAt: number): Promise<void>;
   downloadVideo(videoId: string, maxHeight: number, expiresAt: number): Promise<PlayerCommandResult>;
   removeDownload(videoId: string): Promise<void>;
@@ -67,6 +12,8 @@ declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModu
   resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
   getChannel(reference: string): Promise<NativeChannelMetadata>;
   getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
+  /** Milliseconds since boot; unaffected by changes to the device date. */
+  getElapsedRealtime(): number;
   /** Native PBKDF2-HMAC-SHA256; identical digest to the pure-TS fallback in auth/pinHash. */
   derivePinHash(pin: string, saltHex: string, iterations: number): Promise<{ hash?: string; failed?: boolean }>;
   /** Fail-closed allow list: native refuses ids that are not in it. */

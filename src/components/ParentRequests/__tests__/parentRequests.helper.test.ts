@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ApprovedVideo, ChildProfile } from '../../../types';
-import { ContentRequest } from '../../../parentalControlsTypes';
+import type { ContentRequest } from '../../../types';
 import { profileNameFor, splitByStatus, thumbnailFor, timeAgo } from '../parentRequests.helper';
 
 const now = new Date('2026-02-01T12:00:00Z').getTime();

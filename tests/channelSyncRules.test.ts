@@ -1,25 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  ChannelSyncState,
-  applyFetchFailure,
-  applyFetchResult,
-  canLoadMore,
-  channelCacheTtlMs,
-  channelFailureBackoffMs,
-  channelVideosFrom,
-  describeChannelSync,
-  effectiveSyncMode,
-  emptyChannelSyncState,
-  isCanonicalChannelId,
-  mergeSyncedVideos,
-  normalizeChannelInput,
-  normalizeTimestamp,
-  parseChannelResponse,
-  parseVideoPage,
-  shouldFetchChannel,
-  syncOwnedVideos,
-  toApprovedVideo,
-} from '../src/services/content/channelSyncRules';
+import { applyFetchFailure, applyFetchResult, canLoadMore, channelCacheTtlMs, channelFailureBackoffMs, channelVideosFrom, describeChannelSync, effectiveSyncMode, emptyChannelSyncState, isCanonicalChannelId, mergeSyncedVideos, normalizeChannelInput, normalizeTimestamp, parseChannelResponse, parseVideoPage, shouldFetchChannel, syncOwnedVideos, toApprovedVideo } from '../src/services/content/channelSyncRules';
+import type { ChannelSyncState } from '../src/services/content/channelSyncRules.type';
 import { YouTubeProviderError, readDurationSeconds } from '../src/services/content/youtubeContentProvider';
 import { channelA, channelB, video, videoIds, approvedVideo, syncedVideo } from './helpers/fakeProvider';
 

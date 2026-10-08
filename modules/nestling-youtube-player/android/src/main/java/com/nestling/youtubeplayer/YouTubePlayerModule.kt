@@ -3,6 +3,7 @@ package com.nestling.youtubeplayer
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -59,6 +60,10 @@ class YouTubePlayerModule : Module() {
     OnActivityDestroys {
       activeView?.get()?.releasePlayer()
     }
+
+    // Milliseconds since boot, including sleep. Unlike the wall clock it cannot be moved by changing
+    // the date, so the PIN lockout measures its delay with it.
+    Function("getElapsedRealtime") { SystemClock.elapsedRealtime().toDouble() }
 
     AsyncFunction("setDownloadAuthorization") { videoIds: List<String>, expiresAt: Double ->
       downloadIds = videoIds.filter { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.toSet()

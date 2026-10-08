@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ContentRequest } from '../../parentalControlsTypes';
+import type { ContentRequest } from '../../types';
 import { requestService } from '../requestService';
 
 const dayMs = 24 * 60 * 60 * 1000;

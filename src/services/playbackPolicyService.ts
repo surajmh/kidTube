@@ -1,7 +1,8 @@
-import { PlaybackSettings, PlaybackDecision, ScreenTimeUsage } from '../playbackTypes';
-import { ProfilePolicyOverrides } from '../parentalControlsTypes';
-import { ContentAccessOutcome } from './contentAccessService';
+import type { PlaybackSettings, PlaybackDecision, ScreenTimeUsage } from '../types';
+import type { ProfilePolicyOverrides } from '../types';
+import type { ContentAccessOutcome } from './contentAccessService.type';
 import { mergeProfilePolicy } from './profilePolicyService';
+import type { PlaybackCheckInput, PlaybackPolicyHydration, ContentAccessResolver, OverrideWindow, OverrideResolver } from './playbackPolicyService.type';
 
 function localDayKey(date = new Date()) {
   const year = date.getFullYear();
@@ -18,26 +19,6 @@ function isInWindow(minutes: number, start: number, end: number) {
   if (start === end) return true;
   return start < end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
 }
-
-export type PlaybackCheckInput = {
-  profileId: string;
-  videoId: string;
-  channelId?: string;
-  categoryIds?: string[];
-};
-
-export type PlaybackPolicyHydration = {
-  settings: PlaybackSettings;
-  screenTime: ScreenTimeUsage[];
-  profiles?: { id: string }[];
-  profilePolicies?: Record<string, ProfilePolicyOverrides>;
-};
-
-export type ContentAccessResolver = (
-  profileId: string,
-  input: { videoId: string; channelId?: string; categoryIds?: string[] },
-  now: Date,
-) => ContentAccessOutcome;
 
 const decisionForOutcome: Record<ContentAccessOutcome, PlaybackDecision> = {
   allowed: { allowed: true },
@@ -56,6 +37,8 @@ export function describePlaybackDecision(decision: PlaybackDecision) {
       return 'This video isn’t available for your profile.';
     case 'APPROVAL_EXPIRED':
       return 'Your time with this video has finished. You can ask a grown-up for it again.';
+    case 'NOT_READY':
+      return 'Getting things ready. Try again in a moment.';
     case 'SCREEN_TIME_EXCEEDED':
       return 'You’ve finished your screen time for today. Come back tomorrow!';
     case 'OUTSIDE_ALLOWED_HOURS':
@@ -74,13 +57,6 @@ export function isTimeRelatedReason(decision: PlaybackDecision) {
     decision.reason === 'BEDTIME'
   );
 }
-
-export type OverrideWindow = {
-  additionalSeconds: number;
-  grantsScheduleAccess: boolean;
-};
-
-export type OverrideResolver = (profileId: string, now: Date) => OverrideWindow;
 
 /**
  * The single place that decides whether a child may play something.
@@ -172,7 +148,7 @@ export class PlaybackPolicyService {
   }
 
   canPlay(input: PlaybackCheckInput, now = new Date()): PlaybackDecision {
-    if (!this.hydrated || !this.settings) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
+    if (!this.hydrated || !this.settings) return { allowed: false, reason: 'NOT_READY' };
 
     // 1. Is the profile valid? Unknown profiles own no content.
     if (this.profiles.length && !this.profiles.some((profile) => profile.id === input.profileId)) {
@@ -200,7 +176,7 @@ export class PlaybackPolicyService {
   /** A player supplies its current content so expiry and blocks are rechecked during playback. */
   canContinuePlayback(profileId: string, now = new Date(), content?: Omit<PlaybackCheckInput, 'profileId'>): PlaybackDecision {
     if (content) return this.canPlay({ profileId, ...content }, now);
-    if (!this.hydrated || !this.settings) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
+    if (!this.hydrated || !this.settings) return { allowed: false, reason: 'NOT_READY' };
     const override = this.overrides(profileId, now);
     const schedule = this.scheduleDecision(profileId, now, override);
     if (!schedule.allowed) return schedule;

@@ -1,4 +1,4 @@
-import { ApprovalDuration } from '../../parentalControlsTypes';
+import type { ApprovalDuration } from '../../types';
 import { RequestScope } from './parentRequests.type';
 
 /**

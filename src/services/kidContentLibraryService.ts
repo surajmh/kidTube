@@ -1,39 +1,7 @@
-import { ApprovedChannel, ApprovedVideo, WatchHistory } from '../types';
-import { ContentCategory, resolvedCategoryIds } from '../parentalControlsTypes';
+import { ApprovedChannel,ApprovedVideo,WatchHistory } from '../types';
+import { resolvedCategoryIds } from '../utils/parentalControls.helper';
 import { contentAccessService } from './contentAccessService';
-
-/**
- * KidContentLibrary.
- *
- * The only view of content Kid Mode ever receives. It has no search capability:
- * everything it returns has already passed the same access rules the playback
- * policy enforces, so a child can never be shown something that would be
- * refused at playback time.
- */
-export type KidCategoryCard = {
-  category: ContentCategory;
-  videoCount: number;
-};
-
-export type KidLibrary = {
-  profileId: string;
-  categories: KidCategoryCard[];
-  channels: ApprovedChannel[];
-  videos: ApprovedVideo[];
-  recentVideos: ApprovedVideo[];
-  /** Unapproved rows a parent added: children may ask for these, never play them. */
-  askableVideos: ApprovedVideo[];
-  askableChannels: ApprovedChannel[];
-};
-
-export type KidLibraryInput = {
-  profileId: string;
-  videos: ApprovedVideo[];
-  channels: ApprovedChannel[];
-  categories: ContentCategory[];
-  history?: WatchHistory[];
-  now?: Date;
-};
+import type { KidLibrary,KidLibraryInput } from './kidContentLibraryService.type';
 
 export class KidContentLibraryService {
   build(input: KidLibraryInput): KidLibrary {

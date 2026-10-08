@@ -21,3 +21,6 @@ export const PARENT_CONTENT_TITLES = {
   videos: 'Videos',
   categories: 'Categories',
 } as const;
+
+/** Rows per page in the channel and video lists. */
+export const PARENT_CONTENT_PAGE_SIZE = 20;

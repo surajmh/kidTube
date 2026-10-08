@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler } from 'react-native';
 import { describePlaybackDecision, isTimeRelatedReason, playbackPolicy } from '../services/playbackPolicyService';
 import { ApprovedVideo, ChildProfile } from '../types';
-import { PlaybackDecision } from '../playbackTypes';
+import type { PlaybackDecision } from '../types';
 import { nextQueuedVideo } from '../services/playlistService';
 import { ContentTab } from '../components/ParentContent';
 import { KidTab } from '../components/KidHome';
-import { KidLibrary } from '../services/kidContentLibraryService';
-
-export type Screen = 'kid' | 'parent' | 'player';
+import type { Screen } from './useKidNavigation.type';
+import type { KidLibrary } from '../services/kidContentLibraryService.type';
 
 /**
  * Kid Mode / Parent Mode / player screen state, the Android back button's escape routes, and the

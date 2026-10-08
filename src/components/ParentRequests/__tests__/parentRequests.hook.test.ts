@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { act, renderHook } from '@testing-library/react-native';
-import { ContentRequest } from '../../../parentalControlsTypes';
+import type { ContentRequest } from '../../../types';
 import { useParentRequests } from '../parentRequests.hook';
 import { DEFAULT_DURATION, DEFAULT_SCOPE } from '../parentRequests.constant';
 

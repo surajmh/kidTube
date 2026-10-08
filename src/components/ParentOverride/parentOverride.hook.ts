@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react';
-import { ParentSession, parentSessionService } from '../../services/auth/parentSession';
-import { OverridePreset, playbackOverrideService } from '../../services/playbackOverrideService';
+import { parentSessionService } from '../../services/auth/parentSession';
+import type { ParentSession } from '../../services/auth/parentSession.type';
+import { playbackOverrideService } from '../../services/playbackOverrideService';
+import type { OverridePreset } from '../../services/playbackOverrideService.type';
 import { PARENT_OVERRIDE_COPY } from './parentOverride.constant';
 import { describePinFailure } from './parentOverride.helper';
-import { ParentOverrideProps } from './parentOverride.type';
-
-type UseParentOverrideInput = Pick<ParentOverrideProps, 'profile' | 'settings' | 'onClose' | 'onGranted'>;
+import type { UseParentOverrideInput } from './parentOverride.type';
 
 /**
  * PIN check and override granting for the sheet.

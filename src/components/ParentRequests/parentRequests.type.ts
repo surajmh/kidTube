@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ApprovalDuration, ContentRequest } from '../../parentalControlsTypes';
+import type { ApprovalDuration, ContentRequest } from '../../types';
 
 /** Who an approval applies to: only the child who asked, or every child. */
 export type RequestScope = 'child' | 'family';
@@ -20,3 +20,5 @@ export type ParentRequestsProps = {
   onDelete: (requestId: string) => Promise<void>;
   onClearResolved: () => Promise<void>;
 };
+
+export type UseParentRequestsInput = Pick<ParentRequestsProps, 'requests' | 'onDecide'>;

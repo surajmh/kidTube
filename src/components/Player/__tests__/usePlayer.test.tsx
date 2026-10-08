@@ -1,12 +1,13 @@
 import React from 'react';
 import { act, fireEvent, render, renderHook } from '@testing-library/react-native';
 import { AppState } from 'react-native';
-import { usePlayer, PlayerScreenProps } from '../usePlayer';
-import { defaultPlaybackSettings } from '../../../playbackTypes';
+import { usePlayer } from '../player.hook';
+import type { PlayerScreenProps } from '../player.type';
+import { defaultPlaybackSettings } from '../../../constants/playback.constant';
 import { playerAdapter } from '../../../services/playerAdapterInstance';
 import { playbackPolicy } from '../../../services/playbackPolicyService';
 import { screenTimeService } from '../../../services/screenTimeService';
-import { PlayerScreen } from '../Player';
+import { PlayerScreen } from '../player';
 import { YouTubePlayer } from '../../../native';
 
 jest.mock('../../../native', () => ({ isNativeYouTubePlayerAvailable: true, YouTubePlayer: jest.fn(() => null) }));

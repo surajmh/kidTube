@@ -1,24 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { PlaybackSettings, SponsorBlockCategory, ScreenTimeUsage } from '../../playbackTypes';
+import type { PlaybackSettings, ScreenTimeUsage } from '../../types';
 import { localDayKey } from '../../services/playbackPolicyService';
 import { ChildProfile } from '../../types';
 import { colors } from '../theme';
 import styles from './playbackSettings.style';
-import { minutesToInput, minutesToTime, parseTime } from '../shared/time.helper';
-import { LIMIT_OPTIONS, DEFAULT_SETTINGS_WINDOW } from './playbackSettings.constant';
-import { toggleInList } from './playbackSettings.helper';
-
-
-const categoryLabels: Array<[SponsorBlockCategory, string]> = [
-  ['sponsor', 'Sponsorship'],
-  ['intro', 'Intro'],
-  ['outro', 'Outro'],
-  ['selfpromo', 'Self promotion'],
-  ['interaction', 'Interaction reminder'],
-  ['music', 'Music'],
-];
+import { minutesToInput, minutesToTime } from '../shared/time.helper';
+import { LIMIT_OPTIONS, CATEGORY_LABELS, QUALITY_HEIGHTS, DAY_LABELS } from './playbackSettings.constant';
+import { usePlaybackSettings } from './playbackSettings.hook';
 
 
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
@@ -31,23 +21,7 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 }
 
 export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: { settings: PlaybackSettings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: PlaybackSettings) => void }) {
-  const [selectedDay, setSelectedDay] = useState(new Date().getDay());
-  const dayWindows = settings.schedules[String(selectedDay)] ?? [];
-  const currentWindow = dayWindows[0] ?? DEFAULT_SETTINGS_WINDOW;
-
-  function patch(patch: Partial<PlaybackSettings>) {
-    onChange({ ...settings, ...patch });
-  }
-
-  function updateWindow(field: 'startMinutes' | 'endMinutes', value: string) {
-    const parsed = parseTime(value);
-    if (parsed === null) return;
-    patch({ schedules: { ...settings.schedules, [String(selectedDay)]: [{ ...currentWindow, [field]: parsed }] } });
-  }
-
-  function toggleCategory(category: SponsorBlockCategory) {
-    patch({ sponsorBlockCategories: toggleInList(settings.sponsorBlockCategories, category) });
-  }
+  const { selectedDay, setSelectedDay, currentWindow, patch, updateWindow, toggleCategory } = usePlaybackSettings(settings, onChange);
 
   return (
     <View>
@@ -57,10 +31,10 @@ export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: {
         <ToggleRow label="Autoplay next approved video" value={settings.autoplay} onChange={(autoplay) => patch({ autoplay })} />
         <Text style={styles.cardTitle}>Maximum video quality</Text>
         <View style={styles.limitWrap}>
-          {[144, 240, 360, 480, 720, 1080].map((height) => <Pressable key={height} accessibilityRole="radio" accessibilityLabel={`Maximum quality ${height}p`} accessibilityState={{ selected: (settings.maxQualityHeight ?? 1080) === height }} onPress={() => patch({ maxQualityHeight: height })} style={[styles.limitChip, (settings.maxQualityHeight ?? 1080) === height && styles.limitChipSelected]}><Text style={[styles.limitText, (settings.maxQualityHeight ?? 1080) === height && styles.limitTextSelected]}>{height}p</Text></Pressable>)}
+          {QUALITY_HEIGHTS.map((height) => <Pressable key={height} accessibilityRole="radio" accessibilityLabel={`Maximum quality ${height}p`} accessibilityState={{ selected: (settings.maxQualityHeight ?? 1080) === height }} onPress={() => patch({ maxQualityHeight: height })} style={[styles.limitChip, (settings.maxQualityHeight ?? 1080) === height && styles.limitChipSelected]}><Text style={[styles.limitText, (settings.maxQualityHeight ?? 1080) === height && styles.limitTextSelected]}>{height}p</Text></Pressable>)}
         </View>
         <ToggleRow label="SponsorBlock" value={settings.sponsorBlockEnabled} onChange={(sponsorBlockEnabled) => patch({ sponsorBlockEnabled })} />
-        {settings.sponsorBlockEnabled && <View style={styles.categoryWrap}>{categoryLabels.map(([category, label]) => { const selected = settings.sponsorBlockCategories.includes(category); return <Pressable key={category} onPress={() => toggleCategory(category)} style={[styles.category, selected && styles.categorySelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><Feather name={selected ? 'check-square' : 'square'} size={16} color={selected ? colors.ink : colors.muted} /><Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</Text></Pressable>; })}</View>}
+        {settings.sponsorBlockEnabled && <View style={styles.categoryWrap}>{CATEGORY_LABELS.map(([category, label]) => { const selected = settings.sponsorBlockCategories.includes(category); return <Pressable key={category} onPress={() => toggleCategory(category)} style={[styles.category, selected && styles.categorySelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><Feather name={selected ? 'check-square' : 'square'} size={16} color={selected ? colors.ink : colors.muted} /><Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</Text></Pressable>; })}</View>}
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Daily screen time</Text>
@@ -77,7 +51,7 @@ export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: {
         <Text style={styles.cardTitle}>Allowed hours</Text>
         <ToggleRow label="Limit Kid Mode to a daily window" value={settings.allowedHoursEnabled} onChange={(allowedHoursEnabled) => patch({ allowedHoursEnabled })} />
         <Text style={styles.helper}>Choose a day, then set its allowed window. Times use your device’s local timezone.</Text>
-        <View style={styles.dayWrap}>{[['0', 'Sun'], ['1', 'Mon'], ['2', 'Tue'], ['3', 'Wed'], ['4', 'Thu'], ['5', 'Fri'], ['6', 'Sat']].map(([day, label]) => <Pressable key={day} onPress={() => setSelectedDay(Number(day))} style={[styles.dayChip, selectedDay === Number(day) && styles.dayChipSelected]}><Text style={[styles.dayText, selectedDay === Number(day) && styles.dayTextSelected]}>{label}</Text></Pressable>)}</View>
+        <View style={styles.dayWrap}>{DAY_LABELS.map(([day, label]) => <Pressable key={day} onPress={() => setSelectedDay(Number(day))} style={[styles.dayChip, selectedDay === Number(day) && styles.dayChipSelected]}><Text style={[styles.dayText, selectedDay === Number(day) && styles.dayTextSelected]}>{label}</Text></Pressable>)}</View>
         <View style={styles.scheduleFields}>
           <View style={styles.scheduleField}><Text style={styles.fieldLabel}>Start (24h)</Text><TextInput key={`start-${selectedDay}`} defaultValue={minutesToInput(currentWindow.startMinutes)} onEndEditing={(event) => updateWindow('startMinutes', event.nativeEvent.text)} keyboardType="numbers-and-punctuation" style={styles.scheduleInput} accessibilityLabel="Allowed hours start" /></View>
           <View style={styles.scheduleField}><Text style={styles.fieldLabel}>End (24h)</Text><TextInput key={`end-${selectedDay}`} defaultValue={minutesToInput(currentWindow.endMinutes)} onEndEditing={(event) => updateWindow('endMinutes', event.nativeEvent.text)} keyboardType="numbers-and-punctuation" style={styles.scheduleInput} accessibilityLabel="Allowed hours end" /></View>

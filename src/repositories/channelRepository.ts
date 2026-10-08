@@ -1,7 +1,7 @@
 import { ApprovedChannel } from '../types';
-import { readJson, storageKeys, writeJson } from './storage';
+import { saveQuietly, useAppStore } from '../store/appStore';
 
 export const channelRepository = {
-  getAll: () => readJson<ApprovedChannel[]>(storageKeys.channels, []),
-  saveAll: (channels: ApprovedChannel[]) => writeJson(storageKeys.channels, channels),
+  getAll: async () => useAppStore.getState().channels,
+  saveAll: (channels: ApprovedChannel[]) => saveQuietly({ channels }),
 };

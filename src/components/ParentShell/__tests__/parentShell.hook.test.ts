@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { act, renderHook } from '@testing-library/react-native';
 import { ApprovedChannel } from '../../../types';
-import { ChannelSyncState } from '../../../services/content/channelSyncRules';
+import type { ChannelSyncState } from '../../../services/content/channelSyncRules.type';
 import { useParentShell } from '../parentShell.hook';
 import { ParentShellActions, ParentShellData } from '../parentShell.type';
 

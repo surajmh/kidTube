@@ -1,16 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentCandidate } from '../../parentalControlsTypes';
+import type { ContentCandidate } from '../../types';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../ParentFilter/parentFilter.constant';
 import { PARENT_CONTENT_COPY } from './parentContent.constant';
 import { applyResultTitle, candidateKey, filterChannels, filterVideos } from './parentContent.helper';
-import { AccessCheck, ContentTab, ParentContentProps } from './parentContent.type';
-
-type UseParentContentInput = Pick<
-  ParentContentProps,
-  'videos' | 'channels' | 'mode' | 'selectedChannelId' | 'accessFor' | 'onSearch'
->;
+import { ContentTab } from './parentContent.type';
+import type { UseParentContentInput } from './parentContent.type';
 
 /**
  * Parent content state and derivation.
@@ -39,7 +35,7 @@ export function useParentContent({
 
   /** The nav picks the page; the lists are still written in terms of a tab. */
   const tab: ContentTab =
-    mode === 'videos' ? 'videos' : mode === 'categories' ? 'categories' : 'channels';
+    mode === 'videos' || mode === 'categories' ? mode : 'channels';
 
   const filteredVideos = useMemo(
     () => filterVideos(videos, filters, accessFor),
@@ -120,6 +116,3 @@ export function useParentContent({
     runSearch,
   };
 }
-
-export type UseParentContent = ReturnType<typeof useParentContent>;
-export type { AccessCheck };

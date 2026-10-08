@@ -1,22 +1,10 @@
 import { ApprovedVideo, ChildProfile } from '../types';
 import { contentAccessService } from './contentAccessService';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { sponsorBlockService } from './sponsorBlockService';
+import type { SavedVideo, DownloadModule } from './downloadService.type';
 
-export type SavedVideo = {
-  videoId: string;
-  state: 'preparing' | 'downloading' | 'ready' | 'failed' | 'paused' | 'removing';
-  expiresAt: number;
-  bytes: number;
-  percent: number;
-};
-export interface DownloadModule {
-  getDownloads(): Promise<SavedVideo[]>;
-  setDownloadAuthorization(ids: string[], expiresAt: number): Promise<void>;
-  downloadVideo(videoId: string, maxHeight: number, expiresAt: number): Promise<{ accepted: boolean }>;
-  removeDownload(videoId: string): Promise<void>;
-  clearDownloads(): Promise<void>;
-}
 let native: DownloadModule | null = null;
 export function setNativeDownloadModule(module: DownloadModule | null) { native = module; }
 function requireDownloads() {

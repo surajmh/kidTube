@@ -9,6 +9,7 @@
 
 import { Platform } from 'react-native';
 import nativePlayerModule from '../../native/YouTubePlayerModule';
+import type { PinRecord } from './pinHash.type';
 
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -160,13 +161,6 @@ export function pbkdf2Sha256(password: string, salt: Uint8Array, iterations: num
 
 /** Iteration count kept low enough to stay under ~150 ms on a phone while still being salted. */
 export const pinHashIterations = 25_000;
-
-export type PinRecord = {
-  version: 2;
-  salt: string;
-  iterations: number;
-  hash: string;
-};
 
 function toHex(bytes: Uint8Array): string {
   let out = '';
