@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-07",
+  "device": "Samsung SM-G780G / Android 13",
+  "build": {
+    "sha256": "c56c1e2af6afc66908918fb9035b5acf38570b4bc2dd04f9dcba3903cb624926",
+    "certificate": "Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+  },
+  "pauseAfterStartMs": 376,
+  "pausedBeforeResolveCompleted": true,
+  "playedBeforeManualResume": false,
+  "pausedForegroundUi": "Play controls visible; no Pause control",
+  "playingForegroundPositionsMs": [
+    20181,
+    20189
+  ],
+  "events": [
+    {
+      "event": "start",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120882420
+    },
+    {
+      "event": "resolve_start",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120882421,
+      "generation": 1,
+      "adaptive": true
+    },
+    {
+      "event": "pause_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120882796
+    },
+    {
+      "event": "resolve_end",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120884743,
+      "cached": false,
+      "generation": 1
+    },
+    {
+      "event": "prepare",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120884743,
+      "positionMs": 0,
+      "source": "progressive"
+    },
+    {
+      "event": "state",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120884743,
+      "state": 2,
+      "positionMs": 0,
+      "playWhenReady": false
+    },
+    {
+      "event": "first_frame",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120884822,
+      "nativeStartToFrameMs": 2401
+    },
+    {
+      "event": "state",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120884846,
+      "state": 3,
+      "positionMs": 0,
+      "playWhenReady": false
+    },
+    {
+      "event": "pause_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120900470
+    },
+    {
+      "event": "resume_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120908959
+    },
+    {
+      "event": "playing",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120908960,
+      "playing": true,
+      "positionMs": 0
+    },
+    {
+      "event": "pause_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120929336
+    },
+    {
+      "event": "playing",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120929337,
+      "playing": false,
+      "positionMs": 20181
+    },
+    {
+      "event": "pause_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120929338
+    },
+    {
+      "event": "resume_command",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120932503
+    },
+    {
+      "event": "playing",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120932503,
+      "playing": true,
+      "positionMs": 20189
+    },
+    {
+      "event": "stop",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120935584
+    },
+    {
+      "event": "playing",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120935584,
+      "playing": false,
+      "positionMs": 23290
+    },
+    {
+      "event": "state",
+      "session": "82008856:120882420",
+      "videoId": "LuJe0ad1Ygk",
+      "elapsedMs": 120935584,
+      "state": 1,
+      "positionMs": 23290,
+      "playWhenReady": false
+    },
+    {
+      "event": "release",
+      "session": "82008856:120882420",
+      "videoId": "",
+      "elapsedMs": 120935626
+    }
+  ],
+  "rawCapture": "/tmp/kidtube-phase2/pause-intent/capture",
+  "limitations": [
+    "No real network-outage recovery test in this run",
+    "Existing live ExtractionSpikeTest.resolvesAndServesBytes failed: no sample produced a fetchable stream; other three spike checks passed"
+  ]
+}

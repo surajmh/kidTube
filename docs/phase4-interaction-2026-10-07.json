@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-07",
+  "device": "Samsung SM-G780G / Android 13",
+  "workload": "Open 300-video approved channel, wait 3 seconds, issue 20 alternating 350ms swipes with 300ms gaps; capture 30 seconds",
+  "baselineBuild": {
+    "sha256": "03221d81fb332501685eaf78c31b78226df7607bf8acc5ec6699dbdf3b8e49c9",
+    "channelVideoCount": 300
+  },
+  "candidateBuild": {
+    "sha256": "5f8b949c127aea193942de53158922c7b83961679947f0358ccdb41b46fa4d16",
+    "certificate": "Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+  },
+  "metrics": {
+    "before": {
+      "frames": 114,
+      "jankyFrames": 95,
+      "pssKiB": 969698
+    },
+    "after": {
+      "frames": 937,
+      "jankyFrames": 2,
+      "pssKiB": 180320
+    }
+  },
+  "behaviorChecks": [
+    "Deep-scroll rows loaded after twelve upward swipes",
+    "One search-result tap with keyboard open reached intended player"
+  ],
+  "rawEvidence": "/tmp/kidtube-phase4",
+  "limitations": [
+    "One sequential comparison, not randomized or cache-cold",
+    "Baseline warmed image cache for candidate; process histories differ",
+    "PSS is end-of-run app memory, not peak or a leak measurement",
+    "Android gfxinfo is UI rendering, not video frame performance",
+    "TV focus and Parent Mode list performance not validated"
+  ]
+}

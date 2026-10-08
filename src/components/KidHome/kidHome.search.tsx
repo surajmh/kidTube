@@ -1,20 +1,16 @@
 import React from 'react';
-import { ApprovedVideo } from '../../types';
-import { VideoCard } from '../youtube/VideoCard';
 import { KID_COPY } from './kidHome.constant';
 import { KidSearchResults } from './kidHome.type';
 import { ChannelRow } from './kidHome.channelPage';
 import { Empty } from './kidHome.primitives';
 
-export function SearchResults({
+export function SearchHeader({
   query,
   results,
-  onVideoPress,
   onSelectChannel,
 }: {
   query: string;
   results: KidSearchResults;
-  onVideoPress: (video: ApprovedVideo) => void;
   onSelectChannel: (channelId: string) => void;
 }) {
   if (!query.trim()) {
@@ -32,9 +28,6 @@ export function SearchResults({
           subtitle="Channel"
           onOpen={onSelectChannel}
         />
-      ))}
-      {results.videos.map((video) => (
-        <VideoCard key={`result-${video.id}`} video={video} onPress={onVideoPress} />
       ))}
     </>
   );

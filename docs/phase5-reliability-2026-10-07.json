@@ -1,0 +1,261 @@
+{
+  "date": "2026-10-07",
+  "device": {
+    "model": "SM-G780G",
+    "android": "13",
+    "network": "Wi-Fi; power connected; existing media cache retained; URI-key byte cache"
+  },
+  "apk": {
+    "sha256": "025d3aff446351eabd1c6ea957e38065f4f07490ff834debdbf0cc2d97ffa971",
+    "certificate": "Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+  },
+  "sourceRevisionBeforeChanges": "a18c097930848a95d69f7597d97fe201b50f9b2f",
+  "captureStartedAtUtc": "2026-10-07T06:29:20Z",
+  "captureSummary": {
+    "sessions": {
+      "74167955:122491569": {
+        "videoId": "LuJe0ad1Ygk",
+        "events": [
+          {
+            "event": "start",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122491569
+          },
+          {
+            "event": "resolve_start",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122491570,
+            "generation": 1,
+            "adaptive": true
+          },
+          {
+            "event": "resolve_end",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122494447,
+            "cached": false,
+            "generation": 1
+          },
+          {
+            "event": "prepare",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122494447,
+            "positionMs": 0,
+            "source": "progressive"
+          },
+          {
+            "event": "state",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122494453,
+            "state": 2,
+            "positionMs": 0,
+            "playWhenReady": false
+          },
+          {
+            "event": "first_frame",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122495202,
+            "nativeStartToFrameMs": 3632
+          },
+          {
+            "event": "state",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122495214,
+            "state": 3,
+            "positionMs": 0,
+            "playWhenReady": true
+          },
+          {
+            "event": "playing",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122495215,
+            "playing": true,
+            "positionMs": 0
+          },
+          {
+            "event": "stop",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499684
+          },
+          {
+            "event": "playing",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499684,
+            "playing": false,
+            "positionMs": 4281
+          },
+          {
+            "event": "state",
+            "session": "74167955:122491569",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499686,
+            "state": 1,
+            "positionMs": 4281,
+            "playWhenReady": false
+          },
+          {
+            "event": "release",
+            "session": "74167955:122491569",
+            "videoId": "",
+            "elapsedMs": 122499699
+          }
+        ],
+        "nativeStartToFrameMs": 3632,
+        "reportedDroppedFrames": 0,
+        "failures": [],
+        "bufferingSpells": [
+          {
+            "durationMs": 761,
+            "playWhenReady": false,
+            "closedBy": "state"
+          }
+        ],
+        "openBufferingSinceMs": null,
+        "startedInCapture": true
+      },
+      "8559593:122499783": {
+        "videoId": "LuJe0ad1Ygk",
+        "events": [
+          {
+            "event": "start",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499783
+          },
+          {
+            "event": "resolve_start",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499783,
+            "generation": 1,
+            "adaptive": true
+          },
+          {
+            "event": "resolve_end",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499783,
+            "cached": true,
+            "generation": 1
+          },
+          {
+            "event": "prepare",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499784,
+            "positionMs": 0,
+            "source": "progressive"
+          },
+          {
+            "event": "state",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499784,
+            "state": 2,
+            "positionMs": 0,
+            "playWhenReady": false
+          },
+          {
+            "event": "first_frame",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499909,
+            "nativeStartToFrameMs": 126
+          },
+          {
+            "event": "state",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499916,
+            "state": 3,
+            "positionMs": 0,
+            "playWhenReady": true
+          },
+          {
+            "event": "playing",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122499916,
+            "playing": true,
+            "positionMs": 0
+          },
+          {
+            "event": "pause_command",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122503899
+          },
+          {
+            "event": "playing",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122503899,
+            "playing": false,
+            "positionMs": 3800
+          },
+          {
+            "event": "pause_command",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122503901
+          },
+          {
+            "event": "resume_command",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122507039
+          },
+          {
+            "event": "playing",
+            "session": "8559593:122499783",
+            "videoId": "LuJe0ad1Ygk",
+            "elapsedMs": 122507039,
+            "playing": true,
+            "positionMs": 3804
+          }
+        ],
+        "nativeStartToFrameMs": 126,
+        "reportedDroppedFrames": 0,
+        "failures": [],
+        "bufferingSpells": [
+          {
+            "durationMs": 132,
+            "playWhenReady": false,
+            "closedBy": "state"
+          }
+        ],
+        "openBufferingSinceMs": null,
+        "startedInCapture": true
+      }
+    },
+    "nativeStartToFrameMedianMs": 1879.0,
+    "firstFrameSamples": 2,
+    "malformedLines": 1
+  },
+  "pausedForegroundReturn": {
+    "result": "PASS",
+    "method": "Separate untimed UI hierarchy check: Play video controls before Home and after reopening the app.",
+    "videoTitle": "Top 20 Anniversary Hit Songs \ud83c\udfb6 | \"20 Years of Super Simple\" now on Vinyl!"
+  },
+  "checks": {
+    "typecheck": "PASS",
+    "javascript": "247 tests, 27 suites PASS",
+    "native": "ResolvedStreamCacheTest and NewPipeDownloaderTest PASS",
+    "releaseBuild": "arm64-v8a PASS"
+  },
+  "limits": [
+    "One phone and one cached replay sample; native start-to-frame excludes the tap and JavaScript dispatch.",
+    "Final retry recovery was checked with a regression test, not forced through exhaustion on the phone.",
+    "Sustained playback, controlled weak-network recovery, pause during outage, and TV validation remain pending.",
+    "LiveExtractionSpikeTest was not rerun; an earlier external-stream byte probe failed."
+  ]
+}

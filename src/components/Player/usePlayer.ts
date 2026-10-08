@@ -50,6 +50,8 @@ export function usePlayer({
   onParentOverride,
 }: PlayerScreenProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [wantsPlayback, setWantsPlayback] = useState(true);
+  const wantsPlaybackRef = useRef(true);
   const [progress, setProgress] = useState(0);
   const [durationMs, setDurationMs] = useState((video.duration ?? 0) * 1000);
   const [bufferedMs, setBufferedMs] = useState(0);
@@ -80,7 +82,7 @@ export function usePlayer({
   const accountingQueue = useRef(Promise.resolve());
   const recoveryAttempt = useRef(0);
   const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Guards against re-issuing the same prefetch on every progress tick past the threshold. */
+  /** Guards against re-issuing Up next resolution on every progress tick. */
   const hasPrefetchedNext = useRef(false);
   const accessDecision = profile
     ? playbackPolicy.canPlay({ profileId: profile.id, videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds })
@@ -89,6 +91,13 @@ export function usePlayer({
   const resumableAdapter = playerAdapter as ResumablePlayerAdapter;
 
   useEffect(() => {
+    wantsPlaybackRef.current = true;
+    setWantsPlayback(true);
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    wasPlayingBeforeBackground.current = false;
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    recoveryTimer.current = null;
     setProgress(0);
     setBufferedMs(0);
     setDurationMs((video.duration ?? 0) * 1000);
@@ -131,6 +140,8 @@ export function usePlayer({
   function stopForPolicy(decision: PlaybackDecision) {
     if (stoppedByPolicy.current) return;
     stoppedByPolicy.current = true;
+    wantsPlaybackRef.current = false;
+    setWantsPlayback(false);
     isPlayingRef.current = false;
     lastPlayheadMs.current = null;
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
@@ -195,7 +206,7 @@ export function usePlayer({
     setError(nextError);
     setRecoveryMessage('');
     if (!profile) return;
-    if (stoppedByPolicy.current) return;
+    if (stoppedByPolicy.current || !wantsPlaybackRef.current || AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
     if (!shouldAutoRecover(nextError, recoveryAttempt.current)) return;
 
     const attempt = recoveryAttempt.current + 1;
@@ -206,7 +217,7 @@ export function usePlayer({
     recoveryTimer.current = setTimeout(() => {
       recoveryTimer.current = null;
       setRecoveryMessage('');
-      retryPlayback();
+      if (wantsPlaybackRef.current && AppState.currentState !== 'background' && AppState.currentState !== 'inactive') retryPlayback();
     }, delay);
   }
 
@@ -214,8 +225,10 @@ export function usePlayer({
     if (!isAllowed || !isNativeYouTubePlayerAvailable) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background' || nextState === 'inactive') {
-        wasPlayingBeforeBackground.current = isPlayingRef.current;
-        if (isPlayingRef.current) {
+        wasPlayingBeforeBackground.current = wantsPlaybackRef.current;
+        if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+        recoveryTimer.current = null;
+        if (wantsPlaybackRef.current) {
           lastPlayheadMs.current = null;
           void playerAdapter.pause().catch(() => undefined);
           persistProgress();
@@ -224,6 +237,7 @@ export function usePlayer({
         void screenTimeService.flush();
       }
       if (nextState === 'active' && wasPlayingBeforeBackground.current) {
+        wasPlayingBeforeBackground.current = false;
         const decision = profile ? playbackPolicy.canContinuePlayback(profile.id) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
         if (!decision.allowed) stopForPolicy(decision);
         else
@@ -279,8 +293,8 @@ export function usePlayer({
     setShowThumbnailCover(true);
     stoppedByPolicy.current = false;
     lastPlayheadMs.current = null;
-    void playerAdapter
-      .play(video.youtubeVideoId)
+    void resumableAdapter
+      .resume(video.youtubeVideoId)
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 
@@ -289,20 +303,29 @@ export function usePlayer({
     recoveryAttempt.current = 0;
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
     recoveryTimer.current = null;
+    wantsPlaybackRef.current = true;
+    setWantsPlayback(true);
     retryPlayback();
   }
 
   function togglePlayback() {
-    if (!isPlaying && profile) {
+    const nextPlaying = !wantsPlaybackRef.current;
+    if (nextPlaying && profile) {
       const decision = playbackPolicy.canContinuePlayback(profile.id);
       if (!decision.allowed) {
         stopForPolicy(decision);
         return;
       }
     }
-    const command = isPlaying ? playerAdapter.pause() : resumableAdapter.resume(video.youtubeVideoId);
+    wantsPlaybackRef.current = nextPlaying;
+    setWantsPlayback(nextPlaying);
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    recoveryTimer.current = null;
+    setRecoveryMessage('');
+    if (!nextPlaying) showControls(true);
+    const command = nextPlaying ? resumableAdapter.resume(video.youtubeVideoId) : playerAdapter.pause();
     void command
-      .then(() => { const nextPlaying = !isPlaying; isPlayingRef.current = nextPlaying; setIsPlaying(nextPlaying); setError(null); if (nextPlaying) recoveryAttempt.current = 0; })
+      .then(() => { setError(null); if (nextPlaying) recoveryAttempt.current = 0; })
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 
@@ -367,6 +390,10 @@ export function usePlayer({
       );
     },
     onPlay: () => {
+      if (!wantsPlaybackRef.current || AppState.currentState === 'background' || AppState.currentState === 'inactive') {
+        void playerAdapter.pause().catch(() => undefined);
+        return;
+      }
       // A real onPlay means the stream is rendering frames, whatever happens next (including a
       // policy block below) — the frozen-old-frame/blank moment this covers for is over.
       setShowThumbnailCover(false);
@@ -399,9 +426,8 @@ export function usePlayer({
       progressRef.current = nextProgress;
       setDurationMs(nextDuration);
       setProgress(nextProgress);
-      // Resolving "up next" now (instead of when it's actually selected) hides the resolve
-      // latency behind however much of this video is left — comfortably enough time at 80%.
-      if (!hasPrefetchedNext.current && nextVideo && nextProgress >= 0.8) {
+      // Wait for ten seconds of playback so resolution does not compete with startup.
+      if (!hasPrefetchedNext.current && nextVideo && playing && positionMs >= 10_000) {
         hasPrefetchedNext.current = true;
         void playerAdapter.prefetch?.(nextVideo.youtubeVideoId);
       }
@@ -425,6 +451,8 @@ export function usePlayer({
     onEnd: () => {
       lastPlayheadMs.current = null;
       isPlayingRef.current = false;
+      wantsPlaybackRef.current = false;
+      setWantsPlayback(false);
       progressRef.current = 1;
       setIsPlaying(false);
       setIsBuffering(false);
@@ -449,6 +477,7 @@ export function usePlayer({
 
   return {
     isPlaying,
+    wantsPlayback,
     progress,
     durationMs,
     bufferedMs,

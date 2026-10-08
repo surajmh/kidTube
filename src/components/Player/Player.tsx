@@ -81,8 +81,8 @@ export function PlayerScreen(props: PlayerScreenProps) {
                   <FocusablePressable accessibilityLabel="Back 10 seconds" style={styles.overlayButton} onPress={() => player.skipBy(-10_000)}>
                     <Feather name="rotate-ccw" size={22} color={yt.text} />
                   </FocusablePressable>
-                  <FocusablePressable accessibilityLabel={player.isPlaying ? 'Pause video' : 'Play video'} style={styles.overlayButton} onPress={player.togglePlayback}>
-                    <Feather name={player.isPlaying ? 'pause' : 'play'} size={24} color={yt.text} />
+                  <FocusablePressable accessibilityLabel={player.wantsPlayback ? 'Pause video' : 'Play video'} style={styles.overlayButton} onPress={player.togglePlayback}>
+                    <Feather name={player.wantsPlayback ? 'pause' : 'play'} size={24} color={yt.text} />
                   </FocusablePressable>
                   <FocusablePressable accessibilityLabel="Forward 10 seconds" style={styles.overlayButton} onPress={() => player.skipBy(10_000)}>
                     <Feather name="rotate-cw" size={22} color={yt.text} />
@@ -132,7 +132,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
       {nextVideo && nextVideo.id !== video.id ? (
         <>
           <Text style={styles.upNextLabel}>Up next</Text>
-          <FeedVideoCard video={nextVideo} onPress={() => onNextVideo(nextVideo)} />
+          <FeedVideoCard video={nextVideo} onPress={onNextVideo} />
         </>
       ) : null}
     </View>

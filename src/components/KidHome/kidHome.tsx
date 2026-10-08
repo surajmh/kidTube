@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react';
-import { Image, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { FlatList, Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import { PagedGrid } from '../PagedGrid';
+import { ApprovedVideo } from '../../types';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
 import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
 import { useKidHome } from './kidHome.hook';
 import { KidHomeProps } from './kidHome.type';
 import { Chip, Empty } from './kidHome.primitives';
-import { ChannelPage, ChannelRow } from './kidHome.channelPage';
-import { SearchResults } from './kidHome.search';
+import { ChannelHeader, ChannelRow } from './kidHome.channelPage';
+import { SearchHeader } from './kidHome.search';
 import { AskPanel } from './kidHome.askPanel';
 import styles from './kidHome.style';
 
@@ -20,6 +20,9 @@ import styles from './kidHome.style';
  * `helpers.ts` so they are covered by tests rather than only by rendering. Each section of the
  * screen (search, a channel's page, the ask-a-parent form, …) is its own file alongside this one.
  */
+const EMPTY_VIDEOS: ApprovedVideo[] = [];
+const videoKey = (video: ApprovedVideo) => video.id;
+
 export function KidHomeScreen(props: KidHomeProps) {
   const {
     profiles,
@@ -42,6 +45,18 @@ export function KidHomeScreen(props: KidHomeProps) {
   } = props;
 
   const kid = useKidHome(props);
+  const list = useRef<FlatList<ApprovedVideo>>(null);
+  const videos = kid.searching ? (kid.query.trim() ? kid.results.videos : EMPTY_VIDEOS)
+    : kid.onFeed ? kid.feedVideos
+    : tab === 'recent' ? library.recentVideos
+    : tab === 'channels' && kid.selectedChannel ? kid.channelVideos
+    : EMPTY_VIDEOS;
+  const renderVideo = useCallback(({ item }: { item: ApprovedVideo }) => (
+    <VideoCard video={item} onPress={onVideoPress} />
+  ), [onVideoPress]);
+  useEffect(() => {
+    if (kid.searching) list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [kid.searching, kid.results]);
 
   // Per-channel video counts, computed once per library instead of a full scan per channel row.
   const channelVideoCounts = useMemo(() => {
@@ -147,105 +162,108 @@ export function KidHomeScreen(props: KidHomeProps) {
         </View>
       ) : null}
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-        {notice ? (
-          <View style={styles.notice}>
-            <Feather name="info" size={16} color={ICON.ink} />
-            <Text style={styles.noticeText}>{notice}</Text>
-            {noticeAction ? (
-              <FocusablePressable
-                accessibilityLabel={noticeAction.label}
-                style={styles.noticeAction}
-                onPress={noticeAction.onPress}
-              >
-                <Text style={styles.noticeActionText}>{noticeAction.label}</Text>
-              </FocusablePressable>
-            ) : null}
-          </View>
-        ) : null}
+      <FlatList
+        ref={list}
+        key={`${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}`}
+        data={videos}
+        renderItem={renderVideo}
+        keyExtractor={videoKey}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        removeClippedSubviews={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={<>
 
-        {kid.searching ? (
-          <SearchResults
-            query={kid.query}
-            results={kid.results}
-            onVideoPress={onVideoPress}
-            onSelectChannel={kid.openChannelFromSearch}
-          />
-        ) : null}
+          {notice ? (
+            <View style={styles.notice}>
+              <Feather name="info" size={16} color={ICON.ink} />
+              <Text style={styles.noticeText}>{notice}</Text>
+              {noticeAction ? (
+                <FocusablePressable
+                  accessibilityLabel={noticeAction.label}
+                  style={styles.noticeAction}
+                  onPress={noticeAction.onPress}
+                >
+                  <Text style={styles.noticeActionText}>{noticeAction.label}</Text>
+                </FocusablePressable>
+              ) : null}
+            </View>
+          ) : null}
 
-        {!kid.searching && kid.onFeed ? (
-          <>
-            {kid.keepWatching.length > 0 ? (
-              <>
-                <Text style={styles.shelfTitle}>Keep watching</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
-                  {kid.keepWatching.map((video) => (
-                    <VideoCard key={`recent-${video.id}`} video={video} compact onPress={onVideoPress} />
-                  ))}
-                </ScrollView>
-              </>
-            ) : null}
-
-            {kid.feedVideos.length ? (
-              <PagedGrid
-                items={kid.feedVideos}
-                renderItem={(video) => <VideoCard key={video.id} video={video} onPress={onVideoPress} />}
-              />
-            ) : (
-              <Empty
-                icon="play-circle"
-                title={selectedCategoryId ? KID_COPY.feedEmptyCategoryTitle : KID_COPY.feedEmptyTitle}
-                body={KID_COPY.feedEmptyBody}
-              />
-            )}
-          </>
-        ) : null}
-
-        {!kid.searching && tab === 'channels' ? (
-          kid.selectedChannel ? (
-            <ChannelPage
-              channel={kid.selectedChannel}
-              videos={kid.channelVideos}
-              availability={kid.availability}
-              onBack={() => onSelectChannel(null)}
-              onVideoPress={onVideoPress}
+          {kid.searching ? (
+            <SearchHeader
+              query={kid.query}
+              results={kid.results}
+              onSelectChannel={kid.openChannelFromSearch}
             />
-          ) : library.channels.length ? (
-            library.channels.map((channel) => (
-              <ChannelRow
-                key={channel.id}
-                channel={channel}
-                videoCount={channelVideoCounts.get(channel.channelId) ?? 0}
-                onOpen={onSelectChannel}
+          ) : null}
+
+          {!kid.searching && kid.onFeed ? (
+            <>
+              {kid.keepWatching.length > 0 ? (
+                <>
+                  <Text style={styles.shelfTitle}>Keep watching</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shelf}>
+                    {kid.keepWatching.map((video) => (
+                      <VideoCard key={`recent-${video.id}`} video={video} compact onPress={onVideoPress} />
+                    ))}
+                  </ScrollView>
+                </>
+              ) : null}
+
+              {!kid.feedVideos.length ? (
+                <Empty
+                  icon="play-circle"
+                  title={selectedCategoryId ? KID_COPY.feedEmptyCategoryTitle : KID_COPY.feedEmptyTitle}
+                  body={KID_COPY.feedEmptyBody}
+                />
+              ) : null}
+            </>
+          ) : null}
+
+          {!kid.searching && tab === 'channels' ? (
+            kid.selectedChannel ? (
+              <ChannelHeader
+                channel={kid.selectedChannel}
+                videos={kid.channelVideos}
+                availability={kid.availability}
+                onBack={() => onSelectChannel(null)}
               />
-            ))
-          ) : (
-            <Empty icon="users" title="No channels yet" body="Approved channels will appear here." />
-          )
-        ) : null}
+            ) : library.channels.length ? (
+              library.channels.map((channel) => (
+                <ChannelRow
+                  key={channel.id}
+                  channel={channel}
+                  videoCount={channelVideoCounts.get(channel.channelId) ?? 0}
+                  onOpen={onSelectChannel}
+                />
+              ))
+            ) : (
+              <Empty icon="users" title="No channels yet" body="Approved channels will appear here." />
+            )
+          ) : null}
 
-        {!kid.searching && tab === 'recent' ? (
-          library.recentVideos.length ? (
-            library.recentVideos.map((video) => (
-              <VideoCard key={`library-${video.id}`} video={video} onPress={onVideoPress} />
-            ))
-          ) : (
+          {!kid.searching && tab === 'recent' && !library.recentVideos.length ? (
             <Empty icon="film" title="Nothing watched yet" body="Videos you watch show up here." />
-          )
-        ) : null}
+          ) : null}
 
-        {!kid.searching && tab === 'requests' ? (
-          <AskPanel
-            activeProfile={activeProfile}
-            askableVideos={library.askableVideos}
-            askableChannels={library.askableChannels}
-            requests={requests}
-            onSubmit={onSubmitRequest}
-            onRequestVideo={onRequestVideo}
-            onRequestChannel={onRequestChannel}
-          />
-        ) : null}
-      </ScrollView>
+          {!kid.searching && tab === 'requests' ? (
+            <AskPanel
+              activeProfile={activeProfile}
+              askableVideos={library.askableVideos}
+              askableChannels={library.askableChannels}
+              requests={requests}
+              onSubmit={onSubmitRequest}
+              onRequestVideo={onRequestVideo}
+              onRequestChannel={onRequestChannel}
+            />
+          ) : null}
+        </>}
+      />
 
       <View style={styles.bottomNav}>
         {KID_DESTINATIONS.map((item) => {
