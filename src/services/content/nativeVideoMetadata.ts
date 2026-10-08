@@ -1,5 +1,6 @@
 import { ApprovedVideo } from '../../types';
-import NativeYouTubePlayer, { NativeVideoMetadata } from '../../native/YouTubePlayerModule';
+import NativeYouTubePlayer from '../../native/YouTubePlayerModule';
+import type { NativeVideoMetadata } from '../../native/YouTubePlayerModule.type';
 import { readDurationSeconds, readString } from './youtubeContentProvider';
 
 /**
@@ -61,13 +62,21 @@ export async function enrichVideo(video: ApprovedVideo): Promise<ApprovedVideo |
   return changed ? next : null;
 }
 
+/** A row nothing could be learned about (removed video, offline) is not asked again for this long. */
+const retryAfterMs = 10 * 60 * 1000;
+const lastTried = new Map<string, number>();
+
 /**
  * Enriches up to `limit` rows per pass with a bounded fan-out. The native metadata calls run on
  * their own IO dispatcher, so a pass costs roughly `limit / concurrency` round trips instead of
  * `limit` back-to-back ones; the small cap keeps a big library from hammering YouTube at once.
  */
 export async function enrichLibrary(videos: ApprovedVideo[], limit = 12, concurrency = 4): Promise<ApprovedVideo[] | null> {
-  const pending = videos.filter(needsMetadata).slice(0, limit);
+  const now = Date.now();
+  // Cooling-down rows are skipped before the cap, so a few unresolvable ones cannot starve the rest.
+  const pending = videos
+    .filter((video) => needsMetadata(video) && now - (lastTried.get(video.id) ?? -Infinity) >= retryAfterMs)
+    .slice(0, limit);
   if (!pending.length) return null;
 
   const updates = new Map<string, ApprovedVideo>();
@@ -77,6 +86,7 @@ export async function enrichLibrary(videos: ApprovedVideo[], limit = 12, concurr
       const video = pending[cursor++];
       const enriched = await enrichVideo(video);
       if (enriched) updates.set(video.id, enriched);
+      else lastTried.set(video.id, Date.now());
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, pending.length) }, worker));

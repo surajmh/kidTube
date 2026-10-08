@@ -5,7 +5,7 @@ import { formatWatchTime } from '../../services/activityService';
 import { colors } from '../theme';
 import styles from './parentActivity.style';
 import { useActivitySummaries } from './parentActivity.hook';
-import { barWidthPercent } from './parentActivity.helper';
+import { barWidthPercent, requestStatusVisual } from './parentActivity.helper';
 import { ParentActivityProps } from './parentActivity.type';
 
 export function ParentActivityPanel({
@@ -109,11 +109,7 @@ export function ParentActivityPanel({
             ) : (
               summary.requests.slice(0, 6).map((request) => (
                 <View key={request.id} style={styles.historyRow}>
-                  <Feather
-                    name={request.status === 'pending' ? 'clock' : request.status === 'approved' ? 'check-circle' : 'x-circle'}
-                    size={16}
-                    color={request.status === 'pending' ? colors.yellow : request.status === 'approved' ? colors.mintDark : colors.danger}
-                  />
+                  <Feather name={requestStatusVisual(request.status).icon} size={16} color={requestStatusVisual(request.status).color} />
                   <View style={styles.historyInfo}>
                     <Text style={styles.usageLabel} numberOfLines={1}>{request.title ?? 'Request'}</Text>
                     <Text style={styles.rowMeta} numberOfLines={1}>

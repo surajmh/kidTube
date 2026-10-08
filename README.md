@@ -50,11 +50,14 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
   of any family default (daily limit, allowed hours, bedtime, autoplay, SponsorBlock).
 - **Screen time & schedule**: daily limits, allowed-hours windows, bedtime, warnings at
   10/5/1 minutes remaining, and bounded temporary overrides (+15 min, +30 min, until bedtime).
-- **Content management**: paste a YouTube link or ID to save a candidate or approve it;
-  approved channels sync their uploads (paginated, cached, quota-aware).
-- **Offline downloads** — Parent Mode → Downloads saves approved videos at a selected quality
-  for 7 or 30 days. Kid Mode → Recently watched → Saved for travel plays completed downloads.
-  Files stay in private app storage excluded from Android backup. Saved videos still obey each
+- **Content management**: add channels and videos by link, then approve them; approved channels
+  sync their uploads (paginated, cached, quota-aware).
+- **Offline downloads** — children save videos they are allowed to watch from the player, at a
+  quality up to the Playback settings limit, and play them from Kid Mode → Downloads. Parents
+  turn saving on or off and choose whether files are kept for 7 or 30 days in Playback settings →
+  Downloads. Parent Mode → Downloads lists saved videos by child; deleting removes it for that
+  child, and the file leaves the device when no child has it. Files stay in private app storage
+  excluded from Android backup and are shared between children. Saved videos still obey each
   child's current approvals, blocks, bedtime and daily viewing limit, including mid-playback expiry.
   Downloads can be cancelled or removed; expired files are cleaned up when the app runs.
 - **Activity dashboard**: what each child watched, for how long, and every request made.
@@ -160,9 +163,14 @@ PHASE-*.md                              design docs per milestone
 ## Known limitations
 
 - **Android only.** The playback engine is a local Android module; iOS is out of scope.
+- **Daily screen time, allowed hours and bedtime follow the phone's clock.** A child who can change
+  the date can start a new day. In Android settings, turn on **Automatic date & time** and keep
+  children out of Date & time settings. The parent PIN lockout does not depend on the date: it is
+  timed with the time since boot, so changing the date does not shorten it (a reboot falls back to
+  the stored date).
 - Content availability depends on YouTube's public endpoints (via NewPipe). Breakage in
   extraction is possible whenever YouTube changes, and is fixed by updating the extractor.
-- Downloads need a connection until they show **Ready for travel**. Reopen the app to resume
+- Downloads need a connection until they show **Ready**. Reopen the app to resume
   transfers interrupted by Android. Unavailable tracks or insufficient storage fail without
   creating a playable partial download. Offline playback uses only saved media, with no streaming
   fallback; captions are limited to embedded tracks saved with the video. Cached SponsorBlock

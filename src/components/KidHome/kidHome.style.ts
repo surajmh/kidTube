@@ -9,6 +9,7 @@ import { yt } from '../youtube/theme';
  * screen would render unstyled. The tokens mirror tailwind.config.js -- keep the two in step.
  */
 const styles = StyleSheet.create({
+  downloadsWrap: { paddingHorizontal: 16, paddingTop: 8 },
   screen: { backgroundColor: yt.bg, flex: 1 },
 
   topBar: { alignItems: 'center', flexDirection: 'row', gap: 4, height: 56, paddingHorizontal: 12 },
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
   askRowButton: { backgroundColor: yt.surfaceAlt, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
   askRowButtonText: { color: yt.text, fontSize: 13, fontWeight: '700' },
   askStatus: { color: yt.textDim, fontSize: 12, textTransform: 'capitalize' },
+
 
   empty: { alignItems: 'center', gap: 8, paddingHorizontal: 32, paddingVertical: 48 },
   emptyTitle: { color: yt.text, fontSize: 15, fontWeight: '700', textAlign: 'center' },

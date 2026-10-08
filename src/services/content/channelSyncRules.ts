@@ -1,13 +1,8 @@
 import { ApprovedVideo } from '../../types';
-import {
-  YouTubeChannel,
-  YouTubeProviderError,
-  YouTubeVideo,
-  YouTubeVideoPage,
-  readDurationSeconds,
-  readString,
-} from './youtubeContentProvider';
+import { YouTubeProviderError, readDurationSeconds, readString } from './youtubeContentProvider';
+import type { YouTubeChannel, YouTubeVideo, YouTubeVideoPage } from './youtubeContentProvider.type';
 import { isValidChannelId, isValidVideoId, youtubeChannelIdPattern } from '../contentValidation';
+import type { ChannelReference, ChannelSyncState, SyncMode, MergeResult, SyncOutcome } from './channelSyncRules.type';
 
 /**
  * Channel sync rules.
@@ -24,12 +19,6 @@ export const channelCacheTtlMs = 6 * 60 * 60 * 1000;
 export const channelFailureBackoffMs = 60 * 1000;
 /** YouTube allows up to 50 per page; 30 keeps the first page fast and cheap. */
 export const channelPageSize = 30;
-
-export type ChannelReference =
-  | { kind: 'channelId'; id: string }
-  | { kind: 'handle'; handle: string }
-  | { kind: 'legacyUser'; user: string }
-  | { kind: 'unknown' };
 
 const handlePattern = /^@[A-Za-z0-9._-]{3,60}$/;
 const legacyNamePattern = /^[A-Za-z0-9._-]{1,60}$/;
@@ -120,24 +109,9 @@ export function channelReferenceLabel(reference: ChannelReference): string {
   }
 }
 
-export type ChannelSyncState = {
-  channelId: string;
-  uploadsPlaylistId?: string;
-  /** Continue-from token for `Load more`. Absent once the channel is fully paged in. */
-  nextPageToken?: string;
-  /** Last successful fetch. Drives the cache policy. */
-  fetchedAt?: string;
-  lastAttemptAt?: string;
-  lastError?: { code: string; message: string; at: string };
-  pagesFetched: number;
-  videoCount: number;
-};
-
 export function emptyChannelSyncState(channelId: string): ChannelSyncState {
   return { channelId, pagesFetched: 0, videoCount: 0 };
 }
-
-export type SyncMode = 'initial' | 'refresh' | 'more';
 
 /**
  * Cache policy (§7):
@@ -264,18 +238,9 @@ export function toApprovedVideo(
     sourceUrl: `https://www.youtube.com/watch?v=${video.youtubeVideoId}`,
     // Not individually approved: eligibility comes from the approved channel (§8).
     approved: false,
-    candidate: false,
     syncedFromChannel: true,
   };
 }
-
-export type MergeResult = {
-  videos: ApprovedVideo[];
-  added: number;
-  updated: number;
-  /** The videos this fetch touched, in fetch order. */
-  synced: ApprovedVideo[];
-};
 
 /**
  * Merges a fetched page into the local library.
@@ -283,7 +248,7 @@ export type MergeResult = {
  * Guarantees:
  *  - one row per video id — a refresh never duplicates;
  *  - a parent's existing decisions survive (individual approval, category
- *    membership and the "ask a parent" candidate flag are kept);
+ *    membership are kept);
  *  - only metadata is refreshed on rows that already exist;
  *  - nothing already stored is dropped, so a shorter page cannot lose videos.
  */
@@ -344,12 +309,6 @@ export function syncOwnedVideos(videos: ApprovedVideo[], channelId: string): App
   return videos.filter((video) => video.channelId === channelId && isSyncOwned(video));
 }
 
-export type SyncOutcome = {
-  state: ChannelSyncState;
-  result: MergeResult;
-  channelMetadata?: Partial<YouTubeChannel>;
-};
-
 /**
  * Applies one successful fetch to the library and the sync state. Pure, so the
  * "refresh updates the library", "duplicate is not duplicated" and pagination
@@ -401,19 +360,27 @@ export function applyFetchFailure(
 }
 
 /** Parent-facing status line for a channel. */
+/** How long ago a channel was fetched: "Updated 12d ago", or why there is nothing to say yet. */
+export function describeSyncAge(state: ChannelSyncState | undefined, now: Date = new Date()): string {
+  if (!state) return 'Not loaded yet';
+  if (state.lastError) return "Couldn't load videos right now";
+  if (!state.fetchedAt) return 'Not loaded yet';
+  const fetchedAt = new Date(state.fetchedAt).getTime();
+  if (!Number.isFinite(fetchedAt)) return 'Updated';
+  const minutes = Math.floor(Math.max(0, now.getTime() - fetchedAt) / 60000);
+  if (minutes < 1) return 'Updated just now';
+  if (minutes < 60) return `Updated ${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Updated ${hours}h ago`;
+  return `Updated ${Math.floor(hours / 24)}d ago`;
+}
+
 export function describeChannelSync(state: ChannelSyncState | undefined, now: Date = new Date()): string {
   if (!state) return 'Not loaded yet';
   const videos = `${state.videoCount} ${state.videoCount === 1 ? 'video' : 'videos'}`;
   if (state.lastError) return "Couldn't load videos right now · " + videos + ' saved';
   if (!state.fetchedAt) return 'Not loaded yet';
-  const fetchedAt = new Date(state.fetchedAt).getTime();
-  if (!Number.isFinite(fetchedAt)) return `Updated · ${videos}`;
-  const minutes = Math.floor(Math.max(0, now.getTime() - fetchedAt) / 60000);
-  if (minutes < 1) return `Updated just now · ${videos}`;
-  if (minutes < 60) return `Updated ${minutes} min ago · ${videos}`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Updated ${hours}h ago · ${videos}`;
-  return `Updated ${Math.floor(hours / 24)}d ago · ${videos}`;
+  return `${describeSyncAge(state, now)} · ${videos}`;
 }
 
 /**

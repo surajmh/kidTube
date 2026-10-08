@@ -1,16 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentCandidate } from '../../parentalControlsTypes';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../ParentFilter/parentFilter.constant';
-import { PARENT_CONTENT_COPY } from './parentContent.constant';
-import { applyResultTitle, candidateKey, filterChannels, filterVideos } from './parentContent.helper';
-import { AccessCheck, ContentTab, ParentContentProps } from './parentContent.type';
-
-type UseParentContentInput = Pick<
-  ParentContentProps,
-  'videos' | 'channels' | 'mode' | 'selectedChannelId' | 'accessFor' | 'onSearch'
->;
+import { filterChannels, filterVideos, sortChannels } from './parentContent.helper';
+import type { AddContentKind, ChannelSort, ContentTab } from './parentContent.type';
+import type { UseParentContentInput } from './parentContent.type';
 
 /**
  * Parent content state and derivation.
@@ -24,22 +18,16 @@ export function useParentContent({
   mode,
   selectedChannelId,
   accessFor,
-  onSearch,
 }: UseParentContentInput) {
   const [filters, setFilters] = useState<ParentFilters>(emptyParentFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<ContentCandidate[] | null>(null);
-  const [searchError, setSearchError] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [resultTitles, setResultTitles] = useState<Record<string, string>>({});
+  const [adding, setAdding] = useState<AddContentKind | null>(null);
+  const [channelSort, setChannelSort] = useState<ChannelSort>('recent');
 
   /** The nav picks the page; the lists are still written in terms of a tab. */
   const tab: ContentTab =
-    mode === 'videos' ? 'videos' : mode === 'categories' ? 'categories' : 'channels';
+    mode === 'videos' || mode === 'categories' ? mode : 'channels';
 
   const filteredVideos = useMemo(
     () => filterVideos(videos, filters, accessFor),
@@ -47,8 +35,8 @@ export function useParentContent({
   );
 
   const filteredChannels = useMemo(
-    () => filterChannels(channels, filters, accessFor),
-    [channels, filters, accessFor],
+    () => sortChannels(filterChannels(channels, filters, accessFor), channelSort),
+    [channels, filters, accessFor, channelSort],
   );
 
   const selectedChannel = useMemo(
@@ -61,36 +49,13 @@ export function useParentContent({
     [tab, channels, videos],
   );
 
-  /** A candidate carrying whatever title the parent typed over it. */
-  const titled = useCallback(
-    (candidate: ContentCandidate) => applyResultTitle(candidate, resultTitles),
-    [resultTitles],
-  );
-
-  const setResultTitle = useCallback((candidate: ContentCandidate, title: string) => {
-    setResultTitles((current) => ({ ...current, [candidateKey(candidate)]: title }));
-  }, []);
-
-  const runSearch = useCallback(async () => {
-    setSearching(true);
-    setSearchError('');
-    setNotice('');
-    try {
-      const found = await onSearch(searchQuery);
-      setResults(found);
-      if (!found.length) setSearchError(PARENT_CONTENT_COPY.noIdFound);
-    } catch (caught) {
-      // A failed lookup must not leave stale results on screen looking approvable.
-      setResults(null);
-      setSearchError(caught instanceof Error ? caught.message : PARENT_CONTENT_COPY.searchFailed);
-    } finally {
-      setSearching(false);
-    }
-  }, [onSearch, searchQuery]);
-
   const toggleExpanded = useCallback((id: string) => {
     setExpandedId((current) => (current === id ? null : id));
   }, []);
+
+  const toggleChannelSort = useCallback(() => setChannelSort((current) => (current === 'recent' ? 'name' : 'recent')), []);
+
+  const closeAdd = useCallback(() => setAdding(null), []);
 
   const openFilters = useCallback(() => setFiltersOpen(true), []);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
@@ -108,18 +73,10 @@ export function useParentContent({
     filteredChannels,
     selectedChannel,
     recentlyAdded,
-    searchQuery,
-    setSearchQuery,
-    results,
-    searchError,
-    searching,
-    notice,
-    setNotice,
-    titled,
-    setResultTitle,
-    runSearch,
+    adding,
+    channelSort,
+    toggleChannelSort,
+    openAdd: setAdding,
+    closeAdd,
   };
 }
-
-export type UseParentContent = ReturnType<typeof useParentContent>;
-export type { AccessCheck };

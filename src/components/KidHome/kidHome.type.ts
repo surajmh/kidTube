@@ -1,9 +1,9 @@
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentRequest, RequestType } from '../../parentalControlsTypes';
-import { KidLibrary } from '../../services/kidContentLibraryService';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ContentRequest, CuratedPlaylist, RequestType } from '../../types';
+import type { KidLibrary } from '../../services/kidContentLibraryService.type';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 
-export type KidTab = 'home' | 'categories' | 'channels' | 'recent' | 'requests' | 'playlists';
+export type KidTab = 'home' | 'categories' | 'channels' | 'downloads' | 'requests' | 'playlists';
 
 /** A nav destination. Categories are filter chips on the feed, not a destination. */
 export type KidDestination = {
@@ -22,7 +22,10 @@ export type KidSearchResults = {
 };
 
 export type KidHomeProps = {
-  downloads?: import('../../services/downloadService').SavedVideo[];
+  /** This child's downloads only, in any state. */
+  downloads?: import('../../services/downloadService.type').SavedVideo[];
+  /** Defaults to true. When false the Downloads tab is hidden. */
+  downloadsEnabled?: boolean;
   playlists?: import('../../types').CuratedPlaylist[];
   selectedPlaylistId?: string | null;
   onSelectPlaylist?: (id: string | null) => void;
@@ -49,3 +52,12 @@ export type KidHomeProps = {
   /** Cached fetch state per channel. Kid Mode only reads this and never triggers a fetch. */
   channelSyncStateFor: (channelId: string) => ChannelSyncState | undefined;
 };
+
+export type UseKidHomeInput = Pick<
+  KidHomeProps,
+  'library' | 'tab' | 'downloadsEnabled' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
+>;
+
+export type Playlist = CuratedPlaylist & { videos: ApprovedVideo[] };
+
+/** A download that is still being saved, or failed, with the video it belongs to. */

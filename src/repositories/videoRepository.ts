@@ -1,7 +1,7 @@
 import { ApprovedVideo } from '../types';
-import { readJson, storageKeys, writeJson } from './storage';
+import { saveQuietly, useAppStore } from '../store/appStore';
 
 export const videoRepository = {
-  getAll: () => readJson<ApprovedVideo[]>(storageKeys.videos, []),
-  saveAll: (videos: ApprovedVideo[]) => writeJson(storageKeys.videos, videos),
+  getAll: async () => useAppStore.getState().videos,
+  saveAll: (videos: ApprovedVideo[]) => saveQuietly({ videos }),
 };

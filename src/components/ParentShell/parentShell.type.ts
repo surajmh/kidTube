@@ -1,20 +1,13 @@
 import React from 'react';
 import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../../types';
-import { PlaybackSettings, ScreenTimeUsage } from '../../playbackTypes';
-import {
-  ContentApproval,
-  ContentCandidate,
-  ContentCategory,
-  ContentRequest,
-  PlaybackOverride,
-  ProfilePolicyOverrides,
-} from '../../parentalControlsTypes';
-import { ChildRulesMap } from '../../services/childRulesService';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
-import { OverridePreset } from '../../services/playbackOverrideService';
-import { ParentSession } from '../../services/auth/parentSession';
+import type { PlaybackSettings, ScreenTimeUsage } from '../../types';
+import type { ContentApproval, ContentCategory, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../../types';
+import type { ChildRulesMap } from '../../services/childRulesService.type';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
+import type { OverridePreset } from '../../services/playbackOverrideService.type';
+import type { ParentSession } from '../../services/auth/parentSession.type';
 import { RequestDecisionInput } from '../ParentRequests';
-import { ContentTab, ParentContentMode } from '../ParentContent';
+import type { ContentTab, ParentContentMode, ParentContentProps } from '../ParentContent';
 
 export type ParentSection =
   | 'home'
@@ -55,9 +48,6 @@ export type ParentShellActions = {
   onRemoveChannel: (channel: ApprovedChannel) => Promise<void>;
   onToggleVideoCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => Promise<void>;
   onToggleChannelCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => Promise<void>;
-  onSearchContent: (query: string) => Promise<ContentCandidate[]>;
-  onSaveCandidate: (candidate: ContentCandidate) => Promise<void>;
-  onApproveCandidate: (candidate: ContentCandidate) => Promise<void>;
   syncStateFor: (channelId: string) => ChannelSyncState | undefined;
   channelBusy: (channelId: string) => boolean;
   onOpenChannelVideos: (channel: ApprovedChannel) => void;
@@ -97,9 +87,18 @@ export type ParentShellProps = {
   settingsSlot?: React.ReactNode;
   playlistsSlot?: React.ReactNode;
   downloadsSlot?: React.ReactNode;
-  manualAddSlot?: React.ReactNode;
+  addContentSlot?: ParentContentProps['addContentSlot'];
   /** Startup repair summary, shown only to the parent. */
   notice?: string;
 };
 
 export type { ParentContentMode };
+
+export type UseParentShellInput = Pick<ParentShellProps, 'data' | 'actions' | 'section' | 'selectedChannelId'>;
+
+/** The scroll geometry a near-bottom check needs, matching NativeScrollEvent's shape. */
+export type ScrollMetrics = {
+  layoutMeasurement: { height: number };
+  contentOffset: { y: number };
+  contentSize: { height: number };
+};

@@ -1,5 +1,5 @@
 import { downloadService } from '../downloadService';
-import { storageKeys, writeJson } from '../../repositories/storage';
+import { saveQuietly } from '../../store/appStore';
 import { profileRepository } from '../../repositories/profileRepository';
 import { channelRepository } from '../../repositories/channelRepository';
 import { videoRepository } from '../../repositories/videoRepository';
@@ -14,8 +14,8 @@ import {
   requestRepository,
 } from '../../repositories/parentalControlsRepository';
 import { channelSyncRepository } from '../../repositories/channelSyncRepository';
-import { defaultPlaybackSettings } from '../../playbackTypes';
-import { defaultCategories } from '../../parentalControlsTypes';
+import { defaultPlaybackSettings } from '../../constants/playback.constant';
+import { defaultCategories } from '../../constants/parentalControls.constant';
 import { parentPinService } from './parentPinService';
 import { parentSessionService } from './parentSession';
 
@@ -47,7 +47,7 @@ export const parentResetService = {
     await downloadService.clear();
     await Promise.all([
       profileRepository.saveAll([]),
-      writeJson(storageKeys.playlists, []),
+      saveQuietly({ playlists: [] }),
       channelRepository.saveAll([]),
       videoRepository.saveAll([]),
       watchHistoryRepository.saveAll([]),

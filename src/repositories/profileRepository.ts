@@ -1,7 +1,7 @@
 import { ChildProfile } from '../types';
-import { readJson, storageKeys, writeJson } from './storage';
+import { saveQuietly, useAppStore } from '../store/appStore';
 
 export const profileRepository = {
-  getAll: () => readJson<ChildProfile[]>(storageKeys.profiles, []),
-  saveAll: (profiles: ChildProfile[]) => writeJson(storageKeys.profiles, profiles),
+  getAll: async () => useAppStore.getState().profiles,
+  saveAll: (profiles: ChildProfile[]) => saveQuietly({ profiles }),
 };

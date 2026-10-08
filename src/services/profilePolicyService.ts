@@ -1,9 +1,9 @@
 import { profilePolicyRepository } from '../repositories/parentalControlsRepository';
-import { PlaybackSettings, ScheduleWindow } from '../playbackTypes';
-import { ProfilePolicyOverrides } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
-
-export type ProfilePolicyMap = Record<string, ProfilePolicyOverrides>;
+import type { PlaybackSettings, ScheduleWindow } from '../types';
+import type { ProfilePolicyOverrides } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
+import type { ProfilePolicyMap } from './profilePolicyService.type';
 
 /**
  * Global Phase 3 settings remain the family default; a profile may override any

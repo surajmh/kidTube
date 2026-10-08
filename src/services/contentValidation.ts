@@ -1,5 +1,7 @@
-import { PlaybackSettings, ScheduleWindow, ScreenTimeUsage, SponsorBlockCategory, defaultPlaybackSettings } from '../playbackTypes';
+import type { PlaybackSettings, ScheduleWindow, ScreenTimeUsage, SponsorBlockCategory } from '../types';
+import { defaultPlaybackSettings } from '../constants/playback.constant';
 import { ApprovedChannel, ApprovedVideo } from '../types';
+import type { ParsedYouTubeLink } from './contentValidation.type';
 
 /**
  * Content validation and normalization.
@@ -22,11 +24,6 @@ export function isValidVideoId(value?: string | null): boolean {
 export function isValidChannelId(value?: string | null): boolean {
   return Boolean(value && youtubeChannelIdPattern.test(value));
 }
-
-export type ParsedYouTubeLink =
-  | { kind: 'video'; id: string }
-  | { kind: 'channel'; id: string }
-  | { kind: 'unknown' };
 
 const videoPathPrefixes = new Set(['shorts', 'embed', 'live', 'v', 'watch']);
 const youtubeHosts = new Set([
@@ -185,18 +182,17 @@ const sponsorBlockCategories: SponsorBlockCategory[] = ['sponsor', 'intro', 'out
 export function sanitizeSettings(input: Partial<PlaybackSettings> | null | undefined): PlaybackSettings {
   if (!input) return defaultPlaybackSettings;
   const limit = input.dailyLimitMinutes;
-  const dailyLimitMinutes =
-    limit === null
-      ? null
-      : typeof limit === 'number' && Number.isFinite(limit) && limit >= 0
-        ? Math.min(limit, 24 * 60)
-        : defaultPlaybackSettings.dailyLimitMinutes;
+  let dailyLimitMinutes = defaultPlaybackSettings.dailyLimitMinutes;
+  if (limit === null) dailyLimitMinutes = null;
+  else if (typeof limit === 'number' && Number.isFinite(limit) && limit >= 0) dailyLimitMinutes = Math.min(limit, 24 * 60);
 
   return {
     ...defaultPlaybackSettings,
     ...input,
     dailyLimitMinutes,
     maxQualityHeight: [144, 240, 360, 480, 720, 1080].includes(input.maxQualityHeight ?? 0) ? input.maxQualityHeight : 1080,
+    downloadsEnabled: typeof input.downloadsEnabled === 'boolean' ? input.downloadsEnabled : defaultPlaybackSettings.downloadsEnabled,
+    downloadRetentionDays: input.downloadRetentionDays === 30 ? 30 : 7,
     sponsorBlockCategories: (input.sponsorBlockCategories ?? defaultPlaybackSettings.sponsorBlockCategories).filter((category) =>
       sponsorBlockCategories.includes(category),
     ),

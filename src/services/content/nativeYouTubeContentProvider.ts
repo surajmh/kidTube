@@ -1,19 +1,7 @@
-import type {
-  NativeChannelMetadata,
-  NativeChannelVideoPage,
-  NativeVideoMetadata,
-} from '../../native/YouTubePlayerModule';
-import {
-  ChannelPageOptions,
-  YouTubeChannel,
-  YouTubeContentProvider,
-  YouTubeProviderError,
-  YouTubeProviderErrorCode,
-  YouTubeVideo,
-  YouTubeVideoPage,
-  readDurationSeconds,
-  readString,
-} from './youtubeContentProvider';
+import type { NativeVideoMetadata } from '../../native/YouTubePlayerModule.type';
+import { YouTubeProviderError,readDurationSeconds,readString } from './youtubeContentProvider';
+import type { ChannelPageOptions,YouTubeChannel,YouTubeContentProvider,YouTubeProviderErrorCode,YouTubeVideo,YouTubeVideoPage } from './youtubeContentProvider.type';
+import type { NativeMetadataModule } from './nativeYouTubeContentProvider.type';
 
 /**
  * A YouTubeContentProvider backed by the on-device extractor.
@@ -36,14 +24,6 @@ function fail(code: string | undefined, message: string | undefined): never {
   const retryable = mapped === 'NETWORK' || mapped === 'UNKNOWN';
   throw new YouTubeProviderError(mapped, message ?? '', retryable);
 }
-
-/** Just the metadata surface of the native module. */
-export type NativeMetadataModule = {
-  getVideoMetadata(videoId: string): Promise<NativeVideoMetadata>;
-  resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
-  getChannel(reference: string): Promise<NativeChannelMetadata>;
-  getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
-};
 
 let metadataModule: NativeMetadataModule | null = null;
 

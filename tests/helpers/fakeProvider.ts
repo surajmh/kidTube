@@ -1,12 +1,6 @@
 import { ApprovedVideo } from '../../src/types';
-import {
-  ChannelPageOptions,
-  YouTubeChannel,
-  YouTubeContentProvider,
-  YouTubeProviderError,
-  YouTubeVideo,
-  YouTubeVideoPage,
-} from '../../src/services/content/youtubeContentProvider';
+import { YouTubeProviderError } from '../../src/services/content/youtubeContentProvider';
+import type { ChannelPageOptions, YouTubeChannel, YouTubeContentProvider, YouTubeVideo, YouTubeVideoPage } from '../../src/services/content/youtubeContentProvider.type';
 
 /** A channel id that satisfies the canonical `UC` + 22 character rule. */
 export const channelA = 'UCaaaaaaaaaaaaaaaaaaaaaa';
@@ -89,7 +83,6 @@ export function syncedVideo(videoId: string, channelId = channelA, title = `Stor
     channelId,
     channelName: 'Story Time',
     approved: false,
-    candidate: false,
     syncedFromChannel: true,
   };
 }

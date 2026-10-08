@@ -1,7 +1,8 @@
 import { setNativeDownloadModule } from '../services/downloadService';
-import { PlayerAdapter } from '../services/playerAdapter';
-import { PlayerErrorCode } from '../services/playerErrors';
-import NativeYouTubePlayer, { PlayerCommandResult } from './YouTubePlayerModule';
+import type { PlayerAdapter } from '../services/playerAdapter.type';
+import type { PlayerErrorCode } from '../services/playerErrors.type';
+import NativeYouTubePlayer from './YouTubePlayerModule';
+import type { PlayerCommandResult } from './YouTubePlayerModule.type';
 import { setNativeMetadataModule } from '../services/content/nativeYouTubeContentProvider';
 
 function requireNativePlayer() {

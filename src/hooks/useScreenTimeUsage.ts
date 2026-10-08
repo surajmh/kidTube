@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { playbackPolicy } from '../services/playbackPolicyService';
-import { ScreenTimeUsage } from '../playbackTypes';
+import type { ScreenTimeUsage } from '../types';
 
 /**
  * Watch time accrues in the policy's own store on every tick; the parent-facing summary only needs

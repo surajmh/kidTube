@@ -1,7 +1,12 @@
 import React from 'react';
+import type { useParentContent } from './parentContent.hook';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
-import { ContentApproval, ContentCandidate, ContentCategory } from '../../parentalControlsTypes';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ContentApproval, ContentCategory } from '../../types';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
+
+export type AddContentKind = 'channel' | 'video';
+
+export type ChannelSort = 'recent' | 'name';
 
 export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';
 
@@ -19,15 +24,13 @@ export type ParentContentProps = {
   approvals: ContentApproval[];
   categoriesSlot?: React.ReactNode;
   requestsSlot?: React.ReactNode;
-  manualAddSlot?: React.ReactNode;
+  /** Renders the full-screen add form for the chosen kind; the panel owns when it is open. */
+  addContentSlot?: (kind: AddContentKind, onClose: () => void) => React.ReactNode;
   accessFor: AccessCheck;
   onRemoveVideo: (video: ApprovedVideo) => Promise<void>;
   onRemoveChannel: (channel: ApprovedChannel) => Promise<void>;
   onToggleVideoCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => Promise<void>;
   onToggleChannelCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => Promise<void>;
-  onSearch: (query: string) => Promise<ContentCandidate[]>;
-  onSaveCandidate: (candidate: ContentCandidate) => Promise<void>;
-  onApproveCandidate: (candidate: ContentCandidate) => Promise<void>;
   /** Per-channel fetch state for approved-channel video discovery. */
   syncStateFor: (channelId: string) => ChannelSyncState | undefined;
   channelBusy: (channelId: string) => boolean;
@@ -40,3 +43,10 @@ export type ParentContentProps = {
   onRefreshChannel: (channel: ApprovedChannel) => void;
   onLoadMoreChannel: (channel: ApprovedChannel) => void;
 };
+
+export type UseParentContentInput = Pick<
+  ParentContentProps,
+  'videos' | 'channels' | 'mode' | 'selectedChannelId' | 'accessFor'
+>;
+
+export type UseParentContent = ReturnType<typeof useParentContent>;

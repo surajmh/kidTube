@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApprovedVideo } from '../../types';
 import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './kidHome.helper';
-import { KidHomeProps, KidTab } from './kidHome.type';
-
-type UseKidHomeInput = Pick<
-  KidHomeProps,
-  'library' | 'tab' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
->;
+import { KidTab } from './kidHome.type';
+import type { UseKidHomeInput } from './kidHome.type';
 
 /** Long enough to skip the search scan on every keystroke of a fast typer, short enough to feel instant. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -20,12 +16,13 @@ const SEARCH_DEBOUNCE_MS = 200;
  */
 export function useKidHome({
   library,
-  tab,
+  tab: currentTab,
   onTabChange,
   selectedCategoryId,
   selectedChannelId,
   onSelectChannel,
   channelSyncStateFor,
+  downloadsEnabled = true,
 }: UseKidHomeInput) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -98,6 +95,7 @@ export function useKidHome({
   );
 
   /** `categories` is not a destination; selecting a chip keeps the child on the feed. */
+  const tab = !downloadsEnabled && currentTab === 'downloads' ? 'home' : currentTab;
   const onFeed = tab === 'home' || tab === 'categories';
 
   const keepWatching: ApprovedVideo[] = useMemo(
@@ -106,6 +104,7 @@ export function useKidHome({
   );
 
   return {
+    tab,
     searching,
     query,
     setQuery,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { ContentRequest } from '../../../parentalControlsTypes';
+import type { ContentRequest } from '../../../types';
+import type { ScrollMetrics } from '../parentShell.type';
 import {
-  ScrollMetrics,
   contentModeFor,
   distanceFromBottom,
   isContentPage,

@@ -6,9 +6,7 @@ import {
   pendingRequestCount,
   shouldLoadMore,
 } from './parentShell.helper';
-import { ParentShellProps } from './parentShell.type';
-
-type UseParentShellInput = Pick<ParentShellProps, 'data' | 'actions' | 'section' | 'selectedChannelId'>;
+import type { UseParentShellInput } from './parentShell.type';
 
 /**
  * Shell derivation and the channel page's infinite scroll.

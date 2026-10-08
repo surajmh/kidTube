@@ -7,37 +7,10 @@ import {
   requestRepository,
 } from '../repositories/parentalControlsRepository';
 import { watchHistoryRepository } from '../repositories/watchHistoryRepository';
-import { ChildProfile, WatchHistory } from '../types';
-import { ScreenTimeUsage } from '../playbackTypes';
-import { ContentApproval, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
-import { ChildRulesMap } from './childRulesService';
-
-/**
- * Deleting a child profile must not leave orphaned records behind: approvals, requests, overrides,
- * content rules, per-child policy, watch history and screen time all belong to that profile.
- */
-export type ProfileDeletionInput = {
-  profiles: ChildProfile[];
-  requests: ContentRequest[];
-  approvals: ContentApproval[];
-  overrides: PlaybackOverride[];
-  childRules: ChildRulesMap;
-  profilePolicies: Record<string, ProfilePolicyOverrides>;
-  history: WatchHistory[];
-  screenTime: ScreenTimeUsage[];
-};
-
-export type ProfileDeletionResult = {
-  profiles: ChildProfile[];
-  requests: ContentRequest[];
-  approvals: ContentApproval[];
-  overrides: PlaybackOverride[];
-  childRules: ChildRulesMap;
-  profilePolicies: Record<string, ProfilePolicyOverrides>;
-  history: WatchHistory[];
-  screenTime: ScreenTimeUsage[];
-};
+import type { ContentApproval } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
+import type { ProfileDeletionInput, ProfileDeletionResult } from './profileLifecycleService.type';
 
 function withoutKey<T>(record: Record<string, T>, key: string) {
   const next = { ...record };

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import { ChannelSyncState } from '../../../services/content/channelSyncRules';
+import type { ChannelSyncState } from '../../../services/content/channelSyncRules.type';
 import {
   channelAvailability,
   formatDuration,

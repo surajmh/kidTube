@@ -35,8 +35,8 @@ it('windows a large video library and routes filtered lists and presses correctl
     expect(data()).toHaveLength(5);
     view.rerender(<KidHomeScreen {...props} tab="channels" selectedChannelId="channel" />);
     expect(data()).toHaveLength(500);
-    view.rerender(<KidHomeScreen {...props} tab="recent" />);
-    expect(data()).toEqual([videos[9]]);
+    view.rerender(<KidHomeScreen {...props} tab="downloads" />);
+    expect(data()).toEqual([]);
     fireEvent.press(view.getByLabelText('Search'));
     fireEvent.changeText(view.getByPlaceholderText('Search your videos'), 'Video 999');
     act(() => jest.advanceTimersByTime(250));
@@ -79,4 +79,48 @@ it('shows only accessible playlist videos and starts a finite queue from the cho
     fireEvent.press(view.getByLabelText('Play Story A'));
     expect(props.onVideoPress).toHaveBeenCalledWith(a);
   } finally { view.unmount(); }
+});
+
+describe('Downloads tab', () => {
+  const a = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'Story A', approved: true };
+  const b = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'Story B', approved: true };
+  const base: KidHomeProps = {
+    profiles: [], activeProfile: { id: 'kid', name: 'Kid', avatar: '' },
+    library: { profileId: 'kid', videos: [a, b], recentVideos: [], channels: [], categories: [], askableVideos: [], askableChannels: [] },
+    tab: 'downloads', selectedCategoryId: null, selectedChannelId: null, notice: '', requests: [], pendingRequestCount: 0,
+    onSelectProfile: jest.fn(), onTabChange: jest.fn(), onSelectCategory: jest.fn(), onSelectChannel: jest.fn(),
+    onVideoPress: jest.fn(), onParentPress: jest.fn(), onSubmitRequest: jest.fn(), onRequestVideo: jest.fn(),
+    onRequestChannel: jest.fn(), channelSyncStateFor: () => undefined,
+  };
+
+  it('shows saving and ready items from the downloads prop', () => {
+    const downloads = [
+      { videoId: a.youtubeVideoId, state: 'ready' as const, expiresAt: Date.now() + 3 * 86_400_000, bytes: 1, percent: 100 },
+      { videoId: b.youtubeVideoId, state: 'downloading' as const, expiresAt: Date.now() + 86_400_000, bytes: 1, percent: 41.6 },
+    ];
+    const view = render(<KidHomeScreen {...base} downloads={downloads} />);
+    // The list lives in the header now, so the FlatList itself has nothing to draw.
+    expect(view.UNSAFE_getByType(FlatList).props.data).toEqual([]);
+    expect(view.getByText('2 downloaded videos')).toBeTruthy();
+    expect(view.getByText('Saving… 42%')).toBeTruthy();
+    expect(view.getByText('<1 MB · Expires in 3 days')).toBeTruthy();
+    // Children get no "…" menu, so they cannot delete anything.
+    expect(view.queryByLabelText(/More options/)).toBeNull();
+    view.unmount();
+  });
+
+  it('shows a friendly empty state', () => {
+    const view = render(<KidHomeScreen {...base} downloads={[]} />);
+    expect(view.getByText('Nothing downloaded yet')).toBeTruthy();
+    expect(view.getByText('Open a video and tap Download to watch it later without internet.')).toBeTruthy();
+    view.unmount();
+  });
+
+  it('hides the tab when downloads are turned off', () => {
+    const view = render(<KidHomeScreen {...base} tab="home" downloadsEnabled={false} />);
+    expect(view.queryByLabelText('Downloads')).toBeNull();
+    view.rerender(<KidHomeScreen {...base} tab="home" />);
+    expect(view.getByLabelText('Downloads')).toBeTruthy();
+    view.unmount();
+  });
 });

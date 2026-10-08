@@ -7,7 +7,7 @@ import { describeChannelSync } from '../../services/content/channelSyncRules';
 import { colors, cardTints } from '../theme';
 import { formatDuration } from '../shared/duration.helper';
 import styles from './channelVideoList.style';
-import { channelListState, isLoadingMore } from './channelVideoList.helper';
+import { channelListState, isLoadingMore, videoCountLabel } from './channelVideoList.helper';
 import { CHANNEL_LIST_COPY, CHANNEL_LIST_PAGE_SIZE } from './channelVideoList.constant';
 import { ChannelVideoListProps } from './channelVideoList.type';
 import { FocusablePressable } from '../tv';
@@ -39,19 +39,14 @@ export function ChannelVideoList({
   const parent = variant === 'parent';
   const listState = channelListState({ busy, videoCount: videos.length, hasError: Boolean(errorMessage) });
   const loading = listState === 'loading';
+  const idleStatus = parent ? describeChannelSync(state) : videoCountLabel(videos.length);
   const loadMoreBusy = isLoadingMore(busy, videos.length);
 
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
         <Text style={styles.status} numberOfLines={1}>
-          {loading
-            ? CHANNEL_LIST_COPY.loadingStatus
-            : parent
-              ? describeChannelSync(state)
-              : videos.length
-                ? `${videos.length} ${videos.length === 1 ? 'video' : 'videos'}`
-                : ''}
+          {loading ? CHANNEL_LIST_COPY.loadingStatus : idleStatus}
         </Text>
         {parent && onRefresh ? (
           <FocusablePressable

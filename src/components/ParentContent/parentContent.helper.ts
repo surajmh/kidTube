@@ -1,8 +1,9 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { ContentApproval, ContentCandidate, resolvedCategoryIds } from '../../parentalControlsTypes';
+import type { ContentApproval, ContentCategory } from '../../types';
+import { resolvedCategoryIds } from '../../utils/parentalControls.helper';
 import { describeApprovalExpiry } from '../../services/approvalRules';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
-import { AccessCheck } from './parentContent.type';
+import { AccessCheck, ChannelSort } from './parentContent.type';
 
 /**
  * Pure list logic for Parent Mode.
@@ -59,16 +60,14 @@ export function filterChannels(
   });
 }
 
-/** A candidate's key for the editable-title map: the id if it has one, else its own title. */
-export function candidateKey(candidate: ContentCandidate): string {
-  return candidate.youtubeVideoId ?? candidate.youtubeChannelId ?? candidate.title;
+/** `recent` keeps library order, which already puts the newest channel first. */
+export function sortChannels(channels: ApprovedChannel[], sort: ChannelSort): ApprovedChannel[] {
+  if (sort === 'recent') return channels;
+  return [...channels].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
 
-/** Applies a parent's edited title to a candidate without mutating the original. */
-export function applyResultTitle(
-  candidate: ContentCandidate,
-  titles: Record<string, string>,
-): ContentCandidate {
-  const title = titles[candidateKey(candidate)]?.trim();
-  return title ? { ...candidate, title } : candidate;
+/** Names of the categories a parent explicitly assigned, in the order they were assigned. */
+export function categoryNames(categoryIds: string[] | undefined, categories: ContentCategory[]): string[] {
+  const byId = new Map(categories.map((category) => [category.id, category.name]));
+  return (categoryIds ?? []).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
 }

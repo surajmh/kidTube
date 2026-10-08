@@ -1,25 +1,6 @@
 import assert from 'node:assert/strict';
-import {
-  ChannelSyncState,
-  applyFetchFailure,
-  applyFetchResult,
-  canLoadMore,
-  channelCacheTtlMs,
-  channelFailureBackoffMs,
-  channelVideosFrom,
-  describeChannelSync,
-  effectiveSyncMode,
-  emptyChannelSyncState,
-  isCanonicalChannelId,
-  mergeSyncedVideos,
-  normalizeChannelInput,
-  normalizeTimestamp,
-  parseChannelResponse,
-  parseVideoPage,
-  shouldFetchChannel,
-  syncOwnedVideos,
-  toApprovedVideo,
-} from '../src/services/content/channelSyncRules';
+import { applyFetchFailure, applyFetchResult, canLoadMore, channelCacheTtlMs, channelFailureBackoffMs, channelVideosFrom, describeChannelSync, describeSyncAge, effectiveSyncMode, emptyChannelSyncState, isCanonicalChannelId, mergeSyncedVideos, normalizeChannelInput, normalizeTimestamp, parseChannelResponse, parseVideoPage, shouldFetchChannel, syncOwnedVideos, toApprovedVideo } from '../src/services/content/channelSyncRules';
+import type { ChannelSyncState } from '../src/services/content/channelSyncRules.type';
 import { YouTubeProviderError, readDurationSeconds } from '../src/services/content/youtubeContentProvider';
 import { channelA, channelB, video, videoIds, approvedVideo, syncedVideo } from './helpers/fakeProvider';
 
@@ -168,7 +149,6 @@ describe('merge: duplicates, refresh and parent decisions (§5, §6)', () => {
   it('stores fetched videos as not individually approved', () => {
     const created = toApprovedVideo(video(0), { channelId: channelA, channelName: 'Story Time' });
     assert.equal(created.approved, false);
-    assert.equal(created.candidate, false);
     assert.equal(created.syncedFromChannel, true);
     assert.equal(created.channelId, channelA);
     assert.equal(created.duration, 300);
@@ -336,6 +316,14 @@ describe('library views', () => {
     assert.match(describeChannelSync(state, now), /Updated just now · 4 videos/);
     const failed = applyFetchFailure(state, { code: 'NETWORK', message: 'offline' }, now);
     assert.match(describeChannelSync(failed, now), /Couldn't load videos right now · 4 videos saved/);
+  });
+
+  it('gives just the age, without the video count, for a row that shows the count separately', () => {
+    const state: ChannelSyncState = { ...emptyChannelSyncState(channelA), videoCount: 4, fetchedAt: new Date(now.getTime() - 12 * 24 * 3600_000).toISOString() };
+    assert.equal(describeSyncAge(state, now), 'Updated 12d ago');
+    assert.equal(describeSyncAge(undefined), 'Not loaded yet');
+    const failed = applyFetchFailure(state, { code: 'NETWORK', message: 'offline' }, now);
+    assert.equal(describeSyncAge(failed, now), "Couldn't load videos right now");
   });
 
   it('labels an unvisited channel rather than implying it is empty', () => {

@@ -1,28 +1,15 @@
-import { channelSyncRepository, ChannelSyncMap } from '../repositories/channelSyncRepository';
-import { ApprovedChannel, ApprovedVideo } from '../types';
-import { ParentSession, parentSessionService } from './auth/parentSession';
-import {
-  ChannelReference,
-  ChannelSyncState,
-  SyncMode,
-  channelReferenceLabel,
-  effectiveSyncMode,
-  emptyChannelSyncState,
-  isCanonicalChannelId,
-  normalizeChannelInput,
-  shouldFetchChannel,
-  syncOwnedVideos,
-  channelVideosFrom,
-} from './content/channelSyncRules';
-import {
-  ClassifiedProviderError,
-  YouTubeChannel,
-  YouTubeContentProvider,
-  YouTubeProviderError,
-  providerErrorMessage,
-} from './content/youtubeContentProvider';
+import { channelSyncRepository } from '../repositories/channelSyncRepository';
+import type { ChannelSyncMap } from '../repositories/channelSyncRepository.type';
+import { ApprovedChannel,ApprovedVideo } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
+import { channelReferenceLabel,effectiveSyncMode,emptyChannelSyncState,isCanonicalChannelId,normalizeChannelInput,shouldFetchChannel,syncOwnedVideos,channelVideosFrom } from './content/channelSyncRules';
+import type { ChannelReference,ChannelSyncState,SyncMode } from './content/channelSyncRules.type';
+import { YouTubeProviderError,providerErrorMessage } from './content/youtubeContentProvider';
+import type { YouTubeChannel,YouTubeContentProvider } from './content/youtubeContentProvider.type';
 import { fetchChannelPage } from './content/channelPageFetcher';
 import { nativeYouTubeContentProvider } from './content/nativeYouTubeContentProvider';
+import type { ResolvedChannel,ChannelSyncResult } from './channelSyncService.type';
 
 /**
  * ChannelSyncService.
@@ -46,26 +33,6 @@ import { nativeYouTubeContentProvider } from './content/nativeYouTubeContentProv
 
 /** Channels synced automatically in one pass, so a large library cannot burn the quota. */
 export const autoSyncBatchLimit = 5;
-
-export type ResolvedChannel = {
-  youtubeChannelId: string;
-  name: string;
-  thumbnailUrl?: string;
-  uploadsPlaylistId?: string;
-  description?: string;
-};
-
-export type ChannelSyncResult = {
-  videos: ApprovedVideo[];
-  channels: ApprovedChannel[];
-  state: ChannelSyncState;
-  /** False when the cache was fresh or another sync was already running. */
-  fetched: boolean;
-  added: number;
-  updated: number;
-  /** Present when the fetch failed; cached videos are untouched. */
-  error?: ClassifiedProviderError;
-};
 
 export class ChannelSyncService {
   /**

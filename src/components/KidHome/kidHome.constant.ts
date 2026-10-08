@@ -1,10 +1,11 @@
+import { ApprovedVideo } from '../../types';
 import { KidDestination } from './kidHome.type';
 
 /** Four destinations. Categories live as filter chips on the feed instead. */
 export const KID_DESTINATIONS: KidDestination[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'channels', label: 'Channels', icon: 'users' },
-  { id: 'recent', label: 'Library', icon: 'film' },
+  { id: 'downloads', label: 'Downloads', icon: 'download' },
   { id: 'playlists', label: 'Playlists', icon: 'list' },
   { id: 'requests', label: 'Ask', icon: 'help-circle' },
 ];
@@ -24,6 +25,10 @@ export const KID_COPY = {
   feedEmptyTitle: 'Nothing here yet',
   feedEmptyCategoryTitle: 'Nothing in this category yet',
   feedEmptyBody: 'Ask a grown-up to add a video for you.',
+  downloadsTitle: 'Downloads',
+  downloadsEmptyTitle: 'Nothing downloaded yet',
+  downloadsEmptyBody: 'Open a video and tap Download to watch it later without internet.',
+  downloadsFailed: "Couldn't save",
   unknownChannel: 'Saved by a grown-up',
 } as const;
 
@@ -42,3 +47,6 @@ export const ICON = {
 
 /** Monogram tints for channels with no artwork. */
 export const MONOGRAM_TINTS = ['#3D5AFE', '#00897B', '#8E24AA', '#F4511E', '#5E6BC0', '#00838F'] as const;
+
+/** Stable empty list so FlatList data does not change identity between renders. */
+export const EMPTY_VIDEOS: ApprovedVideo[] = [];

@@ -1,6 +1,6 @@
 import { ChildProfile } from '../../types';
-import { PlaybackSettings } from '../../playbackTypes';
-import { PlaybackOverride } from '../../parentalControlsTypes';
+import type { PlaybackSettings } from '../../types';
+import type { PlaybackOverride } from '../../types';
 
 export type ParentOverrideProps = {
   visible: boolean;
@@ -11,4 +11,6 @@ export type ParentOverrideProps = {
   onGranted: (overrides: PlaybackOverride[]) => void;
 };
 
-export type { PinFailure } from '../shared/pinFailure.helper';
+export type { PinFailure } from '../shared/pinFailure.type';
+
+export type UseParentOverrideInput = Pick<ParentOverrideProps, 'profile' | 'settings' | 'onClose' | 'onGranted'>;

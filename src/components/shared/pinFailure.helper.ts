@@ -6,12 +6,7 @@
  * would be the one quietly under-reporting how close the entry is to locking.
  */
 
-/** The failure half of a PIN check, as the session and PIN services report it. */
-export type PinFailure = {
-  reason: 'mismatch' | 'locked' | 'not-set';
-  attemptsRemaining: number;
-  retryAfterMs: number;
-};
+import type { PinFailure } from './pinFailure.type';
 
 export const PIN_FAILURE_COPY = {
   noPinSet: 'No parent PIN is set on this device.',

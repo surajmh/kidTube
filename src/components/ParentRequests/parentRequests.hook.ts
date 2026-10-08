@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ApprovalDuration } from '../../parentalControlsTypes';
+import type { ApprovalDuration } from '../../types';
 import { DEFAULT_DURATION, DEFAULT_SCOPE, PARENT_REQUESTS_COPY } from './parentRequests.constant';
 import { splitByStatus } from './parentRequests.helper';
-import { ParentRequestsProps, RequestDecisionInput, RequestScope } from './parentRequests.type';
-
-type UseParentRequestsInput = Pick<ParentRequestsProps, 'requests' | 'onDecide'>;
+import { RequestDecisionInput, RequestScope } from './parentRequests.type';
+import type { UseParentRequestsInput } from './parentRequests.type';
 
 /**
  * Decision state for the requests list.

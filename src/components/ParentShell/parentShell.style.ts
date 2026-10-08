@@ -6,10 +6,13 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: yt.bg, flex: 1 },
   content: { paddingBottom: 32, paddingHorizontal: 16 },
 
-  topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14 },
+  topBar: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingTop: 14 },
+  heading: { flex: 1 },
   kicker: { color: yt.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 1.1 },
   title: { color: yt.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, marginTop: 2 },
+  subtitle: { color: yt.textDim, fontSize: 13.5, lineHeight: 19, marginTop: 4 },
   exitButton: {
+    flexShrink: 0,
     alignItems: 'center',
     backgroundColor: yt.surfaceAlt,
     borderRadius: 18,
@@ -55,18 +58,6 @@ const styles = StyleSheet.create({
   },
   noticeText: { color: yt.text, flex: 1, fontSize: 13, lineHeight: 18 },
 
-  // Counters read as a quiet summary strip, not four competing cards.
-  statsRow: { borderTopColor: yt.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginTop: 20, paddingTop: 16 },
-  statCard: { flex: 1, gap: 2 },
-  statIcon: { alignItems: 'center', borderRadius: 8, height: 26, justifyContent: 'center', width: 26 },
-  statValue: { color: yt.text, fontSize: 20, fontWeight: '700', marginTop: 8 },
-  statLabel: { color: yt.textDim, fontSize: 11 },
-
-  shortcuts: { borderTopColor: yt.line, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 24, paddingTop: 8 },
-  shortcut: { alignItems: 'center', borderWidth: 0, flexDirection: 'row', gap: 14, paddingVertical: 14 },
-  shortcutText: { flex: 1, gap: 2 },
-  shortcutLabel: { color: yt.text, fontSize: 15, fontWeight: '600' },
-  shortcutHint: { color: yt.textDim, fontSize: 12.5 },
   bottomSpace: { height: 28 },
 });
 

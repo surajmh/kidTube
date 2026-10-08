@@ -1,5 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
-import { PinRecord, createPinRecordAsync, isPinRecord, verifyPinRecordAsync } from './pinHash';
+import { elapsedSinceBoot } from './monotonicClock';
+import { createPinRecordAsync, isPinRecord, verifyPinRecordAsync } from './pinHash';
+import type { PinRecord } from './pinHash.type';
+import type { PinAttemptState, PinCheckResult, PinLockState } from './parentPinService.type';
 
 /**
  * Parent PIN storage.
@@ -21,23 +24,6 @@ const lockoutLadderMs = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000];
 
 export const pinPattern = /^\d{4}$/;
 
-export type PinAttemptState = {
-  failures: number;
-  lockedUntil: number;
-};
-
-export type PinCheckResult =
-  | { ok: true }
-  | { ok: false; reason: 'not-set' }
-  | { ok: false; reason: 'mismatch'; attemptsRemaining: number }
-  | { ok: false; reason: 'locked'; retryAfterMs: number };
-
-export type PinLockState = {
-  locked: boolean;
-  retryAfterMs: number;
-  attemptsRemaining: number;
-};
-
 async function readAttempts(): Promise<PinAttemptState> {
   try {
     const raw = await SecureStore.getItemAsync(attemptKey);
@@ -45,7 +31,8 @@ async function readAttempts(): Promise<PinAttemptState> {
     const parsed = JSON.parse(raw) as Partial<PinAttemptState> | null;
     const failures = typeof parsed?.failures === 'number' && Number.isFinite(parsed.failures) ? Math.max(0, Math.floor(parsed.failures)) : 0;
     const lockedUntil = typeof parsed?.lockedUntil === 'number' && Number.isFinite(parsed.lockedUntil) ? parsed.lockedUntil : 0;
-    return { failures, lockedUntil };
+    const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
+    return { failures, lockedUntil, lockMs: num(parsed?.lockMs), lockedAtElapsed: num(parsed?.lockedAtElapsed) };
   } catch {
     return { failures: 0, lockedUntil: 0 };
   }
@@ -65,8 +52,21 @@ function lockoutDelayFor(failures: number): number {
   return lockoutLadderMs[step];
 }
 
+/**
+ * Time left on the lockout. Within one boot it is measured on the monotonic clock, so moving the
+ * device date forward cannot lift it; after a reboot (or without the native clock) it falls back
+ * to the stored wall-clock end.
+ */
+function remainingLockMs(state: PinAttemptState, now: number): number {
+  const elapsed = elapsedSinceBoot();
+  if (elapsed !== null && state.lockMs !== undefined && state.lockedAtElapsed !== undefined && elapsed >= state.lockedAtElapsed) {
+    return Math.max(0, state.lockMs - (elapsed - state.lockedAtElapsed));
+  }
+  return Math.max(0, state.lockedUntil - now);
+}
+
 function describeLock(state: PinAttemptState, now: number): PinLockState {
-  const retryAfterMs = state.lockedUntil > now ? state.lockedUntil - now : 0;
+  const retryAfterMs = remainingLockMs(state, now);
   return {
     locked: retryAfterMs > 0,
     retryAfterMs,
@@ -97,13 +97,7 @@ export const parentPinService = {
   },
 
   async lockState(): Promise<PinLockState> {
-    const state = await readAttempts();
-    const now = Date.now();
-    if (state.lockedUntil && state.lockedUntil <= now && state.failures >= failureThreshold) {
-      // The window elapsed; the failure count stays until the lockout actually clears it.
-      return describeLock({ ...state, lockedUntil: 0 }, now);
-    }
-    return describeLock(state, now);
+    return describeLock(await readAttempts(), Date.now());
   },
 
   /** Validates, hashes and stores a new PIN. The plaintext is not retained anywhere. */
@@ -118,9 +112,8 @@ export const parentPinService = {
   async verify(pin: string): Promise<PinCheckResult> {
     const state = await readAttempts();
     const now = Date.now();
-    if (state.lockedUntil > now) {
-      return { ok: false, reason: 'locked', retryAfterMs: state.lockedUntil - now };
-    }
+    const locked = remainingLockMs(state, now);
+    if (locked > 0) return { ok: false, reason: 'locked', retryAfterMs: locked };
 
     const record = await readRecord();
     if (record) {
@@ -181,7 +174,10 @@ async function registerFailure(state: PinAttemptState): Promise<PinCheckResult> 
   const failures = state.failures + 1;
   const delay = lockoutDelayFor(failures);
   const lockedUntil = delay > 0 ? Date.now() + delay : 0;
-  await writeAttempts({ failures, lockedUntil });
+  const elapsed = elapsedSinceBoot();
+  await writeAttempts(
+    delay > 0 && elapsed !== null ? { failures, lockedUntil, lockMs: delay, lockedAtElapsed: elapsed } : { failures, lockedUntil },
+  );
 
   if (lockedUntil) return { ok: false, reason: 'locked', retryAfterMs: delay };
   return { ok: false, reason: 'mismatch', attemptsRemaining: Math.max(0, failureThreshold - failures) };

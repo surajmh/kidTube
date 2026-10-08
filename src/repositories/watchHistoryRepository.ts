@@ -1,5 +1,5 @@
 import { WatchHistory } from '../types';
-import { readJson, storageKeys, writeJson } from './storage';
+import { saveQuietly, useAppStore } from '../store/appStore';
 
 /**
  * The player writes history every couple of seconds, so history is capped and written on a
@@ -15,6 +15,6 @@ export function capHistory(history: WatchHistory[], limit = maxHistoryEntries) {
 }
 
 export const watchHistoryRepository = {
-  getAll: () => readJson<WatchHistory[]>(storageKeys.history, []),
-  saveAll: (history: WatchHistory[]) => writeJson(storageKeys.history, capHistory(history)),
+  getAll: async () => useAppStore.getState().history,
+  saveAll: (history: WatchHistory[]) => saveQuietly({ history: capHistory(history) }),
 };

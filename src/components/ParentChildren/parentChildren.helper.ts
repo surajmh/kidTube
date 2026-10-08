@@ -1,12 +1,9 @@
-import { ContentApproval, PlaybackOverride } from '../../parentalControlsTypes';
-import { ChildRulesMap } from '../../services/childRulesService';
+import type { ContentApproval, PlaybackOverride } from '../../types';
+import type { ChildRulesMap } from '../../services/childRulesService.type';
+import type { ScheduleMap, TimeWindow } from './parentChildren.type';
 import { DEFAULT_WINDOW, MINUTES_IN_DAY } from './parentChildren.constant';
 // One clock formatter for the app; this used to be retyped in each panel that edits a schedule.
 export { minutesToTime } from '../shared/time.helper';
-
-/** One day's allowed-viewing window, in minutes from midnight. */
-export type TimeWindow = { startMinutes: number; endMinutes: number };
-export type ScheduleMap = Record<string, TimeWindow[]>;
 
 
 /**

@@ -7,12 +7,13 @@ import { ParentActivityPanel } from '../ParentActivity';
 import { ParentChildrenPanel } from '../ParentChildren';
 import { ParentCategoriesPanel } from '../ParentCategories';
 import { ParentSecurityPanel } from '../ParentSecurity';
+import { ParentDashboard } from '../ParentDashboard';
 import { colors } from '../theme';
 import { yt } from '../youtube/theme';
 import { FocusablePressable } from '../tv';
 import styles from './parentShell.style';
 import { useParentShell } from './parentShell.hook';
-import { SECTIONS, SHORTCUTS } from './parentShell.constant';
+import { SECTIONS } from './parentShell.constant';
 import { ParentSection, ParentShellProps } from './parentShell.type';
 
 export type { ParentSection };
@@ -29,7 +30,7 @@ export function ParentShell({
   settingsSlot,
   playlistsSlot,
   downloadsSlot,
-  manualAddSlot,
+  addContentSlot,
   notice,
 }: ParentShellProps) {
   const { pendingCount, contentPage, contentMode, handleScroll } = useParentShell({
@@ -61,7 +62,7 @@ export function ParentShell({
       scrollEventThrottle={64}
     >
       <View style={styles.topBar}>
-        <View>
+        <View style={styles.heading}>
           <Text style={styles.kicker}>PARENT MODE</Text>
           <Text style={styles.title}>Your family nest</Text>
         </View>
@@ -98,12 +99,11 @@ export function ParentShell({
       {contentPage ? (
         <>
           {section === 'home' ? (
-            <View style={styles.statsRow}>
-              <Stat value={String(data.channels.length)} label="channels" icon="radio" tint={colors.lavender} />
-              <Stat value={String(data.videos.length)} label="videos" icon="play" tint={colors.peach} />
-              <Stat value={String(data.categories.length)} label="categories" icon="grid" tint={colors.mint} />
-              <Stat value={String(pendingCount)} label="pending" icon="inbox" tint={colors.sky} />
-            </View>
+            <ParentDashboard
+              profile={data.profiles.find((item) => item.id === data.activeProfileId) ?? data.profiles[0]}
+              counts={{ channels: data.channels.length, videos: data.videos.length, categories: data.categories.length, pending: pendingCount }}
+              onOpen={setSection}
+            />
           ) : null}
 
           <ParentContentPanel
@@ -118,9 +118,6 @@ export function ParentShell({
             onRemoveChannel={actions.onRemoveChannel}
             onToggleVideoCategory={actions.onToggleVideoCategory}
             onToggleChannelCategory={actions.onToggleChannelCategory}
-            onSearch={actions.onSearchContent}
-            onSaveCandidate={actions.onSaveCandidate}
-            onApproveCandidate={actions.onApproveCandidate}
             syncStateFor={actions.syncStateFor}
             channelBusy={actions.channelBusy}
             onOpenChannelVideos={actions.onOpenChannelVideos}
@@ -129,7 +126,7 @@ export function ParentShell({
             selectedChannelId={selectedChannelId}
             onSelectChannel={actions.onSelectChannel}
             requestsSlot={requestsPanel}
-            manualAddSlot={manualAddSlot}
+            addContentSlot={addContentSlot}
             categoriesSlot={
               <ParentCategoriesPanel
                 categories={data.categories}
@@ -141,26 +138,6 @@ export function ParentShell({
               />
             }
           />
-
-          {section === 'home' ? (
-            <View style={styles.shortcuts}>
-              {SHORTCUTS.map((item) => (
-                <FocusablePressable
-                  key={item.id}
-                  accessibilityLabel={item.label}
-                  style={styles.shortcut}
-                  onPress={() => setSection(item.id)}
-                >
-                  <Feather name={item.icon} size={18} color={yt.text} />
-                  <View style={styles.shortcutText}>
-                    <Text style={styles.shortcutLabel}>{item.label}</Text>
-                    <Text style={styles.shortcutHint}>{item.hint}</Text>
-                  </View>
-                  <Feather name="chevron-right" size={18} color={yt.textDim} />
-                </FocusablePressable>
-              ))}
-            </View>
-          ) : null}
         </>
       ) : null}
 
@@ -212,17 +189,5 @@ export function ParentShell({
 
       <View style={styles.bottomSpace} />
     </ScrollView>
-  );
-}
-
-function Stat({ value, label, icon, tint }: { value: string; label: string; icon: keyof typeof Feather.glyphMap; tint: string }) {
-  return (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: tint }]}>
-        <Feather name={icon} size={16} color={colors.ink} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
   );
 }

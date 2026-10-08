@@ -1,28 +1,13 @@
 import { approvalRepository } from '../repositories/parentalControlsRepository';
-import { ApprovalDuration, ApprovalTarget, ContentApproval } from '../parentalControlsTypes';
-import { ParentSession, parentSessionService } from './auth/parentSession';
+import type { ContentApproval } from '../types';
+import { parentSessionService } from './auth/parentSession';
+import type { ParentSession } from './auth/parentSession.type';
 import { approvalExpired, approvalMatchesTarget } from './contentAccessService';
 import { approvalExpiry } from './approvalRules';
+import type { ApprovalGrantInput, ApprovalGrantResult } from './approvalService.type';
+import { id } from '../utils/id';
 
 export { approvalExpiry, describeApprovalExpiry, describeApprovalTarget, endOfLocalDay } from './approvalRules';
-
-export type ApprovalGrantInput = {
-  profileId: string | null;
-  target: ApprovalTarget;
-  duration: ApprovalDuration;
-  requestId?: string;
-};
-
-export type ApprovalGrantResult = {
-  approval: ContentApproval;
-  approvals: ContentApproval[];
-  /** Permanent family-wide grants are mirrored into the Phase 1 whitelist by the caller. */
-  mirrorTarget: ApprovalTarget | null;
-};
-
-function newId() {
-  return `approval-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
 
 export class ApprovalService {
   private approvals: ContentApproval[] = [];
@@ -53,7 +38,7 @@ export class ApprovalService {
     parentSessionService.require('grant content approval');
     const now = new Date();
     const approval: ContentApproval = {
-      id: newId(),
+      id: id('approval'),
       profileId: input.profileId,
       target: input.target,
       duration: input.duration,

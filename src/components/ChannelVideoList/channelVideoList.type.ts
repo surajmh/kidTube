@@ -1,5 +1,5 @@
 import { ApprovedVideo } from '../../types';
-import { ChannelSyncState } from '../../services/content/channelSyncRules';
+import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 
 /** Which audience the list is rendering for. Kid Mode gets no network controls. */
 export type ChannelListVariant = 'parent' | 'kid';

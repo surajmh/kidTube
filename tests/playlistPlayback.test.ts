@@ -9,7 +9,8 @@ import { storageKeys } from '../src/repositories/storage';
 import { contentAccessService } from '../src/services/contentAccessService';
 import { whitelistService } from '../src/services/whitelistService';
 import { kidContentLibraryService } from '../src/services/kidContentLibraryService';
-import { defaultCategories } from '../src/parentalControlsTypes';
+import { defaultCategories } from '../src/constants/parentalControls.constant';
+import { loadAppData, useAppStore } from '../src/store/appStore';
 
 it('keeps curated queues ordered, restricted to the child library, and finite', async () => {
   await AsyncStorage.clear();
@@ -41,6 +42,7 @@ it('keeps curated queues ordered, restricted to the child library, and finite', 
     await assert.rejects(playlistService.save(session, playlist, [], videos), /Parent PIN required/);
     await assert.rejects(playlistService.remove(session, playlist.id, [playlist]), /Parent PIN required/);
     await AsyncStorage.setItem(storageKeys.playlists, JSON.stringify([null, { id: 'bad', name: 3 }, { id: 'ok', name: 'Valid', videoIds: ['a', null, 'a'] }]));
+    useAppStore.setState(await loadAppData());
     assert.deepEqual(await playlistService.getAll(), [{ id: 'ok', name: 'Valid', videoIds: ['a'] }]);
   } finally {
     parentSessionService.end();
