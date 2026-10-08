@@ -15,10 +15,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import org.json.JSONObject
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -59,10 +62,14 @@ class ExoPlayerController(
   private var retryAttempt = 0
   private var resumePositionMs = 0L
   private var wantsPlayback = false
+  private var offlinePlayback = false
   private var recovering = false
   private var ticking = false
   @Volatile private var destroyed = false
   private var attachedView: PlayerView? = null
+  private var captionTrack: String? = null
+  private var qualityHeight = 0
+  private var maxQualityHeight = 1080
   private var fullscreenActive = false
   private var diagnosticSession = ""
   private var diagnosticStartedAt = 0L
@@ -84,6 +91,9 @@ class ExoPlayerController(
   }
 
   val player: ExoPlayer = ExoPlayer.Builder(context)
+    .setTrackSelector(DefaultTrackSelector(context).apply {
+      parameters = buildUponParameters().setExceedVideoConstraintsIfNecessary(false).build()
+    })
     .setMediaSourceFactory(cachedMediaSourceFactory())
     .setLoadControl(loadControl())
     .setAudioAttributes(
@@ -103,6 +113,7 @@ class ExoPlayerController(
         exoPlayer.trackSelectionParameters
           .buildUpon()
           .setMaxVideoSize(Int.MAX_VALUE, 1080)
+          .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
           .build(),
       )
       exoPlayer.addListener(object : Player.Listener {
@@ -139,6 +150,24 @@ class ExoPlayerController(
             updatePositionTracking()
           }
           emit(if (isPlaying) "onPlay" else "onPause", event(mapOf("isPlaying" to isPlaying)))
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+          if (exoPlayer.currentMediaItem?.mediaId != currentVideoId) return
+          applyTrackPreferences()
+          val captions = tracks.groups.flatMapIndexed { groupIndex, group ->
+            if (group.type != C.TRACK_TYPE_TEXT) emptyList() else (0 until group.length).mapNotNull { index ->
+              if (!group.isTrackSupported(index)) return@mapNotNull null
+              val format = group.getTrackFormat(index)
+              mapOf("id" to "$groupIndex:$index", "label" to (format.label ?: format.language ?: "Captions"))
+            }
+          }
+          val heights = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.flatMap { group ->
+            (0 until group.length).mapNotNull { index ->
+              group.getTrackFormat(index).height.takeIf { group.isTrackSupported(index) && it > 0 }
+            }
+          }.distinct().sorted()
+          emit("onTracksChanged", event(mapOf("captions" to captions, "qualityHeights" to heights)))
         }
 
         override fun onPlayerError(error: Media3PlaybackException) {
@@ -281,6 +310,37 @@ class ExoPlayerController(
     player.volume = volume.coerceIn(0f, 1f)
   }
 
+  fun setPlaybackSpeed(speed: Float) = onMainThread {
+    if (speed.isFinite() && speed in 0.25f..2f) player.setPlaybackSpeed(speed)
+  }
+
+  fun setQuality(height: Int, maximum: Int) = onMainThread {
+    qualityHeight = height.coerceIn(0, 1080)
+    maxQualityHeight = maximum.coerceIn(144, 1080)
+    applyTrackPreferences()
+  }
+
+  fun setCaptionTrack(track: String?) = onMainThread {
+    captionTrack = track
+    applyTrackPreferences()
+  }
+
+  private fun applyTrackPreferences() {
+    val builder = player.trackSelectionParameters.buildUpon()
+      .setMaxVideoSize(Int.MAX_VALUE, if (qualityHeight == 0) maxQualityHeight else minOf(qualityHeight, maxQualityHeight))
+      .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+      .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, captionTrack == null)
+    val selection = captionTrack?.split(":")?.mapNotNull { it.toIntOrNull() }
+    if (selection?.size == 2) {
+      val group = player.currentTracks.groups.getOrNull(selection[0])
+      if (group != null && group.type == C.TRACK_TYPE_TEXT && selection[1] in 0 until group.length && group.isTrackSupported(selection[1])) {
+        builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, selection[1]))
+      }
+    }
+    val parameters = builder.build()
+    if (parameters != player.trackSelectionParameters) player.trackSelectionParameters = parameters
+  }
+
   fun setFullscreen(fullscreen: Boolean) = onMainThread {
     fullscreenActive = fullscreen
     applyFullscreen(fullscreen)
@@ -298,6 +358,7 @@ class ExoPlayerController(
   fun stop() = onMainThread {
     diagnostic("stop")
     wantsPlayback = false
+    offlinePlayback = false
     cancelPendingRetry()
     cancelBufferStallWatchdog()
     requestGeneration++
@@ -349,6 +410,10 @@ class ExoPlayerController(
 
   private fun progressTick() {
     if (destroyed || !ticking) return
+    if (offlinePlayback && currentVideoId?.let { OfflineDownloads.readyRequest(context, it) } == null) {
+      emitError("offline_unavailable")
+      stop()
+    }
     updatePositionTracking()
     emit("onProgress", event())
     mainHandler.postDelayed({ progressTick() }, progressIntervalMs)
@@ -362,6 +427,16 @@ class ExoPlayerController(
   ) {
     resolutionTask?.cancel(true)
     resolutionTask = null
+    val saved = try { OfflineDownloads.mediaSource(context, videoId) }
+      catch (error: Exception) { emitError("offline_unavailable"); return }
+    if (saved != null) {
+      offlinePlayback = true
+      player.setMediaSource(saved, startPositionMs.coerceAtLeast(0L))
+      player.prepare()
+      player.playWhenReady = wantsPlayback
+      return
+    }
+    offlinePlayback = false
     diagnostic("resolve_start", mapOf("generation" to generation, "adaptive" to preferAdaptive))
     // Only the normal (non-recovery) path consults the prefetch cache: a `preferAdaptive = false`
     // call is a retry deliberately asking for the degraded fallback, and a stale adaptive-quality
@@ -416,6 +491,15 @@ class ExoPlayerController(
 
   private fun handlePlaybackFailure(code: String) {
     if (destroyed) return
+    if (offlinePlayback) {
+      wantsPlayback = false
+      recovering = false
+      cancelPendingRetry()
+      cancelBufferStallWatchdog()
+      player.pause()
+      emitError("offline_unavailable")
+      return
+    }
     currentVideoId?.let { ResolvedStreamCache.invalidate(it) }
     diagnostic("failure", mapOf("code" to code, "attempt" to retryAttempt))
     updatePositionTracking()
@@ -530,19 +614,24 @@ class ExoPlayerController(
     // ExoPlayer plays as one by merging them.
     if (info.manifestUrl == null && videoUrl != null && audioUrl != null) {
       return MergingMediaSource(
-        factory.createMediaSource(mediaItem(info.videoId, videoUrl, info.mimeType)),
-        factory.createMediaSource(mediaItem(info.videoId, audioUrl, null)),
+        factory.createMediaSource(mediaItem(info, videoUrl, info.mimeType)),
+        factory.createMediaSource(mediaItem(info, audioUrl, null, withCaptions = false)),
       )
     }
 
     val single = info.manifestUrl ?: videoUrl ?: audioUrl ?: return null
-    return factory.createMediaSource(mediaItem(info.videoId, single, info.mimeType))
+    return factory.createMediaSource(mediaItem(info, single, info.mimeType))
   }
 
-  private fun mediaItem(videoId: String, uri: String, mimeType: String?): MediaItem {
+  private fun mediaItem(info: PlaybackInfo, uri: String, mimeType: String?, withCaptions: Boolean = true): MediaItem {
     val builder = MediaItem.Builder()
-      .setMediaId(videoId)
+      .setMediaId(info.videoId)
       .setUri(uri)
+    if (withCaptions) builder.setSubtitleConfigurations(info.captions.map { caption ->
+      MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(caption.url))
+        .setMimeType(caption.mimeType).setLanguage(caption.language).setLabel(caption.label)
+        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build()
+    })
     mimeType?.let { builder.setMimeType(it) }
     return builder.build()
   }
@@ -582,6 +671,8 @@ class ExoPlayerController(
     player.duration.takeUnless { it == C.TIME_UNSET }?.let { put("duration", it) }
     put("bufferedPosition", player.bufferedPosition)
     put("isPlaying", player.isPlaying)
+    put("playbackSpeed", player.playbackParameters.speed)
+    put("offline", offlinePlayback)
     putAll(extra)
   }
 

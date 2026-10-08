@@ -6,6 +6,7 @@ export type PlayerErrorCode =
   | 'STREAM_EXPIRED'
   | 'PLAYBACK_FAILURE'
   | 'RESOLVER_UNAVAILABLE'
+  | 'OFFLINE_UNAVAILABLE'
   | 'POLICY_BLOCKED'
   | 'UNKNOWN_ERROR';
 
@@ -17,6 +18,7 @@ export type PlayerError = {
 };
 
 const codeMap: Record<string, PlayerErrorCode> = {
+  offline_unavailable: 'OFFLINE_UNAVAILABLE',
   invalid_video_id: 'INVALID_VIDEO_ID',
   video_unavailable: 'VIDEO_UNAVAILABLE',
   unsupported_format: 'UNSUPPORTED_FORMAT',
@@ -41,6 +43,7 @@ const recoverableCodes: PlayerErrorCode[] = [
 ];
 
 const messages: Record<PlayerErrorCode, string> = {
+  OFFLINE_UNAVAILABLE: "This saved video is no longer available. Ask a grown-up to save it again.",
   INVALID_VIDEO_ID: "This video isn't available right now.",
   VIDEO_UNAVAILABLE: "This video isn't available right now.",
   UNSUPPORTED_FORMAT: "This video isn't available right now.",

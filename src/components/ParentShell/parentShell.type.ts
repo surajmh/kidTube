@@ -25,7 +25,9 @@ export type ParentSection =
   | 'children'
   | 'activity'
   | 'settings'
-  | 'security';
+  | 'security'
+  | 'playlists'
+  | 'downloads';
 
 export type ParentShellData = {
   session: ParentSession | null;
@@ -93,6 +95,8 @@ export type ParentShellProps = {
   setContentTab: (tab: ContentTab) => void;
   profilesSlot?: React.ReactNode;
   settingsSlot?: React.ReactNode;
+  playlistsSlot?: React.ReactNode;
+  downloadsSlot?: React.ReactNode;
   manualAddSlot?: React.ReactNode;
   /** Startup repair summary, shown only to the parent. */
   notice?: string;

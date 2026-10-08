@@ -82,9 +82,10 @@ export class SponsorBlockService {
     }
   }
 
-  async getSkippableSegments(videoId: string, categories: SponsorBlockCategory[]) {
+  async getSkippableSegments(videoId: string, categories: SponsorBlockCategory[], offline = false) {
     const allowed = new Set(categories);
-    return (await this.getSegments(videoId)).filter((segment) => allowed.has(segment.category as SponsorBlockCategory));
+    const segments = offline ? (this.memoryCache.get(videoId) ?? await this.readCache(videoId))?.segments ?? [] : await this.getSegments(videoId);
+    return segments.filter((segment) => allowed.has(segment.category as SponsorBlockCategory));
   }
 
   isInsideSegment(position: number, segments: SponsorSegment[]) {

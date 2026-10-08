@@ -7,6 +7,9 @@ import { PlaybackSettingsPanel } from './src/components/PlaybackSettings';
 import { KidHomeScreen } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ParentOverrideSheet } from './src/components/ParentOverride';
+import { ParentDownloads } from './src/components/ParentDownloads';
+import { useDownloads } from './src/hooks/useDownloads';
+import { ParentPlaylists } from './src/components/ParentPlaylists';
 import { PlayerScreen } from './src/components/Player';
 import {
   LoadingScreen,
@@ -24,6 +27,7 @@ import { useWatchHistory } from './src/hooks/useWatchHistory';
 import { useScreenTimeUsage } from './src/hooks/useScreenTimeUsage';
 
 function App() {
+  const saved = useDownloads();
   const [screen, setScreen] = useState<Screen>('kid');
   const [parentSection, setParentSection] = useState<ParentSection>('home');
 
@@ -94,6 +98,11 @@ function App() {
         )}
         {!library.setupStep && screen === 'kid' && (
           <KidHomeScreen
+            downloads={saved.downloads}
+            playlists={library.playlists}
+            selectedPlaylistId={nav.kidPlaylistId}
+            onSelectPlaylist={nav.setKidPlaylistId}
+            onPlayPlaylist={nav.openPlaylist}
             profiles={library.profiles}
             activeProfile={library.activeProfile}
             onSelectProfile={(profileId) => {
@@ -221,6 +230,8 @@ function App() {
                 onDelete={library.deleteProfile}
               />
             }
+            downloadsSlot={<ParentDownloads session={auth.parentSession} videos={library.videos} profiles={library.profiles} downloads={saved.downloads} maximum={library.playbackSettings.maxQualityHeight ?? 1080} refresh={saved.refresh} readError={saved.error} />}
+            playlistsSlot={<ParentPlaylists playlists={library.playlists} videos={library.videos} onSave={library.savePlaylist} onRemove={library.removePlaylist} />}
             settingsSlot={
               <PlaybackSettingsPanel
                 settings={library.playbackSettings}
@@ -235,8 +246,10 @@ function App() {
           <PlayerScreen
             video={nav.selectedVideo}
             profile={library.activeProfile}
+            offlineExpected={saved.downloads.some((item) => item.videoId === nav.selectedVideo?.youtubeVideoId && item.state === 'ready' && item.expiresAt > Date.now())}
             settings={library.effectiveSettings}
             nextVideo={nav.nextVideo}
+            queueLabel={nav.queueLabel}
             retrySignal={nav.retrySignal}
             // No pre-check here: PlayerScreen already re-derives and enforces this same policy
             // gate for whatever video it's given, and has its own "playback blocked" screen for

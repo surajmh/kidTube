@@ -5,6 +5,10 @@ export type YouTubePlaybackEvent = {
   position?: number;
   duration?: number;
   bufferedPosition?: number;
+  playbackSpeed?: number;
+  offline?: boolean;
+  captions?: { id: string; label: string }[];
+  qualityHeights?: number[];
   isPlaying?: boolean;
   message?: string;
   code?: string;
@@ -19,6 +23,12 @@ export type YouTubePlayerProps = ViewProps & {
   autoplay?: boolean;
   fullscreen?: boolean;
   volume?: number;
+  playbackSpeed?: number;
+  qualityHeight?: number;
+  maxQualityHeight?: number;
+  captionTrack?: string | null;
+  captionScale?: number;
+  onTracksChanged?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onLoad?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onReady?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onPlay?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;

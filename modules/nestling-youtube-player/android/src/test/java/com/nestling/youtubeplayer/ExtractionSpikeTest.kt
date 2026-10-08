@@ -32,12 +32,17 @@ class ExtractionSpikeTest {
         continue
       }
 
-      val mode = if (info.audioUrl != null) "adaptive video+audio (merge path)" else "muxed progressive"
+      val mode = if (info.manifestUrl != null) "adaptive HLS" else if (info.audioUrl != null) "adaptive video+audio (merge path)" else "muxed progressive"
       println("  mode      : $mode")
       println("  height    : ${info.height ?: "unknown"}")
       println("  mime      : ${info.mimeType ?: "unknown"}")
       println("  duration  : ${info.durationMs?.div(1000) ?: "unknown"}s")
 
+      println("  captions  : ${info.captions.size}")
+      if (info.manifestUrl != null) {
+        if (probeHls(info.manifestUrl)) usable++
+        continue
+      }
       val videoUrl = info.videoUrl
       if (videoUrl == null) {
         println("  NO VIDEO URL")
@@ -91,40 +96,18 @@ class ExtractionSpikeTest {
     probeStream("picked video", picked.videoUrl)
     probeStream("picked audio", picked.audioUrl)
 
-    probeHls("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
+    picked.manifestUrl?.let { probeHls(it) }
   }
 
   /** Confirms the HLS ladder is fetchable end to end: master -> media playlist -> segment. */
-  private fun probeHls(watchUrl: String) {
-    val info = org.schabi.newpipe.extractor.stream.StreamInfo.getInfo(
-      org.schabi.newpipe.extractor.ServiceList.YouTube,
-      watchUrl,
-    )
-    val master = info.hlsUrl
-    if (master.isNullOrBlank()) {
-      println("  hls: no manifest url")
-      return
-    }
-    val text = fetch(master) ?: return
-    val variants = Regex("#EXT-X-STREAM-INF:(.*)").findAll(text).map { it.groupValues[1].trim() }.toList()
-    println("  hls variants: ${variants.size}")
-    variants.take(4).forEach { println("    $it") }
-    val firstUri = Regex("^(?!#)(\\S+\\.m3u8\\S*)$", RegexOption.MULTILINE).find(text)?.groupValues?.get(1)
-    if (firstUri == null) {
-      println("  hls: no variant playlist uri found")
-      return
-    }
-    val media = fetch(resolveRelative(master, firstUri)) ?: return
-    val segment = Regex("^(?!#)(\\S+)$", RegexOption.MULTILINE).find(media)?.groupValues?.get(1)
-    if (segment == null) {
-      println("  hls: no segment uri found")
-      return
-    }
-    probeStream("hls segment", resolveRelative(resolveRelative(master, firstUri), segment))
+  private fun probeHls(master: String): Boolean {
+    val text = fetch(master) ?: return false
+    val firstUri = text.lineSequence().firstOrNull { it.isNotBlank() && !it.startsWith("#") }?.trim() ?: return false
+    val mediaUrl = java.net.URI(master).resolve(firstUri).toString()
+    val media = fetch(mediaUrl) ?: return false
+    val segment = media.lineSequence().firstOrNull { it.isNotBlank() && !it.startsWith("#") }?.trim() ?: return false
+    return probeStream("hls segment", java.net.URI(mediaUrl).resolve(segment).toString())
   }
-
-  private fun resolveRelative(base: String, relative: String): String =
-    if (relative.startsWith("http")) relative else base.substringBeforeLast('/') + "/" + relative.trimStart('/')
 
   private fun fetch(url: String): String? = try {
     probe.newCall(Request.Builder().url(url).build()).execute().use { response ->

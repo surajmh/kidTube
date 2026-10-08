@@ -53,3 +53,10 @@ export type PersistedData = {
   videos: ApprovedVideo[];
   history: WatchHistory[];
 };
+
+export type CuratedPlaylist = {
+  id: string;
+  name: string;
+  /** Ordered library row IDs; playlist membership grants no playback access. */
+  videoIds: string[];
+};

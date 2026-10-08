@@ -1,3 +1,5 @@
+import { downloadService } from '../downloadService';
+import { storageKeys, writeJson } from '../../repositories/storage';
 import { profileRepository } from '../../repositories/profileRepository';
 import { channelRepository } from '../../repositories/channelRepository';
 import { videoRepository } from '../../repositories/videoRepository';
@@ -42,8 +44,10 @@ export const parentResetService = {
   async resetEverything(): Promise<void> {
     parentSessionService.end();
 
+    await downloadService.clear();
     await Promise.all([
       profileRepository.saveAll([]),
+      writeJson(storageKeys.playlists, []),
       channelRepository.saveAll([]),
       videoRepository.saveAll([]),
       watchHistoryRepository.saveAll([]),

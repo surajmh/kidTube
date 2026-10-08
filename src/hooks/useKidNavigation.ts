@@ -3,6 +3,7 @@ import { BackHandler } from 'react-native';
 import { describePlaybackDecision, isTimeRelatedReason, playbackPolicy } from '../services/playbackPolicyService';
 import { ApprovedVideo, ChildProfile } from '../types';
 import { PlaybackDecision } from '../playbackTypes';
+import { nextQueuedVideo } from '../services/playlistService';
 import { ContentTab } from '../components/ParentContent';
 import { KidTab } from '../components/KidHome';
 import { KidLibrary } from '../services/kidContentLibraryService';
@@ -37,6 +38,9 @@ export function useKidNavigation({
   activeProfile: ChildProfile | undefined;
   kidLibrary: KidLibrary;
 }) {
+  const [queue, setQueue] = useState<{ ids: string[]; label: string } | null>(null);
+  const [kidPlaylistId, setKidPlaylistId] = useState<string | null>(null);
+  useEffect(() => { setQueue(null); setKidPlaylistId(null); }, [activeProfile?.id]);
   const [selectedVideo, setSelectedVideo] = useState<ApprovedVideo | null>(null);
   const [kidNotice, setKidNotice] = useState('');
   const [kidNoticeAction, setKidNoticeAction] = useState<'override' | null>(null);
@@ -59,6 +63,7 @@ export function useKidNavigation({
       if (pinModalVisible) { setPinModalVisible(false); return true; }
       if (screen === 'player') { commitPendingHistory(); setScreen('kid'); return true; }
       if (screen === 'parent') { exitParentMode(); return true; }
+      if (kidPlaylistId) { setKidPlaylistId(null); return true; }
       if (kidTab !== 'home' || kidCategoryId || kidChannelId) {
         setKidTab('home');
         setKidCategoryId(null);
@@ -68,16 +73,17 @@ export function useKidNavigation({
       return false;
     });
     return () => subscription.remove();
-  }, [screen, kidTab, kidCategoryId, kidChannelId, pinModalVisible, overrideForProfileId, setupStep]);
+  }, [screen, kidTab, kidCategoryId, kidChannelId, kidPlaylistId, pinModalVisible, overrideForProfileId, setupStep]);
 
   // Must stay above any early return in the component: a hook there would change the hook
   // count between the loading and loaded renders.
   const nextVideo = useMemo(() => {
     if (!selectedVideo) return undefined;
+    if (queue) return nextQueuedVideo(queue.ids, selectedVideo.id, kidLibrary.videos);
     const videos = kidLibrary.videos;
     const index = videos.findIndex((item) => item.id === selectedVideo.id);
     return videos[(index + 1) % Math.max(1, videos.length)];
-  }, [selectedVideo, kidLibrary]);
+  }, [selectedVideo, kidLibrary, queue]);
 
   // Stable identity: `openPlayer` reaches KidHome's memoized video cards, and re-creating it on
   // every render would defeat them.
@@ -109,11 +115,24 @@ export function useKidNavigation({
       }
       setKidNotice('');
       setKidNoticeAction(null);
+      setQueue(null);
       setSelectedVideo(video);
       setScreen('player');
     },
     [playbackDecision, explainDecision],
   );
+
+  const openPlaylist = useCallback((videos: ApprovedVideo[], label: string) => {
+    const first = videos[0];
+    if (!first) return;
+    const decision = playbackDecision(first);
+    if (!decision.allowed) { explainDecision(decision); return; }
+    setQueue({ ids: videos.map((video) => video.id), label });
+    setSelectedVideo(first);
+    setKidNotice('');
+    setKidNoticeAction(null);
+    setScreen('player');
+  }, [playbackDecision, explainDecision]);
 
   /** A parent override clears the notice that sent the child looking for one, and retries playback. */
   function onOverrideGranted() {
@@ -124,6 +143,8 @@ export function useKidNavigation({
 
   /** The navigation half of a full PIN reset (`screen` itself is reset by the caller). */
   function resetAll() {
+    setQueue(null);
+    setKidPlaylistId(null);
     setSelectedVideo(null);
     setKidNotice('');
     setKidNoticeAction(null);
@@ -136,6 +157,10 @@ export function useKidNavigation({
   }
 
   return {
+    queueLabel: queue?.label,
+    openPlaylist,
+    kidPlaylistId,
+    setKidPlaylistId,
     selectedVideo,
     setSelectedVideo,
     kidNotice,

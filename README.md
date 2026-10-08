@@ -32,7 +32,9 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
 ### For children
 - **Kid Mode** — Home / Categories / Channels / Recently watched / Ask a Parent. Large cards,
   child-friendly copy, and nothing else: no comments, likes, subscriptions, external links,
-  search, or recommendations.
+  unrestricted search, or recommendations. Approved-library search stays on device.
+- **Curated playlists** — parents create, rename and order collections; children can play or shuffle
+  only their accessible videos. Queues stop at the end and respect the parent autoplay setting.
 - **Multiple child profiles**, each with its own library view, limits, and rules.
 - **"Ask a Parent"** — a child can request any video or channel they wish was available;
   the request lands in the parent's inbox. Nothing is playable until approved.
@@ -50,6 +52,11 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
   10/5/1 minutes remaining, and bounded temporary overrides (+15 min, +30 min, until bedtime).
 - **Content management**: paste a YouTube link or ID to save a candidate or approve it;
   approved channels sync their uploads (paginated, cached, quota-aware).
+- **Offline downloads** — Parent Mode → Downloads saves approved videos at a selected quality
+  for 7 or 30 days. Kid Mode → Recently watched → Saved for travel plays completed downloads.
+  Files stay in private app storage excluded from Android backup. Saved videos still obey each
+  child's current approvals, blocks, bedtime and daily viewing limit, including mid-playback expiry.
+  Downloads can be cancelled or removed; expired files are cleaned up when the app runs.
 - **Activity dashboard**: what each child watched, for how long, and every request made.
 
 ### Playback engine
@@ -60,6 +67,9 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
 - **Ad & sponsor skipping** through SponsorBlock categories configured by the parent.
 - **Resilient playback**: bounded retry with exponential backoff, stream-expiry refresh,
   resume-at-last-position, and lifecycle-safe player release.
+- **Player settings** — 0.25×–2× speed, available caption languages with normal/large text,
+  and adaptive quality limits under a parent-set ceiling. Screen time counts actual viewing time
+  at every speed. Captions and quality choices depend on the tracks available for each video.
 - React Native owns the controls (play/pause, ±10s, scrubber, fullscreen, next-up);
   the native side only ever receives an approved **video ID**, never an arbitrary URL.
 
@@ -85,7 +95,9 @@ re-implement the rules; they only render kid-friendly results like
 
 - Local-first storage only: AsyncStorage + SecureStore. **No backend, no analytics, no ads,
   no tracking, no child profiling, no cloud sync.** Watch history never leaves the device.
-- Metadata and stream URLs are resolved on-device; temporary stream URLs are never persisted.
+- Metadata and stream URLs are resolved on-device. Streaming URLs remain in memory; the private
+  Media3 download index retains source references needed to resume downloads. Saved media is
+  never exported to shared storage or the gallery.
 - The child never sees provider wording, error codes, or host names.
 
 ## Download (Android)
@@ -96,8 +108,8 @@ Grab the latest APK from
 1. Download `app-release.apk` and install it (allow "install unknown apps" for your browser).
 2. On first launch you create the **parent PIN** and the first **child profile** — start there.
 
-> Unsigned builds: Android will warn once during install. kidTube asks for only one permission:
-> internet access.
+> Android may ask you to allow installation from this source. Downloads use a foreground
+> data-transfer service. Saving videos does not require shared-storage access.
 
 ## Getting started (development)
 
@@ -150,6 +162,11 @@ PHASE-*.md                              design docs per milestone
 - **Android only.** The playback engine is a local Android module; iOS is out of scope.
 - Content availability depends on YouTube's public endpoints (via NewPipe). Breakage in
   extraction is possible whenever YouTube changes, and is fixed by updating the extractor.
+- Downloads need a connection until they show **Ready for travel**. Reopen the app to resume
+  transfers interrupted by Android. Unavailable tracks or insufficient storage fail without
+  creating a playable partial download. Offline playback uses only saved media, with no streaming
+  fallback; captions are limited to embedded tracks saved with the video. Cached SponsorBlock
+  segments can still be skipped offline.
 - Only the adaptive HLS ladder is used for playback — keyless progressive streams are
   throttled by YouTube, so very old videos without HLS may not play.
 

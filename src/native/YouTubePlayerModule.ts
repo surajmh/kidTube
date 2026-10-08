@@ -57,6 +57,11 @@ export type NativeChannelVideoPage = {
 };
 
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
+  getDownloads(): Promise<import('../services/downloadService').SavedVideo[]>;
+  setDownloadAuthorization(videoIds: string[], expiresAt: number): Promise<void>;
+  downloadVideo(videoId: string, maxHeight: number, expiresAt: number): Promise<PlayerCommandResult>;
+  removeDownload(videoId: string): Promise<void>;
+  clearDownloads(): Promise<void>;
   /** Metadata only — never resolves a stream and never approves anything. */
   getVideoMetadata(videoId: string): Promise<NativeVideoMetadata>;
   resolveChannelId(reference: string): Promise<NativeChannelMetadata>;

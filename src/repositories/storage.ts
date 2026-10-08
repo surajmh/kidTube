@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const storageKeys = {
   profiles: '@nestling/profiles',
+  playlists: '@nestling/playlists',
   channels: '@nestling/channels',
   videos: '@nestling/videos',
   history: '@nestling/history',

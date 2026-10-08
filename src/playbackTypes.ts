@@ -13,6 +13,8 @@ export type ScheduleWindow = {
 
 export type PlaybackSettings = {
   autoplay: boolean;
+  /** Parent-set ceiling for adaptive video quality. */
+  maxQualityHeight?: number;
   sponsorBlockEnabled: boolean;
   sponsorBlockCategories: SponsorBlockCategory[];
   dailyLimitMinutes: number | null;
@@ -42,6 +44,7 @@ export type PlaybackDecision = { allowed: true } | { allowed: false; reason: Pla
 
 export const defaultPlaybackSettings: PlaybackSettings = {
   autoplay: false,
+  maxQualityHeight: 1080,
   sponsorBlockEnabled: true,
   sponsorBlockCategories: ['sponsor', 'intro', 'outro', 'selfpromo'],
   dailyLimitMinutes: 60,

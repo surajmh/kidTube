@@ -2,4 +2,10 @@
   <uses-permission android:name="android.permission.INTERNET" />
   <!-- ExoPlayer wake mode: the screen/CPU must not sleep mid-video on tablets and Android TV. -->
   <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+  <application>
+    <service android:name="com.nestling.youtubeplayer.OfflineDownloadService" android:exported="false" android:foregroundServiceType="dataSync" />
+  </application>
 </manifest>

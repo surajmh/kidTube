@@ -27,6 +27,8 @@ export function ParentShell({
   setContentTab,
   profilesSlot,
   settingsSlot,
+  playlistsSlot,
+  downloadsSlot,
   manualAddSlot,
   notice,
 }: ParentShellProps) {
@@ -205,6 +207,8 @@ export function ParentShell({
       ) : null}
 
       {section === 'settings' ? settingsSlot : null}
+      {section === 'playlists' ? playlistsSlot : null}
+      {section === 'downloads' ? downloadsSlot : null}
 
       <View style={styles.bottomSpace} />
     </ScrollView>

@@ -23,6 +23,8 @@ export type PlayerScreenProps = {
   settings: PlaybackSettings;
   nextVideo?: ApprovedVideo;
   retrySignal?: number;
+  queueLabel?: string;
+  offlineExpected?: boolean;
   onNextVideo: (video: ApprovedVideo) => void;
   onUsageChange: () => void;
   onBack: () => void;
@@ -42,6 +44,7 @@ export function usePlayer({
   settings,
   nextVideo,
   retrySignal = 0,
+  offlineExpected = false,
   onNextVideo,
   onUsageChange,
   onBack,
@@ -49,6 +52,7 @@ export function usePlayer({
   onPlaybackCompleted,
   onParentOverride,
 }: PlayerScreenProps) {
+  const [isOffline, setIsOffline] = useState(offlineExpected);
   const [isPlaying, setIsPlaying] = useState(false);
   const [wantsPlayback, setWantsPlayback] = useState(true);
   const wantsPlaybackRef = useRef(true);
@@ -75,6 +79,7 @@ export function usePlayer({
   const progressRef = useRef(0);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPersistedAt = useRef(0);
+  const lastPlaybackSpeed = useRef(1);
   const lastPlayheadMs = useRef<number | null>(null);
   const lastSkippedSegment = useRef<string | null>(null);
   const stoppedByPolicy = useRef(false);
@@ -107,6 +112,7 @@ export function usePlayer({
     setRecoveryMessage('');
     setTimeBlocked(false);
     setHasEnded(false);
+    setIsOffline(offlineExpected);
     setControlsVisible(true);
     setShowThumbnailCover(true);
     progressRef.current = 0;
@@ -132,10 +138,10 @@ export function usePlayer({
     }
     let active = true;
     void sponsorBlockService
-      .getSkippableSegments(video.youtubeVideoId, settings.sponsorBlockCategories)
+      .getSkippableSegments(video.youtubeVideoId, settings.sponsorBlockCategories, isOffline)
       .then((nextSegments) => { if (active) setSegments(nextSegments); });
     return () => { active = false; };
-  }, [settings.sponsorBlockCategories, settings.sponsorBlockEnabled, video.youtubeVideoId]);
+  }, [settings.sponsorBlockCategories, settings.sponsorBlockEnabled, video.youtubeVideoId, isOffline]);
 
   function stopForPolicy(decision: PlaybackDecision) {
     if (stoppedByPolicy.current) return;
@@ -195,8 +201,10 @@ export function usePlayer({
   }
 
   /** Playhead-based: a stalled, paused or recovering player never earns watch time. */
-  function accountPlayhead(positionMs: number, playing: boolean) {
-    const result = accountPlayheadSample(lastPlayheadMs.current, positionMs, playing);
+  function accountPlayhead(positionMs: number, playing: boolean, speed = 1) {
+    if (lastPlaybackSpeed.current !== speed) lastPlayheadMs.current = null;
+    lastPlaybackSpeed.current = speed;
+    const result = accountPlayheadSample(lastPlayheadMs.current, positionMs, playing, { playbackSpeed: speed });
     lastPlayheadMs.current = result.lastPositionMs;
     if (result.seconds > 0) accountPlayback(result.seconds);
   }
@@ -238,7 +246,7 @@ export function usePlayer({
       }
       if (nextState === 'active' && wasPlayingBeforeBackground.current) {
         wasPlayingBeforeBackground.current = false;
-        const decision = profile ? playbackPolicy.canContinuePlayback(profile.id) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
+        const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
         if (!decision.allowed) stopForPolicy(decision);
         else
           void resumableAdapter
@@ -311,7 +319,7 @@ export function usePlayer({
   function togglePlayback() {
     const nextPlaying = !wantsPlaybackRef.current;
     if (nextPlaying && profile) {
-      const decision = playbackPolicy.canContinuePlayback(profile.id);
+      const decision = playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds });
       if (!decision.allowed) {
         stopForPolicy(decision);
         return;
@@ -371,7 +379,8 @@ export function usePlayer({
 
   const nativeHandlers = {
     onLoad: () => { setError(null); setIsBuffering(true); },
-    onReady: (event: { nativeEvent: { duration?: number } }) => {
+    onReady: (event: { nativeEvent: { duration?: number; offline?: boolean } }) => {
+      setIsOffline(Boolean(event.nativeEvent.offline));
       setIsBuffering(false);
       setShowThumbnailCover(false);
       setRecoveryMessage('');
@@ -397,7 +406,7 @@ export function usePlayer({
       // A real onPlay means the stream is rendering frames, whatever happens next (including a
       // policy block below) — the frozen-old-frame/blank moment this covers for is over.
       setShowThumbnailCover(false);
-      const decision = profile ? playbackPolicy.canContinuePlayback(profile.id) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
+      const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
       if (!decision.allowed) { stopForPolicy(decision); return; }
       stoppedByPolicy.current = false;
       setHasEnded(false);
@@ -415,19 +424,20 @@ export function usePlayer({
     },
     onPause: () => { lastPlayheadMs.current = null; isPlayingRef.current = false; setIsPlaying(false); showControls(true); },
     onBuffer: () => { lastPlayheadMs.current = null; setIsBuffering(true); },
-    onProgress: (event: { nativeEvent: { duration?: number; position?: number; isPlaying?: boolean; bufferedPosition?: number } }) => {
+    onProgress: (event: { nativeEvent: { duration?: number; position?: number; isPlaying?: boolean; bufferedPosition?: number; playbackSpeed?: number; offline?: boolean } }) => {
       const nativeDuration = event.nativeEvent.duration;
       const nextDuration = nativeDuration && nativeDuration > 0 ? nativeDuration : durationMs;
       const positionMs = event.nativeEvent.position ?? 0;
       const playing = Boolean(event.nativeEvent.isPlaying && !stoppedByPolicy.current);
-      accountPlayhead(positionMs, playing);
+      setIsOffline(Boolean(event.nativeEvent.offline));
+      accountPlayhead(positionMs, playing, event.nativeEvent.playbackSpeed ?? 1);
       if (nextDuration <= 0) return;
       const nextProgress = Math.min(positionMs / nextDuration, 1);
       progressRef.current = nextProgress;
       setDurationMs(nextDuration);
       setProgress(nextProgress);
       // Wait for ten seconds of playback so resolution does not compete with startup.
-      if (!hasPrefetchedNext.current && nextVideo && playing && positionMs >= 10_000) {
+      if (!hasPrefetchedNext.current && nextVideo && playing && !event.nativeEvent.offline && positionMs >= 10_000) {
         hasPrefetchedNext.current = true;
         void playerAdapter.prefetch?.(nextVideo.youtubeVideoId);
       }
@@ -438,6 +448,7 @@ export function usePlayer({
         const segmentKey = segment.uuid ?? `${segment.start}-${segment.end}`;
         if (lastSkippedSegment.current !== segmentKey) {
           lastSkippedSegment.current = segmentKey;
+          lastPlayheadMs.current = null;
           void playerAdapter.seek(segment.end * 1000).catch(() => undefined);
         }
       }
@@ -445,7 +456,7 @@ export function usePlayer({
         lastPersistedAt.current = Date.now();
         persistProgress(nextProgress);
       }
-      const decision = profile ? playbackPolicy.canContinuePlayback(profile.id) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
+      const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
       if (!decision.allowed && playing) stopForPolicy(decision);
     },
     onEnd: () => {
@@ -476,6 +487,7 @@ export function usePlayer({
   };
 
   return {
+    isOffline,
     isPlaying,
     wantsPlayback,
     progress,

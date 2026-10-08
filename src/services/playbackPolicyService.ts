@@ -152,7 +152,7 @@ export class PlaybackPolicyService {
     const settings = this.getEffectiveSettings(profileId);
     if (settings.dailyLimitMinutes === null) return { allowed: true };
     const limit = settings.dailyLimitMinutes * 60 + override.additionalSeconds;
-    if (this.getUsage(profileId) >= limit) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
+    if (this.getUsage(profileId, localDayKey(now)) >= limit) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
     return { allowed: true };
   }
 
@@ -171,7 +171,7 @@ export class PlaybackPolicyService {
     return { allowed: true };
   }
 
-  canPlay(input: PlaybackCheckInput): PlaybackDecision {
+  canPlay(input: PlaybackCheckInput, now = new Date()): PlaybackDecision {
     if (!this.hydrated || !this.settings) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
 
     // 1. Is the profile valid? Unknown profiles own no content.
@@ -183,7 +183,7 @@ export class PlaybackPolicyService {
     const outcome = this.contentAccess(
       input.profileId,
       { videoId: input.videoId, channelId: input.channelId, categoryIds: input.categoryIds },
-      new Date(),
+      now,
     );
     const contentDecision = decisionForOutcome[outcome];
     if (!contentDecision.allowed) return contentDecision;
@@ -191,15 +191,15 @@ export class PlaybackPolicyService {
     // 5-7. Screen time, allowed hours, bedtime (skipped while a parent override is live).
     // Resolved once and shared: `scheduleDecision`/`screenTimeDecision` used to each call the
     // (injected, possibly non-trivial) override resolver independently for the same instant.
-    const now = new Date();
     const override = this.overrides(input.profileId, now);
     const schedule = this.scheduleDecision(input.profileId, now, override);
     if (!schedule.allowed) return schedule;
     return this.screenTimeDecision(input.profileId, now, override);
   }
 
-  /** Re-checked while playback is already running (no content re-check needed). */
-  canContinuePlayback(profileId: string, now = new Date()): PlaybackDecision {
+  /** A player supplies its current content so expiry and blocks are rechecked during playback. */
+  canContinuePlayback(profileId: string, now = new Date(), content?: Omit<PlaybackCheckInput, 'profileId'>): PlaybackDecision {
+    if (content) return this.canPlay({ profileId, ...content }, now);
     if (!this.hydrated || !this.settings) return { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' };
     const override = this.overrides(profileId, now);
     const schedule = this.scheduleDecision(profileId, now, override);

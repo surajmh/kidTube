@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { FlatList, Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
+import { savedVideos } from '../../services/downloadService';
+import { playlistVideos, shuffleVideos } from '../../services/playlistService';
 import { ApprovedVideo } from '../../types';
 import { ChannelAvatar, VideoCard } from '../youtube/VideoCard';
 import { ICON, KID_COPY, KID_DESTINATIONS } from './kidHome.constant';
@@ -45,15 +47,21 @@ export function KidHomeScreen(props: KidHomeProps) {
   } = props;
 
   const kid = useKidHome(props);
+  const playlists = useMemo(() => (props.playlists ?? []).map((playlist) => ({ ...playlist, videos: playlistVideos(playlist, library.videos) })).filter((playlist) => playlist.videos.length > 0), [props.playlists, library.videos]);
+  const saved = savedVideos(props.downloads ?? [], library.videos);
+  const selectedPlaylist = playlists.find((playlist) => playlist.id === props.selectedPlaylistId);
   const list = useRef<FlatList<ApprovedVideo>>(null);
   const videos = kid.searching ? (kid.query.trim() ? kid.results.videos : EMPTY_VIDEOS)
     : kid.onFeed ? kid.feedVideos
+    : tab === 'playlists' ? selectedPlaylist?.videos ?? EMPTY_VIDEOS
     : tab === 'recent' ? library.recentVideos
     : tab === 'channels' && kid.selectedChannel ? kid.channelVideos
     : EMPTY_VIDEOS;
   const renderVideo = useCallback(({ item }: { item: ApprovedVideo }) => (
-    <VideoCard video={item} onPress={onVideoPress} />
-  ), [onVideoPress]);
+    <VideoCard video={item} onPress={selectedPlaylist && tab === 'playlists' && !kid.searching
+      ? (video) => props.onPlayPlaylist?.(selectedPlaylist.videos.slice(selectedPlaylist.videos.findIndex((item) => item.id === video.id)), selectedPlaylist.name)
+      : onVideoPress} />
+  ), [onVideoPress, selectedPlaylist, props.onPlayPlaylist, kid.searching, tab]);
   useEffect(() => {
     if (kid.searching) list.current?.scrollToOffset({ offset: 0, animated: false });
   }, [kid.searching, kid.results]);
@@ -164,7 +172,7 @@ export function KidHomeScreen(props: KidHomeProps) {
 
       <FlatList
         ref={list}
-        key={`${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}`}
+        key={`${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}:${props.selectedPlaylistId}`}
         data={videos}
         renderItem={renderVideo}
         keyExtractor={videoKey}
@@ -247,6 +255,28 @@ export function KidHomeScreen(props: KidHomeProps) {
             )
           ) : null}
 
+          {!kid.searching && tab === 'playlists' ? (
+            selectedPlaylist ? <View>
+              <Text style={styles.shelfTitle}>{selectedPlaylist.name}</Text>
+              <View style={styles.chipRow}>
+                <Chip label="All playlists" active={false} onPress={() => props.onSelectPlaylist?.(null)} />
+                <Chip label="Play all" active={false} onPress={() => props.onPlayPlaylist?.(selectedPlaylist.videos, selectedPlaylist.name)} />
+                <Chip label="Shuffle" active={false} onPress={() => props.onPlayPlaylist?.(shuffleVideos(selectedPlaylist.videos), selectedPlaylist.name)} />
+              </View>
+              <Text style={styles.noticeText}>Next videos play automatically only when your parent allows autoplay.</Text>
+            </View> : playlists.length ? playlists.map((playlist) => <FocusablePressable key={playlist.id} accessibilityLabel={`Open playlist ${playlist.name}`} style={styles.channelRow} onPress={() => props.onSelectPlaylist?.(playlist.id)}>
+              <Feather name="list" size={24} color={ICON.ink} />
+              <View><Text style={styles.channelRowName}>{playlist.name}</Text><Text style={styles.channelRowMeta}>{playlist.videos.length} videos</Text></View>
+            </FocusablePressable>) : <Empty icon="list" title="No playlists yet" body="Ask a grown-up to make a playlist for you." />
+          ) : null}
+
+          {!kid.searching && tab === 'recent' ? <View>
+            <Text style={styles.shelfTitle}>Saved for travel</Text>
+            {saved.length ? <ScrollView horizontal contentContainerStyle={styles.shelf} showsHorizontalScrollIndicator={false}>
+              {saved.map((video) => <VideoCard key={`saved-${video.id}`} video={video} compact onPress={onVideoPress} />)}
+            </ScrollView> : <Text style={styles.noticeText}>Ask a grown-up to save videos before your trip.</Text>}
+            <Text style={styles.shelfTitle}>Recently watched</Text>
+          </View> : null}
           {!kid.searching && tab === 'recent' && !library.recentVideos.length ? (
             <Empty icon="film" title="Nothing watched yet" body="Videos you watch show up here." />
           ) : null}

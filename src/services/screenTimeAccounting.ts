@@ -9,6 +9,7 @@
 export type AccountingOptions = {
   /** Jumps larger than this are treated as seeks/discontinuities, not watch time. */
   maxDeltaMs?: number;
+  playbackSpeed?: number;
 };
 
 export const defaultMaxDeltaMs = 5_000;
@@ -29,11 +30,13 @@ export function accountPlayheadSample(
   if (!isPlaying) return { seconds: 0, lastPositionMs: null };
   if (previousPositionMs === null) return { seconds: 0, lastPositionMs: positionMs };
 
+  const speed = options.playbackSpeed ?? 1;
+  if (!Number.isFinite(speed) || speed < 0.25 || speed > 2) return { seconds: 0, lastPositionMs: null };
   const deltaMs = positionMs - previousPositionMs;
   const maxDeltaMs = options.maxDeltaMs ?? defaultMaxDeltaMs;
-  if (deltaMs <= 0 || deltaMs > maxDeltaMs) return { seconds: 0, lastPositionMs: positionMs };
+  if (deltaMs <= 0 || deltaMs / speed > maxDeltaMs) return { seconds: 0, lastPositionMs: positionMs };
 
-  return { seconds: deltaMs / 1000, lastPositionMs: positionMs };
+  return { seconds: deltaMs / speed / 1000, lastPositionMs: positionMs };
 }
 
 /**

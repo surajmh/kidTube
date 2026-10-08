@@ -1,3 +1,4 @@
+import { setNativeDownloadModule } from '../services/downloadService';
 import { PlayerAdapter } from '../services/playerAdapter';
 import { PlayerErrorCode } from '../services/playerErrors';
 import NativeYouTubePlayer, { PlayerCommandResult } from './YouTubePlayerModule';
@@ -69,3 +70,5 @@ export const nativeYouTubePlayerAdapter = new NativeYouTubePlayerAdapter();
 // Hand the metadata surface to the content provider. This file already owns the native module and
 // is only ever reached from the app, so the pure-logic tests never load expo-modules-core.
 setNativeMetadataModule(NativeYouTubePlayer ?? null);
+
+setNativeDownloadModule(NativeYouTubePlayer ?? null);

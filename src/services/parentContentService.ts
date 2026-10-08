@@ -3,6 +3,7 @@ import { profileRepository } from '../repositories/profileRepository';
 import { videoRepository } from '../repositories/videoRepository';
 import { settingsRepository } from '../repositories/playbackSettingsRepository';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../types';
+import { sanitizeSettings } from './contentValidation';
 import { PlaybackSettings } from '../playbackTypes';
 import { ContentCandidate } from '../parentalControlsTypes';
 import { ParentSession, parentSessionService } from './auth/parentSession';
@@ -28,8 +29,9 @@ export const parentContentService = {
 
   async saveSettings(session: ParentSession, settings: PlaybackSettings) {
     parentSessionService.require('change playback settings');
-    await settingsRepository.save(settings);
-    return settings;
+    const next = sanitizeSettings(settings);
+    await settingsRepository.save(next);
+    return next;
   },
 
   async replaceContent(session: ParentSession, content: { videos: ApprovedVideo[]; channels: ApprovedChannel[] }) {

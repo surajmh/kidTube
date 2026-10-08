@@ -55,6 +55,10 @@ export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Player behavior</Text>
         <ToggleRow label="Autoplay next approved video" value={settings.autoplay} onChange={(autoplay) => patch({ autoplay })} />
+        <Text style={styles.cardTitle}>Maximum video quality</Text>
+        <View style={styles.limitWrap}>
+          {[144, 240, 360, 480, 720, 1080].map((height) => <Pressable key={height} accessibilityRole="radio" accessibilityLabel={`Maximum quality ${height}p`} accessibilityState={{ selected: (settings.maxQualityHeight ?? 1080) === height }} onPress={() => patch({ maxQualityHeight: height })} style={[styles.limitChip, (settings.maxQualityHeight ?? 1080) === height && styles.limitChipSelected]}><Text style={[styles.limitText, (settings.maxQualityHeight ?? 1080) === height && styles.limitTextSelected]}>{height}p</Text></Pressable>)}
+        </View>
         <ToggleRow label="SponsorBlock" value={settings.sponsorBlockEnabled} onChange={(sponsorBlockEnabled) => patch({ sponsorBlockEnabled })} />
         {settings.sponsorBlockEnabled && <View style={styles.categoryWrap}>{categoryLabels.map(([category, label]) => { const selected = settings.sponsorBlockCategories.includes(category); return <Pressable key={category} onPress={() => toggleCategory(category)} style={[styles.category, selected && styles.categorySelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><Feather name={selected ? 'check-square' : 'square'} size={16} color={selected ? colors.ink : colors.muted} /><Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</Text></Pressable>; })}</View>}
       </View>

@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
 import { yt } from '../youtube/theme';
@@ -15,6 +15,19 @@ import { usePlayer, PlayerScreenProps } from './usePlayer';
 export function PlayerScreen(props: PlayerScreenProps) {
   const { video, profile, nextVideo, onNextVideo, onParentOverride } = props;
   const player = usePlayer(props);
+  const [speed, setSpeed] = useState(1);
+  const [quality, setQuality] = useState(0);
+  const [captionTrack, setCaptionTrack] = useState<string | null>(null);
+  const [captionScale, setCaptionScale] = useState(1);
+  const [tracks, setTracks] = useState<{ captions: { id: string; label: string }[]; heights: number[] }>({ captions: [], heights: [] });
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const maximum = props.settings.maxQualityHeight ?? 1080;
+  useEffect(() => {
+    setTracks({ captions: [], heights: [] });
+    setCaptionTrack(null);
+    setQuality(0);
+    setOptionsOpen(false);
+  }, [video.youtubeVideoId]);
 
   if (!player.isAllowed) {
     return (
@@ -40,10 +53,17 @@ export function PlayerScreen(props: PlayerScreenProps) {
   }
 
   return (
-    <View style={styles.playerScreen}>
+    <ScrollView style={styles.playerScreen} contentContainerStyle={{ paddingBottom: 24 }}>
       <PlayerHeader onBack={player.leavePlayer} />
       <View style={styles.nativePlayerStage}>
-        <YouTubePlayer autoplay videoId={video.youtubeVideoId} style={styles.nativePlayer} {...player.nativeHandlers} />
+        <YouTubePlayer autoplay videoId={video.youtubeVideoId}
+          playbackSpeed={speed} qualityHeight={quality} maxQualityHeight={maximum}
+          captionTrack={captionTrack} captionScale={captionScale}
+          onTracksChanged={({ nativeEvent }) => {
+            if (nativeEvent.videoId !== video.youtubeVideoId) return;
+            setTracks({ captions: nativeEvent.captions ?? [], heights: nativeEvent.qualityHeights ?? [] });
+            setCaptionTrack((current) => nativeEvent.captions?.some((track) => track.id === current) ? current : null);
+          }} style={styles.nativePlayer} {...player.nativeHandlers} />
         {player.showThumbnailCover ? (
           // The native surface still shows whatever it last rendered until this video's own
           // stream starts — covering it with this video's thumbnail (plus a spinner) makes a
@@ -88,6 +108,9 @@ export function PlayerScreen(props: PlayerScreenProps) {
                     <Feather name="rotate-cw" size={22} color={yt.text} />
                   </FocusablePressable>
                   <View style={styles.overlaySpacer} />
+                  <FocusablePressable accessibilityLabel="Player settings" accessibilityState={{ expanded: optionsOpen }} style={styles.overlayButton} onPress={() => setOptionsOpen(!optionsOpen)}>
+                    <Feather name="settings" size={22} color={yt.text} />
+                  </FocusablePressable>
                   {player.isBuffering ? <ActivityIndicator size="small" color={yt.text} /> : null}
                   {nextVideo && nextVideo.id !== video.id ? (
                     <FocusablePressable accessibilityLabel="Play next approved video" style={styles.overlayButton} onPress={player.selectNextVideo}>
@@ -100,6 +123,17 @@ export function PlayerScreen(props: PlayerScreenProps) {
           ) : null}
         </View>
       </View>
+      {optionsOpen ? (
+        <View style={optionStyles.panel}>
+          <FocusablePressable accessibilityLabel="Close player settings" style={optionStyles.choice} onPress={() => setOptionsOpen(false)}><Text style={optionStyles.text}>Close settings</Text></FocusablePressable>
+          <ChoiceRow label="Speed" value={speed} options={[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((value) => ({ value, label: `${value}×` }))} onChange={setSpeed} />
+          <ChoiceRow label="Quality" value={quality > maximum ? 0 : quality} options={[{ value: 0, label: 'Auto' }, ...tracks.heights.filter((height) => height <= maximum).map((height) => ({ value: height, label: `Up to ${height}p` }))]} onChange={setQuality} />
+          <Text style={optionStyles.hint}>Auto adjusts to your connection, up to {maximum}p.</Text>
+          <ChoiceRow label="Captions" value={captionTrack ?? ''} options={[{ value: '', label: 'Off' }, ...tracks.captions.map((track) => ({ value: track.id, label: track.label }))]} onChange={(value) => setCaptionTrack(value || null)} />
+          {!tracks.captions.length ? <Text style={optionStyles.hint}>No captions available for this video.</Text> : null}
+          {captionTrack ? <ChoiceRow label="Caption size" value={captionScale} options={[{ value: 1, label: 'Normal' }, { value: 1.5, label: 'Large' }]} onChange={setCaptionScale} /> : null}
+        </View>
+      ) : null}
       <View style={styles.playerInfo}>
         <Text style={styles.playerTitle}>{video.title}</Text>
         <View style={styles.playerChannelRow}>
@@ -120,7 +154,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
         ) : player.warningMessage ? (
           <Text style={styles.warningText}>{player.warningMessage}</Text>
         ) : (
-          <Text style={styles.nativeHint}>Playback is handled by the Android Media3 player.</Text>
+          <Text style={styles.nativeHint}>{player.isOffline ? 'Playing a saved video' : props.queueLabel ? `Playing from ${props.queueLabel}` : 'Approved by your parent'}</Text>
         )}
         {player.policyMessage && player.timeBlocked && onParentOverride ? (
           <FocusablePressable accessibilityLabel="Parent override" style={styles.overrideButton} onPress={onParentOverride}>
@@ -135,7 +169,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
           <FeedVideoCard video={nextVideo} onPress={onNextVideo} />
         </>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -197,3 +231,22 @@ function PlayerHeader({ onBack }: { onBack: () => void }) {
 function BlockedPlayer({ onBack, message }: { onBack: () => void; message: string }) {
   return <View style={styles.blockedPlayer}><View style={styles.blockedIcon}><Feather name="shield-off" size={30} color={colors.danger} /></View><Text style={styles.blockedTitle}>Playback blocked</Text><Text style={styles.blockedBody}>{message}</Text><SecondaryButton label="Go back" onPress={onBack} /></View>;
 }
+
+function ChoiceRow<T extends string | number>({ label, value, options, onChange }: {
+  label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void;
+}) {
+  return <View><Text style={optionStyles.label}>{label}</Text><View style={optionStyles.row}>
+    {options.map((option) => <FocusablePressable key={option.value} accessibilityRole="radio" accessibilityLabel={`${label}: ${option.label}`} accessibilityState={{ selected: option.value === value }} onPress={() => onChange(option.value)} style={[optionStyles.choice, option.value === value && optionStyles.selected]}>
+      <Text style={optionStyles.text}>{option.label}</Text>
+    </FocusablePressable>)}
+  </View></View>;
+}
+const optionStyles = StyleSheet.create({
+  panel: { padding: 12, gap: 10, backgroundColor: yt.surface },
+  label: { color: yt.text, fontWeight: '700', marginBottom: 6 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  choice: { padding: 12, minHeight: 44, borderRadius: 8, backgroundColor: yt.surfaceAlt },
+  selected: { borderWidth: 1, borderColor: yt.text },
+  text: { color: yt.text },
+  hint: { color: yt.textDim, fontSize: 12 },
+});

@@ -49,6 +49,9 @@ import { playbackPolicy } from '../services/playbackPolicyService';
 import { RepairableCollection, repairLocalData } from '../services/dataIntegrityService';
 import { profileLifecycleService } from '../services/profileLifecycleService';
 import { RequestDecisionInput } from '../components/ParentRequests';
+import { downloadService } from '../services/downloadService';
+import { playlistService } from '../services/playlistService';
+import { CuratedPlaylist } from '../types';
 import { id } from '../utils/id';
 
 type Screen = 'kid' | 'parent' | 'player';
@@ -67,11 +70,17 @@ export function useLibrary({
   screen: Screen;
   onOverrideGranted: () => void;
 }) {
+  const [accessClock, setAccessClock] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setAccessClock((value) => value + 1), 5000);
+    return () => clearInterval(timer);
+  }, []);
   const [hydrated, setHydrated] = useState(false);
   const [setupStep, setSetupStep] = useState<'pin' | 'profile' | null>(null);
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [channels, setChannels] = useState<ApprovedChannel[]>([]);
   const [videos, setVideos] = useState<ApprovedVideo[]>([]);
+  const [playlists, setPlaylists] = useState<CuratedPlaylist[]>([]);
   const [history, setHistory] = useState<WatchHistory[]>([]);
   const [playbackSettings, setPlaybackSettings] = useState<PlaybackSettings>(defaultPlaybackSettings);
   const [screenTimeUsage, setScreenTimeUsage] = useState<ScreenTimeUsage[]>([]);
@@ -112,6 +121,7 @@ export function useLibrary({
       // One native round trip for every key these `getAll()` calls are about to read individually,
       // instead of each repository hitting AsyncStorage on its own.
       await primeStorage([
+        storageKeys.playlists,
         storageKeys.channels,
         storageKeys.videos,
         storageKeys.history,
@@ -128,6 +138,7 @@ export function useLibrary({
       if (cancelled) return;
 
       const [
+        storedPlaylists,
         storedChannels,
         storedVideos,
         storedHistory,
@@ -141,6 +152,7 @@ export function useLibrary({
         storedOverrides,
         storedChannelSync,
       ] = await Promise.all([
+        playlistService.getAll(),
         channelRepository.getAll(),
         videoRepository.getAll(),
         watchHistoryRepository.getAll(),
@@ -218,6 +230,7 @@ export function useLibrary({
         requestService.pruneResolved(snapshot.requests),
       ]);
 
+      setPlaylists(storedPlaylists);
       setChannels(snapshot.channels);
       setVideos(snapshot.videos);
       setHistory(snapshot.history);
@@ -288,8 +301,12 @@ export function useLibrary({
         categories,
         history,
       }),
-    [activeProfile?.id, videos, channels, categories, history, childRules, approvals],
+    [activeProfile?.id, videos, channels, categories, history, childRules, approvals, accessClock],
   );
+  useEffect(() => {
+    void downloadService.authorize(parentSession, videos, profiles).catch(() => undefined);
+  }, [parentSession, videos, profiles, childRules, approvals, accessClock]);
+
   const effectiveSettings = useMemo(
     () => mergeProfilePolicy(playbackSettings, activeProfile ? profilePolicies[activeProfile.id] : undefined),
     [playbackSettings, profilePolicies, activeProfile],
@@ -401,9 +418,9 @@ export function useLibrary({
 
   async function savePlaybackSettings(next: PlaybackSettings) {
     if (!parentSession) return;
-    await parentContentService.saveSettings(parentSession, next);
-    setPlaybackSettings(next);
-    playbackPolicy.setSettings(next);
+    const saved = await parentContentService.saveSettings(parentSession, next);
+    setPlaybackSettings(saved);
+    playbackPolicy.setSettings(saved);
   }
 
   async function consumePlaybackApproval(video: ApprovedVideo) {
@@ -703,6 +720,16 @@ export function useLibrary({
     onDone(profile);
   }
 
+  async function savePlaylist(draft: CuratedPlaylist) {
+    if (!parentSession) throw new Error('Parent mode is required.');
+    setPlaylists(await playlistService.save(parentSession, draft, playlists, videos));
+  }
+
+  async function removePlaylist(playlistId: string) {
+    if (!parentSession) throw new Error('Parent mode is required.');
+    setPlaylists(await playlistService.remove(parentSession, playlistId, playlists));
+  }
+
   /** The content half of a full PIN reset: everything a parent configured is wiped. */
   function resetAll() {
     whitelistService.setContent([], []);
@@ -718,6 +745,7 @@ export function useLibrary({
       profiles: [],
       profilePolicies: {},
     });
+    setPlaylists([]);
     setProfiles([]);
     setChannels([]);
     setVideos([]);
@@ -735,6 +763,9 @@ export function useLibrary({
   }
 
   return {
+    playlists,
+    savePlaylist,
+    removePlaylist,
     hydrated,
     setupStep,
     setSetupStep,

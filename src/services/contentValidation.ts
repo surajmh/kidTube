@@ -196,6 +196,7 @@ export function sanitizeSettings(input: Partial<PlaybackSettings> | null | undef
     ...defaultPlaybackSettings,
     ...input,
     dailyLimitMinutes,
+    maxQualityHeight: [144, 240, 360, 480, 720, 1080].includes(input.maxQualityHeight ?? 0) ? input.maxQualityHeight : 1080,
     sponsorBlockCategories: (input.sponsorBlockCategories ?? defaultPlaybackSettings.sponsorBlockCategories).filter((category) =>
       sponsorBlockCategories.includes(category),
     ),

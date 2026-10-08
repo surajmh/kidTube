@@ -3,7 +3,7 @@ import { ContentRequest, RequestType } from '../../parentalControlsTypes';
 import { KidLibrary } from '../../services/kidContentLibraryService';
 import { ChannelSyncState } from '../../services/content/channelSyncRules';
 
-export type KidTab = 'home' | 'categories' | 'channels' | 'recent' | 'requests';
+export type KidTab = 'home' | 'categories' | 'channels' | 'recent' | 'requests' | 'playlists';
 
 /** A nav destination. Categories are filter chips on the feed, not a destination. */
 export type KidDestination = {
@@ -22,6 +22,11 @@ export type KidSearchResults = {
 };
 
 export type KidHomeProps = {
+  downloads?: import('../../services/downloadService').SavedVideo[];
+  playlists?: import('../../types').CuratedPlaylist[];
+  selectedPlaylistId?: string | null;
+  onSelectPlaylist?: (id: string | null) => void;
+  onPlayPlaylist?: (videos: ApprovedVideo[], name: string) => void;
   profiles: ChildProfile[];
   activeProfile?: ChildProfile;
   onSelectProfile: (profileId: string) => void;

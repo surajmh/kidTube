@@ -1,6 +1,8 @@
 package com.nestling.youtubeplayer
 
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -13,6 +15,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class YouTubePlayerModule : Module() {
+  private val main = Handler(Looper.getMainLooper())
+  @Volatile private var downloadIds: Set<String> = emptySet()
+  @Volatile private var parentUntil = 0L
+  private fun canDownload(videoId: String) = System.currentTimeMillis() < parentUntil && videoId in downloadIds
+
   private var activeView: WeakReference<YouTubePlayerView>? = null
 
   /**
@@ -53,8 +60,57 @@ class YouTubePlayerModule : Module() {
       activeView?.get()?.releasePlayer()
     }
 
+    AsyncFunction("setDownloadAuthorization") { videoIds: List<String>, expiresAt: Double ->
+      downloadIds = videoIds.filter { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.toSet()
+      parentUntil = if (expiresAt.isFinite()) expiresAt.toLong().coerceAtMost(System.currentTimeMillis() + 30 * 60 * 1000) else 0L
+    }
+    AsyncFunction("getDownloads") { promise: Promise ->
+      main.post {
+        try { promise.resolve(OfflineDownloads.list(requireNotNull(appContext.reactContext))) }
+        catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not read saved videos.", error) }
+      }
+    }
+    AsyncFunction("downloadVideo") { videoId: String, maxHeight: Int, expiresAt: Double, promise: Promise ->
+      if (!canDownload(videoId)) { promise.reject("E_PARENT", "An approved video and parent mode are required.", null); return@AsyncFunction }
+      if (maxHeight !in listOf(144, 240, 360, 480, 720, 1080) || !expiresAt.isFinite() || expiresAt <= System.currentTimeMillis() || expiresAt > System.currentTimeMillis() + 31L * 24 * 60 * 60 * 1000) {
+        promise.reject("E_DOWNLOAD", "Invalid download quality or expiry.", null); return@AsyncFunction
+      }
+      val context = requireNotNull(appContext.reactContext)
+      metadataScope.launch {
+        try {
+          val info = AuthorizedPlaybackResolver(quality = PlaybackQuality.AUTO).resolve(videoId)
+          main.post {
+            try { OfflineDownloads.add(context, info, maxHeight, expiresAt.toLong(), { canDownload(videoId) }, promise) }
+            catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not prepare the download.", error) }
+          }
+        } catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not reach this video. Try again when connected.", error) }
+      }
+    }
+    AsyncFunction("removeDownload") { videoId: String, promise: Promise ->
+      if (System.currentTimeMillis() >= parentUntil) { promise.reject("E_PARENT", "Parent mode is required.", null); return@AsyncFunction }
+      main.post {
+        try { OfflineDownloads.remove(requireNotNull(appContext.reactContext), videoId); promise.resolve(null) }
+        catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not remove this download.", error) }
+      }
+    }
+    AsyncFunction("clearDownloads") { promise: Promise ->
+      downloadIds = emptySet(); parentUntil = 0L
+      main.post {
+        try {
+          activeView?.get()?.controller?.stop()
+          OfflineDownloads.clear(requireNotNull(appContext.reactContext))
+          promise.resolve(null)
+        } catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not clear downloads.", error) }
+      }
+    }
+
     AsyncFunction("setAllowedVideoIds") { videoIds: List<String> ->
       allowedVideoIds = videoIds.toSet()
+      main.post {
+        activeView?.get()?.let { view ->
+          if (view.currentVideoId != null && view.currentVideoId !in allowedVideoIds) view.controller.stop()
+        }
+      }
       mapOf<String, Any?>("accepted" to true, "count" to allowedVideoIds.size)
     }
 
@@ -160,7 +216,7 @@ class YouTubePlayerModule : Module() {
     }
 
     View(YouTubePlayerView::class) {
-      Events("onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError")
+      Events("onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError", "onTracksChanged")
 
       // Props are not re-sent when they did not change, so the mounted view is also registered here.
       OnViewDidUpdateProps { view ->
@@ -171,6 +227,12 @@ class YouTubePlayerModule : Module() {
         registerView(view)
         view.setVideo(videoId)
       }
+
+      Prop("playbackSpeed") { view: YouTubePlayerView, speed: Double -> view.playbackSpeed = speed.toFloat() }
+      Prop("qualityHeight") { view: YouTubePlayerView, height: Int -> view.qualityHeight = height }
+      Prop("maxQualityHeight") { view: YouTubePlayerView, height: Int -> view.maxQualityHeight = height }
+      Prop("captionTrack") { view: YouTubePlayerView, track: String? -> view.captionTrack = track }
+      Prop("captionScale") { view: YouTubePlayerView, scale: Double -> view.setCaptionScale(scale.toFloat()) }
 
       Prop("autoplay") { view: YouTubePlayerView, autoplay: Boolean? ->
         view.autoplay = autoplay ?: true

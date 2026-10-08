@@ -5,6 +5,7 @@ export const KID_DESTINATIONS: KidDestination[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'channels', label: 'Channels', icon: 'users' },
   { id: 'recent', label: 'Library', icon: 'film' },
+  { id: 'playlists', label: 'Playlists', icon: 'list' },
   { id: 'requests', label: 'Ask', icon: 'help-circle' },
 ];
 

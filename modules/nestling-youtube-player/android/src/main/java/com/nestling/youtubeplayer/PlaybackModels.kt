@@ -13,6 +13,7 @@ data class PlaybackInfo(
   val mimeType: String? = null,
   val width: Int? = null,
   val height: Int? = null,
+  val captions: List<CaptionStream> = emptyList(),
 )
 
 data class PlaybackResult(
@@ -33,3 +34,5 @@ object PlaybackCodes {
   /** The short-lived stream URL stopped working: recoverable by refreshing playback information. */
   const val STREAM_EXPIRED = "stream_expired"
 }
+
+data class CaptionStream(val url: String, val mimeType: String, val language: String, val label: String)

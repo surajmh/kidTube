@@ -21,6 +21,7 @@ class YouTubePlayerView(
   private val onProgress by EventDispatcher<Map<String, Any>>()
   private val onRetry by EventDispatcher<Map<String, Any>>()
   private val onEnd by EventDispatcher<Map<String, Any>>()
+  private val onTracksChanged by EventDispatcher<Map<String, Any>>()
   private val onError by EventDispatcher<Map<String, Any>>()
 
   private val playerView = PlayerView(context).apply {
@@ -31,6 +32,18 @@ class YouTubePlayerView(
       LayoutParams.MATCH_PARENT,
       Gravity.CENTER,
     )
+  }
+
+  var playbackSpeed: Float = 1f
+    set(value) { field = value; controller.setPlaybackSpeed(value) }
+  var qualityHeight: Int = 0
+    set(value) { field = value; controller.setQuality(value, maxQualityHeight) }
+  var maxQualityHeight: Int = 1080
+    set(value) { field = value; controller.setQuality(qualityHeight, value) }
+  var captionTrack: String? = null
+    set(value) { field = value; controller.setCaptionTrack(value) }
+  fun setCaptionScale(scale: Float) {
+    playerView.subtitleView?.setFractionalTextSize(0.0533f * scale.coerceIn(1f, 1.5f))
   }
 
   var autoplay: Boolean = true
@@ -53,6 +66,9 @@ class YouTubePlayerView(
       )
       controllerRef = created
       created.attach(playerView)
+      created.setPlaybackSpeed(playbackSpeed)
+      created.setQuality(qualityHeight, maxQualityHeight)
+      created.setCaptionTrack(captionTrack)
       return created
     }
 
@@ -116,6 +132,7 @@ class YouTubePlayerView(
       "onProgress" -> onProgress(payload)
       "onRetry" -> onRetry(payload)
       "onEnd" -> onEnd(payload)
+      "onTracksChanged" -> onTracksChanged(payload)
       "onError" -> onError(payload)
     }
   }

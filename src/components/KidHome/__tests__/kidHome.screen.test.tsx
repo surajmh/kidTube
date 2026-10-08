@@ -51,3 +51,32 @@ it('windows a large video library and routes filtered lists and presses correctl
     jest.useRealTimers();
   }
 });
+
+it('shows only accessible playlist videos and starts a finite queue from the chosen item', () => {
+  const a = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'Story A', approved: true };
+  const b = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'Story B', approved: true };
+  const props: KidHomeProps = {
+    profiles: [], activeProfile: { id: 'kid', name: 'Kid', avatar: '' },
+    library: { profileId: 'kid', videos: [a, b], recentVideos: [], channels: [], categories: [], askableVideos: [], askableChannels: [] },
+    playlists: [{ id: 'p', name: 'Stories', videoIds: ['b', 'blocked', 'a'] }], selectedPlaylistId: 'p',
+    tab: 'playlists', selectedCategoryId: null, selectedChannelId: null,
+    notice: '', requests: [], pendingRequestCount: 0,
+    onSelectProfile: jest.fn(), onTabChange: jest.fn(), onSelectCategory: jest.fn(),
+    onSelectChannel: jest.fn(), onSelectPlaylist: jest.fn(), onPlayPlaylist: jest.fn(),
+    onVideoPress: jest.fn(), onParentPress: jest.fn(), onSubmitRequest: jest.fn(),
+    onRequestVideo: jest.fn(), onRequestChannel: jest.fn(), channelSyncStateFor: () => undefined,
+  };
+  const view = render(<KidHomeScreen {...props} />);
+  try {
+    expect(view.UNSAFE_getByType(FlatList).props.data).toEqual([b, a]);
+    fireEvent.press(view.getByLabelText('Play all'));
+    expect(props.onPlayPlaylist).toHaveBeenLastCalledWith([b, a], 'Stories');
+    fireEvent.press(view.getByLabelText('Play Story A'));
+    expect(props.onPlayPlaylist).toHaveBeenLastCalledWith([a], 'Stories');
+    fireEvent.press(view.getByLabelText('All playlists'));
+    expect(props.onSelectPlaylist).toHaveBeenCalledWith(null);
+    view.rerender(<KidHomeScreen {...props} tab="home" />);
+    fireEvent.press(view.getByLabelText('Play Story A'));
+    expect(props.onVideoPress).toHaveBeenCalledWith(a);
+  } finally { view.unmount(); }
+});
