@@ -12,7 +12,8 @@ import { SearchHeader } from './kidHome.search';
 import { AskPanel } from './kidHome.askPanel';
 import { ProfileSwitcher, TopBar } from './kidHome.topBar';
 import { BottomNav } from './kidHome.bottomNav';
-import { PlaylistsSection, SavedShelf } from './kidHome.library';
+import { PlaylistsSection } from './kidHome.library';
+import { DownloadsSection } from './kidHome.downloads';
 import styles from './kidHome.style';
 
 /**
@@ -30,7 +31,6 @@ export function KidHomeScreen(props: KidHomeProps) {
     library,
     notice,
     noticeAction,
-    tab,
     selectedCategoryId,
     onSelectCategory,
     onSelectChannel,
@@ -44,7 +44,8 @@ export function KidHomeScreen(props: KidHomeProps) {
   } = props;
 
   const kid = useKidHome(props);
-  const { playlists, saved, selectedPlaylist, list, videos, renderVideo, channelVideoCounts } = useKidHomeList(props, kid);
+  const tab = kid.tab;
+  const { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts } = useKidHomeList(props, kid);
 
   let channelsBody: React.ReactNode;
   if (kid.selectedChannel) {
@@ -167,9 +168,8 @@ export function KidHomeScreen(props: KidHomeProps) {
             />
           ) : null}
 
-          {!kid.searching && tab === 'recent' ? <SavedShelf saved={saved} onVideoPress={onVideoPress} /> : null}
-          {!kid.searching && tab === 'recent' && !library.recentVideos.length ? (
-            <Empty icon="film" title="Nothing watched yet" body="Videos you watch show up here." />
+          {!kid.searching && tab === 'downloads' ? (
+            <DownloadsSection downloads={props.downloads ?? []} videos={library.videos} onPlay={onVideoPress} />
           ) : null}
 
           {!kid.searching && tab === 'requests' ? (
@@ -186,7 +186,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         </>}
       />
 
-      <BottomNav tab={tab} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} />
+      <BottomNav tab={tab} downloadsEnabled={props.downloadsEnabled ?? true} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} />
     </View>
   );
 }

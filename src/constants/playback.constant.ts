@@ -3,6 +3,8 @@ import type { PlaybackSettings } from '../types';
 export const defaultPlaybackSettings: PlaybackSettings = {
   autoplay: false,
   maxQualityHeight: 1080,
+  downloadsEnabled: true,
+  downloadRetentionDays: 7,
   sponsorBlockEnabled: true,
   sponsorBlockCategories: ['sponsor', 'intro', 'outro', 'selfpromo'],
   dailyLimitMinutes: 60,

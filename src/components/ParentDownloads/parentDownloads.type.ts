@@ -1,8 +1,10 @@
-import { ApprovedVideo, ChildProfile } from '../../types';
+import type { ApprovedVideo, ChildProfile } from '../../types';
 import type { SavedVideo } from '../../services/downloadService.type';
-import type { ParentSession } from '../../services/auth/parentSession.type';
+import type { DownloadEntry } from '../DownloadList';
 
 export type ParentDownloadsProps = {
-  session: ParentSession; videos: ApprovedVideo[]; profiles: ChildProfile[]; downloads: SavedVideo[];
-  maximum: number; refresh: () => Promise<void>; readError: string;
+  profiles: ChildProfile[]; videos: ApprovedVideo[]; downloads: SavedVideo[]; downloadsEnabled: boolean;
+  maximum?: never; refresh: () => Promise<void>; readError?: string;
 };
+
+export type DownloadGroup = { profile: ChildProfile; entries: DownloadEntry[] };

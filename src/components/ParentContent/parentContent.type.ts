@@ -4,6 +4,10 @@ import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
 import type { ContentApproval, ContentCategory } from '../../types';
 import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 
+export type AddContentKind = 'channel' | 'video';
+
+export type ChannelSort = 'recent' | 'name';
+
 export type ContentTab = 'channels' | 'videos' | 'categories' | 'requests';
 
 /** Which page of the parent experience this panel is rendering. */
@@ -20,7 +24,8 @@ export type ParentContentProps = {
   approvals: ContentApproval[];
   categoriesSlot?: React.ReactNode;
   requestsSlot?: React.ReactNode;
-  manualAddSlot?: React.ReactNode;
+  /** Renders the full-screen add form for the chosen kind; the panel owns when it is open. */
+  addContentSlot?: (kind: AddContentKind, onClose: () => void) => React.ReactNode;
   accessFor: AccessCheck;
   onRemoveVideo: (video: ApprovedVideo) => Promise<void>;
   onRemoveChannel: (channel: ApprovedChannel) => Promise<void>;

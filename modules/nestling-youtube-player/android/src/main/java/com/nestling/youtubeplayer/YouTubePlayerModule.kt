@@ -17,9 +17,12 @@ import kotlinx.coroutines.launch
 
 class YouTubePlayerModule : Module() {
   private val main = Handler(Looper.getMainLooper())
+  // Saving is allowed per video and only briefly: JS authorizes the one video a child just asked
+  // for. Removing a download is a parent action and has its own, separate authorization.
   @Volatile private var downloadIds: Set<String> = emptySet()
+  @Volatile private var downloadUntil = 0L
   @Volatile private var parentUntil = 0L
-  private fun canDownload(videoId: String) = System.currentTimeMillis() < parentUntil && videoId in downloadIds
+  private fun canDownload(videoId: String) = System.currentTimeMillis() < downloadUntil && videoId in downloadIds
 
   private var activeView: WeakReference<YouTubePlayerView>? = null
 
@@ -67,7 +70,24 @@ class YouTubePlayerModule : Module() {
 
     AsyncFunction("setDownloadAuthorization") { videoIds: List<String>, expiresAt: Double ->
       downloadIds = videoIds.filter { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.toSet()
+      downloadUntil = if (expiresAt.isFinite()) expiresAt.toLong().coerceAtMost(System.currentTimeMillis() + 5 * 60 * 1000) else 0L
+    }
+    AsyncFunction("setParentAuthorization") { expiresAt: Double ->
       parentUntil = if (expiresAt.isFinite()) expiresAt.toLong().coerceAtMost(System.currentTimeMillis() + 30 * 60 * 1000) else 0L
+    }
+    // Which video heights this video can really be saved at; metadata only, saves nothing.
+    AsyncFunction("getDownloadOptions") { videoId: String, promise: Promise ->
+      if (!videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) { promise.reject("E_DOWNLOAD", "That is not a valid video.", null); return@AsyncFunction }
+      val context = requireNotNull(appContext.reactContext)
+      metadataScope.launch {
+        try {
+          val info = AuthorizedPlaybackResolver(quality = PlaybackQuality.AUTO).resolve(videoId)
+          main.post {
+            try { OfflineDownloads.heights(context, info, promise) }
+            catch (error: Exception) { Log.w("kidTube", "download options failed", error); promise.reject("E_DOWNLOAD", "Could not check the available qualities.", error) }
+          }
+        } catch (error: Exception) { Log.w("kidTube", "download options: resolve failed", error); promise.reject("E_DOWNLOAD", "Could not reach this video. Try again when connected.", error) }
+      }
     }
     AsyncFunction("getDownloads") { promise: Promise ->
       main.post {
@@ -76,7 +96,7 @@ class YouTubePlayerModule : Module() {
       }
     }
     AsyncFunction("downloadVideo") { videoId: String, maxHeight: Int, expiresAt: Double, promise: Promise ->
-      if (!canDownload(videoId)) { promise.reject("E_PARENT", "An approved video and parent mode are required.", null); return@AsyncFunction }
+      if (!canDownload(videoId)) { promise.reject("E_PARENT", "That video is not available to save.", null); return@AsyncFunction }
       if (maxHeight !in listOf(144, 240, 360, 480, 720, 1080) || !expiresAt.isFinite() || expiresAt <= System.currentTimeMillis() || expiresAt > System.currentTimeMillis() + 31L * 24 * 60 * 60 * 1000) {
         promise.reject("E_DOWNLOAD", "Invalid download quality or expiry.", null); return@AsyncFunction
       }
@@ -88,7 +108,7 @@ class YouTubePlayerModule : Module() {
             try { OfflineDownloads.add(context, info, maxHeight, expiresAt.toLong(), { canDownload(videoId) }, promise) }
             catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not prepare the download.", error) }
           }
-        } catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not reach this video. Try again when connected.", error) }
+        } catch (error: Exception) { Log.w("kidTube", "download: resolve failed", error); promise.reject("E_DOWNLOAD", "Could not reach this video. Try again when connected.", error) }
       }
     }
     AsyncFunction("removeDownload") { videoId: String, promise: Promise ->
@@ -99,7 +119,7 @@ class YouTubePlayerModule : Module() {
       }
     }
     AsyncFunction("clearDownloads") { promise: Promise ->
-      downloadIds = emptySet(); parentUntil = 0L
+      downloadIds = emptySet(); downloadUntil = 0L; parentUntil = 0L
       main.post {
         try {
           activeView?.get()?.controller?.stop()
@@ -133,6 +153,14 @@ class YouTubePlayerModule : Module() {
 
     AsyncFunction("getChannel") { reference: String, promise: Promise ->
       metadataAsync(promise) { NewPipeChannels.channel(reference) }
+    }
+
+    AsyncFunction("searchChannels") { query: String, promise: Promise ->
+      metadataAsync(promise) { NewPipeSearch.channels(query) }
+    }
+
+    AsyncFunction("searchVideos") { query: String, promise: Promise ->
+      metadataAsync(promise) { NewPipeSearch.videos(query) }
     }
 
     AsyncFunction("getChannelVideos") { channelId: String, pageToken: String?, promise: Promise ->

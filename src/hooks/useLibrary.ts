@@ -22,6 +22,7 @@ import { kidContentLibraryService } from '../services/kidContentLibraryService';
 import { enrichLibrary } from '../services/content/nativeVideoMetadata';
 import { parentContentService } from '../services/parentContentService';
 import { requestService } from '../services/requestService';
+import { contentLookupService } from '../services/contentLookupService';
 import { playerAdapter } from '../services/playerAdapterInstance';
 import { ApprovedChannel,ApprovedVideo,ChildProfile } from '../types';
 import type { PlaybackSettings } from '../types';
@@ -35,6 +36,7 @@ import type { RepairableCollection } from '../services/dataIntegrityService.type
 import { profileLifecycleService } from '../services/profileLifecycleService';
 import { RequestDecisionInput } from '../components/ParentRequests';
 import { downloadService } from '../services/downloadService';
+import { ownersOfKnownProfiles } from '../services/downloadService.helper';
 import { playlistService,sanitizePlaylists } from '../services/playlistService';
 import { CuratedPlaylist } from '../types';
 import { id } from '../utils/id';
@@ -71,6 +73,7 @@ export function useLibrary({
   const [accessClock, setAccessClock] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [libraryReady, setLibraryReady] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [setupStep, setSetupStep] = useState<'pin' | 'profile' | null>(null);
   const profiles = useAppStore((state) => state.profiles);
@@ -199,7 +202,9 @@ export function useLibrary({
         profilePolicies: keep('profilePolicies', snapshot.profilePolicies, input.profilePolicies),
         overrides: prunedOverrides,
         channelSyncStates: keep('channelSync', snapshot.channelSync, input.channelSync),
+        downloadOwners: ownersOfKnownProfiles(data.downloadOwners, profiles),
       });
+      setLibraryReady(true);
     }
 
     setLoadFailed(false);
@@ -262,8 +267,8 @@ export function useLibrary({
     [activeProfile?.id, videos, channels, categories, history, childRules, approvals, accessClock],
   );
   useEffect(() => {
-    void downloadService.authorize(parentSession, videos, profiles).catch(() => undefined);
-  }, [parentSession, videos, profiles, childRules, approvals, accessClock]);
+    void downloadService.authorizeParent(parentSession).catch(() => undefined);
+  }, [parentSession]);
 
   const effectiveSettings = useMemo(
     () => mergeProfilePolicy(playbackSettings, activeProfile ? profilePolicies[activeProfile.id] : undefined),
@@ -338,6 +343,8 @@ export function useLibrary({
     setHistory(result.history);
     setScreenTimeUsage(result.screenTime);
     playbackPolicy.replaceRecords(result.screenTime);
+    // Their saved videos go too; files a sibling also saved stay.
+    await downloadService.dropProfile(profile.id).catch(() => undefined);
     if (activeProfileId === profile.id) setActiveProfileId(result.profiles[0]?.id ?? '');
   }
 
@@ -667,6 +674,7 @@ export function useLibrary({
     removePlaylist,
     hydrated,
     loadFailed,
+    libraryReady,
     retryLoad: () => setLoadAttempt((value) => value + 1),
     setupStep,
     setSetupStep,
@@ -710,10 +718,11 @@ export function useLibrary({
     openChannelVideos,
     syncChannel,
     syncNewlyApprovedChannel,
-    resolveChannel: (input: string) => {
+    findChannels: (query: string) => {
       if (!parentSession) throw new Error('Parent mode is required.');
-      return channelSyncService.resolveChannel(parentSession, input);
+      return contentLookupService.findChannels(parentSession, query);
     },
+    findVideos: (query: string) => contentLookupService.findVideos(query),
     toggleVideoCategory,
     toggleChannelCategory,
     createCategory,

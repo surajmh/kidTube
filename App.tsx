@@ -8,6 +8,7 @@ import { KidHomeScreen } from './src/components/KidHome';
 import { ParentShell, ParentSection } from './src/components/ParentShell';
 import { ParentOverrideSheet } from './src/components/ParentOverride';
 import { ParentDownloads } from './src/components/ParentDownloads';
+import { useChildDownloads } from './src/hooks/useChildDownloads';
 import { useDownloads } from './src/hooks/useDownloads';
 import { ParentPlaylists } from './src/components/ParentPlaylists';
 import { PlayerScreen } from './src/components/Player';
@@ -16,7 +17,7 @@ import {
   PinSetup,
   ProfileSetup,
   ProfileManager,
-  ManualAddSection,
+  AddContentModal,
   ParentPinModal,
   appShellStyles as styles,
 } from './src/components/AppShell';
@@ -29,7 +30,6 @@ import { useWatchHistory } from './src/hooks/useWatchHistory';
 import { useScreenTimeUsage } from './src/hooks/useScreenTimeUsage';
 
 function App() {
-  const saved = useDownloads();
   const [screen, setScreen] = useState<Screen>('kid');
   const [parentSection, setParentSection] = useState<ParentSection>('home');
 
@@ -57,6 +57,15 @@ function App() {
     parentSession: auth.parentSession,
     screen,
     onOverrideGranted: () => onOverrideGrantedRef.current(),
+  });
+
+  // The device keeps one file per video; each child sees (and saves) only their own.
+  const saved = useDownloads({ profileIds: library.profiles.map((profile) => profile.id), ready: library.libraryReady });
+  const childDownloads = useChildDownloads({
+    profile: library.activeProfile,
+    settings: library.effectiveSettings,
+    downloads: saved.downloads,
+    refresh: saved.refresh,
   });
 
   const watchHistory = useWatchHistory(library.setHistory);
@@ -116,7 +125,8 @@ function App() {
         )}
         {!library.setupStep && screen === 'kid' && (
           <KidHomeScreen
-            downloads={saved.downloads}
+            downloads={childDownloads.mine}
+            downloadsEnabled={childDownloads.enabled}
             playlists={library.playlists}
             selectedPlaylistId={nav.kidPlaylistId}
             onSelectPlaylist={nav.setKidPlaylistId}
@@ -225,17 +235,21 @@ function App() {
             contentTab={nav.contentTab}
             selectedChannelId={nav.parentChannelId}
             setContentTab={nav.setContentTab}
-            manualAddSlot={
-              <ManualAddSection
+            addContentSlot={(kind, onClose) => (
+              <AddContentModal
+                kind={kind}
                 channels={library.channels}
                 onAddChannel={async (channel) => {
                   await library.saveChannels([channel, ...library.channels]);
-                  void library.syncNewlyApprovedChannel(channel);
+                  // A channel saved without approval has nothing to fetch yet.
+                  if (channel.approved) void library.syncNewlyApprovedChannel(channel);
                 }}
                 onAddVideo={(video) => library.saveVideos([video, ...library.videos])}
-                onLookupChannel={library.resolveChannel}
+                onFindChannels={library.findChannels}
+                onFindVideos={library.findVideos}
+                onClose={onClose}
               />
-            }
+            )}
             profilesSlot={
               <ProfileManager
                 profiles={library.profiles}
@@ -245,7 +259,7 @@ function App() {
                 onDelete={library.deleteProfile}
               />
             }
-            downloadsSlot={<ParentDownloads session={auth.parentSession} videos={library.videos} profiles={library.profiles} downloads={saved.downloads} maximum={library.playbackSettings.maxQualityHeight ?? 1080} refresh={saved.refresh} readError={saved.error} />}
+            downloadsSlot={<ParentDownloads videos={library.videos} profiles={library.profiles} downloads={saved.downloads} downloadsEnabled={library.playbackSettings.downloadsEnabled} refresh={saved.refresh} readError={saved.error} />}
             playlistsSlot={<ParentPlaylists playlists={library.playlists} videos={library.videos} onSave={library.savePlaylist} onRemove={library.removePlaylist} />}
             settingsSlot={
               <PlaybackSettingsPanel
@@ -263,6 +277,7 @@ function App() {
             profile={library.activeProfile}
             offlineExpected={saved.downloads.some((item) => item.videoId === nav.selectedVideo?.youtubeVideoId && item.state === 'ready' && item.expiresAt > Date.now())}
             settings={library.effectiveSettings}
+            downloads={childDownloads}
             nextVideo={nav.nextVideo}
             queueLabel={nav.queueLabel}
             retrySignal={nav.retrySignal}

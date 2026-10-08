@@ -360,19 +360,27 @@ export function applyFetchFailure(
 }
 
 /** Parent-facing status line for a channel. */
+/** How long ago a channel was fetched: "Updated 12d ago", or why there is nothing to say yet. */
+export function describeSyncAge(state: ChannelSyncState | undefined, now: Date = new Date()): string {
+  if (!state) return 'Not loaded yet';
+  if (state.lastError) return "Couldn't load videos right now";
+  if (!state.fetchedAt) return 'Not loaded yet';
+  const fetchedAt = new Date(state.fetchedAt).getTime();
+  if (!Number.isFinite(fetchedAt)) return 'Updated';
+  const minutes = Math.floor(Math.max(0, now.getTime() - fetchedAt) / 60000);
+  if (minutes < 1) return 'Updated just now';
+  if (minutes < 60) return `Updated ${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Updated ${hours}h ago`;
+  return `Updated ${Math.floor(hours / 24)}d ago`;
+}
+
 export function describeChannelSync(state: ChannelSyncState | undefined, now: Date = new Date()): string {
   if (!state) return 'Not loaded yet';
   const videos = `${state.videoCount} ${state.videoCount === 1 ? 'video' : 'videos'}`;
   if (state.lastError) return "Couldn't load videos right now · " + videos + ' saved';
   if (!state.fetchedAt) return 'Not loaded yet';
-  const fetchedAt = new Date(state.fetchedAt).getTime();
-  if (!Number.isFinite(fetchedAt)) return `Updated · ${videos}`;
-  const minutes = Math.floor(Math.max(0, now.getTime() - fetchedAt) / 60000);
-  if (minutes < 1) return `Updated just now · ${videos}`;
-  if (minutes < 60) return `Updated ${minutes} min ago · ${videos}`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Updated ${hours}h ago · ${videos}`;
-  return `Updated ${Math.floor(hours / 24)}d ago · ${videos}`;
+  return `${describeSyncAge(state, now)} · ${videos}`;
 }
 
 /**

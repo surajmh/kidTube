@@ -1,7 +1,11 @@
 import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
-import type { PlayerCommandResult, YouTubePlayerModuleEvents, NativeVideoMetadata, NativeChannelMetadata, NativeChannelVideoPage } from './YouTubePlayerModule.type';
+import type { PlayerCommandResult, YouTubePlayerModuleEvents, NativeVideoMetadata, NativeChannelMetadata, NativeChannelVideoPage, NativeChannelSearch, NativeVideoSearch } from './YouTubePlayerModule.type';
 
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
+  /** Removal is a parent action; this authorizes it until the parent session ends. */
+  setParentAuthorization(expiresAt: number): Promise<void>;
+  /** Heights this video can really be saved at, from the stream itself. */
+  getDownloadOptions(videoId: string): Promise<{ heights?: number[] }>;
   getDownloads(): Promise<import('../services/downloadService.type').SavedVideo[]>;
   setDownloadAuthorization(videoIds: string[], expiresAt: number): Promise<void>;
   downloadVideo(videoId: string, maxHeight: number, expiresAt: number): Promise<PlayerCommandResult>;
@@ -11,6 +15,9 @@ declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModu
   getVideoMetadata(videoId: string): Promise<NativeVideoMetadata>;
   resolveChannelId(reference: string): Promise<NativeChannelMetadata>;
   getChannel(reference: string): Promise<NativeChannelMetadata>;
+  /** Parent-only name lookup: up to a handful of matches, never approving anything. */
+  searchChannels(query: string): Promise<NativeChannelSearch>;
+  searchVideos(query: string): Promise<NativeVideoSearch>;
   getChannelVideos(channelId: string, pageToken?: string | null): Promise<NativeChannelVideoPage>;
   /** Milliseconds since boot; unaffected by changes to the device date. */
   getElapsedRealtime(): number;

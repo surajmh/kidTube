@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../ParentFilter/parentFilter.constant';
-import { filterChannels, filterVideos } from './parentContent.helper';
-import { ContentTab } from './parentContent.type';
+import { filterChannels, filterVideos, sortChannels } from './parentContent.helper';
+import type { AddContentKind, ChannelSort, ContentTab } from './parentContent.type';
 import type { UseParentContentInput } from './parentContent.type';
 
 /**
@@ -22,6 +22,8 @@ export function useParentContent({
   const [filters, setFilters] = useState<ParentFilters>(emptyParentFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [adding, setAdding] = useState<AddContentKind | null>(null);
+  const [channelSort, setChannelSort] = useState<ChannelSort>('recent');
 
   /** The nav picks the page; the lists are still written in terms of a tab. */
   const tab: ContentTab =
@@ -33,8 +35,8 @@ export function useParentContent({
   );
 
   const filteredChannels = useMemo(
-    () => filterChannels(channels, filters, accessFor),
-    [channels, filters, accessFor],
+    () => sortChannels(filterChannels(channels, filters, accessFor), channelSort),
+    [channels, filters, accessFor, channelSort],
   );
 
   const selectedChannel = useMemo(
@@ -50,6 +52,10 @@ export function useParentContent({
   const toggleExpanded = useCallback((id: string) => {
     setExpandedId((current) => (current === id ? null : id));
   }, []);
+
+  const toggleChannelSort = useCallback(() => setChannelSort((current) => (current === 'recent' ? 'name' : 'recent')), []);
+
+  const closeAdd = useCallback(() => setAdding(null), []);
 
   const openFilters = useCallback(() => setFiltersOpen(true), []);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
@@ -67,5 +73,10 @@ export function useParentContent({
     filteredChannels,
     selectedChannel,
     recentlyAdded,
+    adding,
+    channelSort,
+    toggleChannelSort,
+    openAdd: setAdding,
+    closeAdd,
   };
 }

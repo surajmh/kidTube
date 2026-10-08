@@ -15,6 +15,10 @@ export type PlaybackSettings = {
   autoplay: boolean;
   /** Parent-set ceiling for adaptive video quality. */
   maxQualityHeight?: number;
+  /** Whether a child may save videos for offline viewing. */
+  downloadsEnabled: boolean;
+  /** How long a saved video stays on the device. */
+  downloadRetentionDays: 7 | 30;
   sponsorBlockEnabled: boolean;
   sponsorBlockCategories: SponsorBlockCategory[];
   dailyLimitMinutes: number | null;

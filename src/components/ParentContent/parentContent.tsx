@@ -1,15 +1,20 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { ParentFilterButton, ParentFilterDrawer } from '../ParentFilter';
 import { PagedGrid } from '../PagedGrid';
+import { FocusablePressable } from '../tv';
 import styles from './parentContent.style';
 import { useParentContent } from './parentContent.hook';
-import { PARENT_CONTENT_PAGE_SIZE, PARENT_CONTENT_TITLES } from './parentContent.constant';
+import { PARENT_CONTENT_PAGE_SIZE, PARENT_CONTENT_SUBTITLES, PARENT_CONTENT_TITLES } from './parentContent.constant';
 import { ContentTab, ParentContentMode, ParentContentProps } from './parentContent.type';
 import { ParentChannelRow } from './parentContent.channelRow';
 import { ParentVideoRow } from './parentContent.videoRow';
 import { ParentChannelPage } from './parentContent.channelPage';
 import { RecentlyAdded } from './parentContent.recent';
+import { ParentContentBanner } from './parentContent.banner';
+import { RecentChannels } from './parentContent.recentChannels';
+import { ChannelListHeader } from './parentContent.listHeader';
 
 export type { ContentTab, ParentContentMode };
 
@@ -20,7 +25,7 @@ export function ParentContentPanel({
   videos,
   approvals,
   categoriesSlot,
-  manualAddSlot,
+  addContentSlot,
   accessFor,
   onRemoveVideo,
   onRemoveChannel,
@@ -45,6 +50,7 @@ export function ParentContentPanel({
     filteredChannels,
     selectedChannel,
     recentlyAdded,
+    adding,
   } = content;
 
   if (selectedChannel) {
@@ -65,11 +71,24 @@ export function ParentContentPanel({
     <View>
       {mode === 'dashboard' ? null : (
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>
-            {PARENT_CONTENT_TITLES[tab]}
-          </Text>
+          <View style={styles.pageHeading}>
+            <Text style={styles.pageTitle}>{PARENT_CONTENT_TITLES[tab]}</Text>
+            {PARENT_CONTENT_SUBTITLES[tab] ? <Text style={styles.pageSubtitle}>{PARENT_CONTENT_SUBTITLES[tab]}</Text> : null}
+          </View>
           {mode === 'categories' ? null : (
-            <ParentFilterButton filters={filters} onPress={content.openFilters} />
+            <View style={styles.pageActions}>
+              {tab === 'channels' || tab === 'videos' ? (
+                <FocusablePressable
+                  accessibilityLabel={tab === 'channels' ? 'Add channel' : 'Add video'}
+                  style={styles.addPill}
+                  onPress={() => content.openAdd(tab === 'channels' ? 'channel' : 'video')}
+                >
+                  <Feather name="plus" size={16} color="#1A1A1A" />
+                  <Text style={styles.addPillText}>Add</Text>
+                </FocusablePressable>
+              ) : null}
+              <ParentFilterButton filters={filters} onPress={content.openFilters} />
+            </View>
           )}
         </View>
       )}
@@ -77,11 +96,18 @@ export function ParentContentPanel({
       {mode === 'categories' ? categoriesSlot : null}
       {mode !== 'categories' && mode !== 'dashboard' ? (
         <>
-          {recentlyAdded.length > 0 ? <RecentlyAdded items={recentlyAdded} /> : null}
-
-          <Text style={styles.listLabel}>
-            {tab === 'channels' ? `CHANNELS · ${filteredChannels.length}` : `VIDEOS · ${filteredVideos.length}`}
-          </Text>
+          {tab === 'channels' ? (
+            <>
+              <ParentContentBanner onAdd={() => content.openAdd('channel')} />
+              {channels.length > 0 ? <RecentChannels channels={channels.slice(0, 3)} videos={videos} syncStateFor={syncStateFor} /> : null}
+              <ChannelListHeader count={filteredChannels.length} sort={content.channelSort} onToggleSort={content.toggleChannelSort} />
+            </>
+          ) : (
+            <>
+              {recentlyAdded.length > 0 ? <RecentlyAdded items={recentlyAdded} /> : null}
+              <Text style={styles.listLabel}>{`VIDEOS · ${filteredVideos.length}`}</Text>
+            </>
+          )}
 
           {tab === 'channels' ? (
             <PagedGrid
@@ -139,7 +165,7 @@ export function ParentContentPanel({
         </>
       ) : null}
 
-      {mode === 'dashboard' && manualAddSlot ? <View style={styles.manualSlot}>{manualAddSlot}</View> : null}
+      {adding && addContentSlot ? addContentSlot(adding, content.closeAdd) : null}
 
       <ParentFilterDrawer
         visible={filtersOpen}

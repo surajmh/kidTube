@@ -21,6 +21,7 @@ export const emptyAppData = (): AppData => ({
   profilePolicies: {},
   overrides: [],
   channelSyncStates: {},
+  downloadOwners: {},
 });
 
 // Reusing the keys the repositories always wrote means existing installs need no migration.
@@ -39,6 +40,7 @@ const keyOf: Record<keyof AppData, string> = {
   profilePolicies: storageKeys.profilePolicies,
   overrides: storageKeys.overrides,
   channelSyncStates: storageKeys.channelSync,
+  downloadOwners: storageKeys.downloadOwners,
 };
 const fields = Object.keys(keyOf) as (keyof AppData)[];
 

@@ -5,7 +5,7 @@ import { KidDestination } from './kidHome.type';
 export const KID_DESTINATIONS: KidDestination[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'channels', label: 'Channels', icon: 'users' },
-  { id: 'recent', label: 'Library', icon: 'film' },
+  { id: 'downloads', label: 'Downloads', icon: 'download' },
   { id: 'playlists', label: 'Playlists', icon: 'list' },
   { id: 'requests', label: 'Ask', icon: 'help-circle' },
 ];
@@ -25,6 +25,10 @@ export const KID_COPY = {
   feedEmptyTitle: 'Nothing here yet',
   feedEmptyCategoryTitle: 'Nothing in this category yet',
   feedEmptyBody: 'Ask a grown-up to add a video for you.',
+  downloadsTitle: 'Downloads',
+  downloadsEmptyTitle: 'Nothing downloaded yet',
+  downloadsEmptyBody: 'Open a video and tap Download to watch it later without internet.',
+  downloadsFailed: "Couldn't save",
   unknownChannel: 'Saved by a grown-up',
 } as const;
 

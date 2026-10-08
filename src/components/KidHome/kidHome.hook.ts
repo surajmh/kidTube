@@ -16,12 +16,13 @@ const SEARCH_DEBOUNCE_MS = 200;
  */
 export function useKidHome({
   library,
-  tab,
+  tab: currentTab,
   onTabChange,
   selectedCategoryId,
   selectedChannelId,
   onSelectChannel,
   channelSyncStateFor,
+  downloadsEnabled = true,
 }: UseKidHomeInput) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
@@ -94,6 +95,7 @@ export function useKidHome({
   );
 
   /** `categories` is not a destination; selecting a chip keeps the child on the feed. */
+  const tab = !downloadsEnabled && currentTab === 'downloads' ? 'home' : currentTab;
   const onFeed = tab === 'home' || tab === 'categories';
 
   const keepWatching: ApprovedVideo[] = useMemo(
@@ -102,6 +104,7 @@ export function useKidHome({
   );
 
   return {
+    tab,
     searching,
     query,
     setQuery,

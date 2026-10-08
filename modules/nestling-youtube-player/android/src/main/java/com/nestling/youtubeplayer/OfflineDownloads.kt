@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
+import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -102,10 +103,53 @@ object OfflineDownloads {
     return rows
   }
 
+  /** The distinct video heights a stream offers, so the child can be shown only real choices. */
+  fun heights(appContext: Context, info: PlaybackInfo, promise: Promise) {
+    manager(appContext)
+    val uri = info.manifestUrl ?: info.videoUrl
+    if (uri == null || (info.manifestUrl == null && info.audioUrl != null)) {
+      promise.resolve(mapOf("heights" to emptyList<Int>())); return
+    }
+    // A single progressive file has exactly one quality.
+    if (info.manifestUrl == null) { promise.resolve(mapOf("heights" to listOfNotNull(info.height))); return }
+    val item = MediaItem.Builder().setMediaId(info.videoId).setUri(Uri.parse(uri)).setMimeType(info.mimeType).build()
+    val helper = DownloadHelper.Factory().setDataSourceFactory(http)
+      .setRenderersFactory(DefaultRenderersFactory(context)).create(item)
+    helper.prepare(object : DownloadHelper.Callback {
+      override fun onPrepared(helper: DownloadHelper, isPlayable: Boolean) {
+        try {
+          val heights = sortedSetOf<Int>()
+          for (period in 0 until helper.periodCount) {
+            val mapped = helper.getMappedTrackInfo(period)
+            for (renderer in 0 until mapped.rendererCount) {
+              if (mapped.getRendererType(renderer) != C.TRACK_TYPE_VIDEO) continue
+              val groups = mapped.getTrackGroups(renderer)
+              for (g in 0 until groups.length) {
+                val group = groups.get(g)
+                for (t in 0 until group.length) group.getFormat(t).height.takeIf { it > 0 }?.let(heights::add)
+              }
+            }
+          }
+          promise.resolve(mapOf("heights" to heights.toList()))
+        } catch (error: Exception) {
+          Log.w("kidTube", "reading qualities failed", error)
+          promise.reject("E_DOWNLOAD", "Could not check the available qualities.", error)
+        } finally {
+          helper.release()
+        }
+      }
+      override fun onPrepareError(helper: DownloadHelper, error: IOException) {
+        Log.w("kidTube", "preparing qualities failed", error)
+        helper.release()
+        promise.reject("E_DOWNLOAD", "Could not check the available qualities. Check your connection and try again.", error)
+      }
+    })
+  }
+
   /** Called on main after stream resolution; authorization is checked again before enqueueing. */
   fun add(appContext: Context, info: PlaybackInfo, maxHeight: Int, expiresAt: Long, authorized: () -> Boolean, promise: Promise) {
     manager(appContext)
-    if (!authorized()) { promise.reject("E_PARENT", "Parent mode is required.", null); return }
+    if (!authorized()) { promise.reject("E_PARENT", "That video is not available to save.", null); return }
     if (preparing.containsKey(info.videoId)) { promise.reject("E_DOWNLOAD", "This video is already being prepared.", null); return }
     if (StatFs(context.filesDir.absolutePath).availableBytes < 64L * 1024 * 1024) {
       promise.reject("E_SPACE", "Free some device storage before saving a video.", null); return
@@ -125,8 +169,10 @@ object OfflineDownloads {
     helper.prepare(object : DownloadHelper.Callback {
       override fun onPrepared(helper: DownloadHelper, isPlayable: Boolean) {
         try {
-          if (!authorized() || preparing[info.videoId] !== helper) throw IllegalStateException("Parent mode is required.")
-          if (!isPlayable) throw IllegalStateException("This video cannot be saved at that quality.")
+          if (!authorized() || preparing[info.videoId] !== helper) throw IllegalStateException("That video is not available to save.")
+          // A single progressive file has no tracks to select, so Media3 always reports it as not
+          // playable; only an adaptive stream can fail this check.
+          if (info.manifestUrl != null && !isPlayable) throw IllegalStateException("This video cannot be saved at that quality.")
           if (info.manifestUrl != null) {
             val hasVideo = (0 until helper.periodCount).any { period ->
               val mapped = helper.getMappedTrackInfo(period)
@@ -142,6 +188,7 @@ object OfflineDownloads {
           DownloadService.sendAddDownload(context, OfflineDownloadService::class.java, request, false)
           promise.resolve(mapOf("accepted" to true))
         } catch (error: Exception) {
+          Log.w("kidTube", "save rejected: manifest=${info.manifestUrl != null} progressiveHeight=${info.height} maxHeight=$maxHeight playable=$isPlayable mime=${info.mimeType}", error)
           promise.reject("E_DOWNLOAD", error.message, error)
         } finally {
           if (preparing[info.videoId] === helper) { preparing.remove(info.videoId); preparingPromises.remove(info.videoId) }
@@ -149,6 +196,7 @@ object OfflineDownloads {
         }
       }
       override fun onPrepareError(helper: DownloadHelper, error: IOException) {
+        Log.w("kidTube", "preparing download failed", error)
         if (preparing[info.videoId] === helper) { preparing.remove(info.videoId); preparingPromises.remove(info.videoId) }
         helper.release()
         promise.reject("E_DOWNLOAD", "Could not prepare this video. Check your connection and try again.", error)

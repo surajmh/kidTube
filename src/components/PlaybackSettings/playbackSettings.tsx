@@ -7,7 +7,7 @@ import { ChildProfile } from '../../types';
 import { colors } from '../theme';
 import styles from './playbackSettings.style';
 import { minutesToInput, minutesToTime } from '../shared/time.helper';
-import { LIMIT_OPTIONS, CATEGORY_LABELS, QUALITY_HEIGHTS, DAY_LABELS } from './playbackSettings.constant';
+import { LIMIT_OPTIONS, CATEGORY_LABELS, QUALITY_HEIGHTS, DAY_LABELS, RETENTION_OPTIONS, DOWNLOADS_TOGGLE_LABEL, DOWNLOADS_HELPER, DOWNLOADS_QUALITY_HELPER } from './playbackSettings.constant';
 import { usePlaybackSettings } from './playbackSettings.hook';
 
 
@@ -35,6 +35,18 @@ export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: {
         </View>
         <ToggleRow label="SponsorBlock" value={settings.sponsorBlockEnabled} onChange={(sponsorBlockEnabled) => patch({ sponsorBlockEnabled })} />
         {settings.sponsorBlockEnabled && <View style={styles.categoryWrap}>{CATEGORY_LABELS.map(([category, label]) => { const selected = settings.sponsorBlockCategories.includes(category); return <Pressable key={category} onPress={() => toggleCategory(category)} style={[styles.category, selected && styles.categorySelected]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}><Feather name={selected ? 'check-square' : 'square'} size={16} color={selected ? colors.ink : colors.muted} /><Text style={[styles.categoryText, selected && styles.categoryTextSelected]}>{label}</Text></Pressable>; })}</View>}
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Downloads</Text>
+        <ToggleRow label={DOWNLOADS_TOGGLE_LABEL} value={settings.downloadsEnabled} onChange={(downloadsEnabled) => patch({ downloadsEnabled })} />
+        <Text style={styles.helper}>{DOWNLOADS_HELPER}</Text>
+        <Text style={styles.helper}>{DOWNLOADS_QUALITY_HELPER}</Text>
+        {settings.downloadsEnabled && <>
+          <Text style={styles.usageHeading}>Keep downloads for</Text>
+          <View style={styles.limitWrap}>
+            {RETENTION_OPTIONS.map((days) => <Pressable key={days} accessibilityRole="radio" accessibilityLabel={`Keep downloads ${days} days`} accessibilityState={{ selected: settings.downloadRetentionDays === days }} onPress={() => patch({ downloadRetentionDays: days })} style={[styles.limitChip, settings.downloadRetentionDays === days && styles.limitChipSelected]}><Text style={[styles.limitText, settings.downloadRetentionDays === days && styles.limitTextSelected]}>{days} days</Text></Pressable>)}
+          </View>
+        </>}
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Daily screen time</Text>

@@ -9,15 +9,17 @@ import styles from './kidHome.style';
 export function BottomNav({
   tab,
   pendingRequestCount,
+  downloadsEnabled = true,
   onChangeTab,
 }: {
   tab: KidTab;
+  downloadsEnabled?: boolean;
   pendingRequestCount: number;
   onChangeTab: (tab: KidTab) => void;
 }) {
   return (
     <View style={styles.bottomNav}>
-      {KID_DESTINATIONS.map((item) => {
+      {KID_DESTINATIONS.filter((item) => downloadsEnabled || item.id !== 'downloads').map((item) => {
         const active = item.id === tab || (item.id === 'home' && tab === 'categories');
         return (
           <FocusablePressable

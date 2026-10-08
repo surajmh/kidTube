@@ -45,6 +45,16 @@ export type NativeChannelMetadata = {
   message?: string;
 };
 
+export type NativeChannelMatch = NativeChannelMetadata & {
+  subscriberCount?: number;
+  videoCount?: number;
+  verified?: boolean;
+};
+
+export type NativeChannelSearch = { results?: NativeChannelMatch[]; failed?: boolean; code?: string; message?: string };
+
+export type NativeVideoSearch = { results?: NativeVideoMetadata[]; failed?: boolean; code?: string; message?: string };
+
 export type NativeChannelVideoPage = {
   channelId?: string;
   videos?: NativeVideoMetadata[];

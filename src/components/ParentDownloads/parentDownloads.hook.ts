@@ -1,23 +1,27 @@
 import { useState } from 'react';
-import { downloadableVideos } from '../../services/downloadService';
-import { QUALITY_HEIGHTS } from './parentDownloads.constant';
-import { ParentDownloadsProps } from './parentDownloads.type';
+import { downloadService } from '../../services/downloadService';
+import { parentDownloadRows } from '../../services/downloadService.helper';
+import { useAppStore } from '../../store/appStore';
+import { DELETE_FAILED } from './parentDownloads.constant';
+import type { DownloadGroup, ParentDownloadsProps } from './parentDownloads.type';
 
-export function useParentDownloads({ videos, profiles, maximum, refresh }: Pick<ParentDownloadsProps, 'videos' | 'profiles' | 'maximum' | 'refresh'>) {
-  const [query, setQuery] = useState('');
-  const [quality, setQuality] = useState(360);
-  const [days, setDays] = useState(7);
+export function useParentDownloads({ profiles, videos, downloads, refresh }: Pick<ParentDownloadsProps, 'profiles' | 'videos' | 'downloads' | 'refresh'>) {
+  const owners = useAppStore((state) => state.downloadOwners);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const approved = downloadableVideos(videos, profiles);
-  const byId = new Map(videos.map((video) => [video.youtubeVideoId, video]));
-  async function run(id: string, action: () => Promise<void>) {
-    setBusy(id); setError('');
-    try { await action(); await refresh(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not save this video.'); }
+  const rows = parentDownloadRows(downloads, owners, profiles.map((profile) => profile.id), videos);
+  const groups: DownloadGroup[] = profiles
+    .map((profile) => ({
+      profile,
+      entries: rows.filter((row) => row.profileId === profile.id && row.item.state !== 'removing').map(({ video, item }) => ({ video, item })),
+    }))
+    .filter((group) => group.entries.length);
+
+  async function remove(profileId: string, videoId: string) {
+    setBusy(`${profileId}:${videoId}`); setError('');
+    try { await downloadService.removeForChild(profileId, videoId); await refresh(); }
+    catch (caught) { setError(caught instanceof Error && caught.message ? caught.message : DELETE_FAILED); }
     finally { setBusy(null); }
   }
-  const choices = QUALITY_HEIGHTS.filter((height) => height <= maximum);
-  const selectedQuality = Math.min(quality, maximum);
-  return { query, setQuery, setQuality, days, setDays, busy, error, approved, byId, run, choices, selectedQuality };
+  return { groups, busy, error, remove };
 }

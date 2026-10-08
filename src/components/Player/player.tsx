@@ -15,6 +15,7 @@ import { BlockedPlayer, ChoiceRow, PlayerHeader, PlayerScrubber } from './player
 import { styles } from '../AppShell/appShell.style';
 import { SecondaryButton } from '../AppShell/appFormControls';
 import { usePlayer } from './player.hook';
+import { PlayerDownload } from './playerDownload';
 import type { PlayerScreenProps } from './player.type';
 
 export function PlayerScreen(props: PlayerScreenProps) {
@@ -134,6 +135,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
           <ChannelAvatar name={video.channelName?.trim() || 'Approved by your parent'} size={34} />
           <Text style={styles.playerChannel}>{video.channelName?.trim() || 'Approved by your parent'}</Text>
         </View>
+        {props.downloads?.enabled ? <PlayerDownload video={video} downloads={props.downloads} /> : null}
         <PlayerStatus player={player} queueLabel={props.queueLabel} />
         {player.policyMessage && player.timeBlocked && onParentOverride ? (
           <FocusablePressable accessibilityLabel="Parent override" style={styles.overrideButton} onPress={onParentOverride}>

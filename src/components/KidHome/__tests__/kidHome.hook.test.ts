@@ -105,10 +105,15 @@ describe('useKidHome', () => {
   it('closes search when the nav changes destination', () => {
     const { result, onTabChange } = setup();
     act(() => result.current.openSearch());
-    act(() => result.current.changeTab('recent'));
+    act(() => result.current.changeTab('downloads'));
     assert.equal(result.current.searching, false);
     expect(onTabChange).toHaveBeenCalledTimes(1);
-    expect(onTabChange).toHaveBeenCalledWith('recent');
+    expect(onTabChange).toHaveBeenCalledWith('downloads');
+  });
+
+  it('treats the downloads tab as home when downloads are turned off', () => {
+    assert.equal(setup({ tab: 'downloads', downloadsEnabled: false }).result.current.tab, 'home');
+    assert.equal(setup({ tab: 'downloads' }).result.current.tab, 'downloads');
   });
 
   it('toggles the profile switcher', () => {

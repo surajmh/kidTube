@@ -19,6 +19,8 @@ export type AppData = {
   profilePolicies: Record<string, ProfilePolicyOverrides>;
   overrides: PlaybackOverride[];
   channelSyncStates: ChannelSyncMap;
+  /** Which children saved each downloaded video (video id -> profile ids). The files themselves are shared. */
+  downloadOwners: Record<string, string[]>;
 };
 
 export type Next<T> = T | ((current: T) => T);

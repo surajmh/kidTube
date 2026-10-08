@@ -7,7 +7,7 @@ import type { ChannelSyncState } from '../../services/content/channelSyncRules.t
 import type { OverridePreset } from '../../services/playbackOverrideService.type';
 import type { ParentSession } from '../../services/auth/parentSession.type';
 import { RequestDecisionInput } from '../ParentRequests';
-import { ContentTab, ParentContentMode } from '../ParentContent';
+import type { ContentTab, ParentContentMode, ParentContentProps } from '../ParentContent';
 
 export type ParentSection =
   | 'home'
@@ -87,7 +87,7 @@ export type ParentShellProps = {
   settingsSlot?: React.ReactNode;
   playlistsSlot?: React.ReactNode;
   downloadsSlot?: React.ReactNode;
-  manualAddSlot?: React.ReactNode;
+  addContentSlot?: ParentContentProps['addContentSlot'];
   /** Startup repair summary, shown only to the parent. */
   notice?: string;
 };

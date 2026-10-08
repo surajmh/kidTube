@@ -78,4 +78,24 @@ describe('useParentContent', () => {
     act(() => result.current.openFilters());
     assert.equal(result.current.filteredVideos, before, 'opening the drawer must not re-filter');
   });
+
+  it('opens and closes the add form for the chosen kind', () => {
+    const { result } = setup();
+    assert.equal(result.current.adding, null);
+    act(() => result.current.openAdd('video'));
+    assert.equal(result.current.adding, 'video');
+    act(() => result.current.closeAdd());
+    assert.equal(result.current.adding, null);
+  });
+
+  it('switches the channel order between recent and A to Z', () => {
+    const { result } = setup({ channels: [
+      { id: 'c1', name: 'Zebra', channelId: 'UC1', approved: true },
+      { id: 'c2', name: 'Apple', channelId: 'UC2', approved: true },
+    ] });
+    assert.deepEqual(result.current.filteredChannels.map((c) => c.name), ['Zebra', 'Apple']);
+    act(() => result.current.toggleChannelSort());
+    assert.equal(result.current.channelSort, 'name');
+    assert.deepEqual(result.current.filteredChannels.map((c) => c.name), ['Apple', 'Zebra']);
+  });
 });

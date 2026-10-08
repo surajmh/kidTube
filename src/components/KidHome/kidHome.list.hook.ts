@@ -1,6 +1,5 @@
 import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FlatList } from 'react-native';
-import { savedVideos } from '../../services/downloadService';
 import { playlistVideos } from '../../services/playlistService';
 import { ApprovedVideo } from '../../types';
 import { VideoCard } from '../youtube/VideoCard';
@@ -8,18 +7,17 @@ import { EMPTY_VIDEOS } from './kidHome.constant';
 import { useKidHome } from './kidHome.hook';
 import { KidHomeProps } from './kidHome.type';
 
-/** The screen's list wiring: playlists, saved videos, which videos the FlatList shows, and its scroll reset. */
+/** The screen's list wiring: playlists, which videos the FlatList shows, and its scroll reset. */
 export function useKidHomeList(props: KidHomeProps, kid: ReturnType<typeof useKidHome>) {
-  const { library, tab, onVideoPress } = props;
+  const { library, onVideoPress } = props;
+  const tab = kid.tab;
   const playlists = useMemo(() => (props.playlists ?? []).map((playlist) => ({ ...playlist, videos: playlistVideos(playlist, library.videos) })).filter((playlist) => playlist.videos.length > 0), [props.playlists, library.videos]);
-  const saved = savedVideos(props.downloads ?? [], library.videos);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === props.selectedPlaylistId);
   const list = useRef<FlatList<ApprovedVideo>>(null);
   let videos = EMPTY_VIDEOS;
   if (kid.searching) videos = kid.query.trim() ? kid.results.videos : EMPTY_VIDEOS;
   else if (kid.onFeed) videos = kid.feedVideos;
   else if (tab === 'playlists') videos = selectedPlaylist?.videos ?? EMPTY_VIDEOS;
-  else if (tab === 'recent') videos = library.recentVideos;
   else if (tab === 'channels' && kid.selectedChannel) videos = kid.channelVideos;
   const renderVideo = useCallback(({ item }: { item: ApprovedVideo }) => createElement(VideoCard, {
     video: item,
@@ -41,5 +39,5 @@ export function useKidHomeList(props: KidHomeProps, kid: ReturnType<typeof useKi
     return counts;
   }, [library.videos]);
 
-  return { playlists, saved, selectedPlaylist, list, videos, renderVideo, channelVideoCounts };
+  return { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts };
 }

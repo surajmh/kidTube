@@ -6,6 +6,21 @@ export const PARENT_CONTENT_COPY = {
   emptyBody: 'Try clearing the filters.',
 } as const;
 
+/** What each list page says it is for. */
+export const PARENT_CONTENT_SUBTITLES = {
+  channels: 'Manage the channels your children can watch.',
+  videos: 'Manage the videos your children can watch.',
+  categories: '',
+} as const;
+
+export const CHANNEL_BANNER = {
+  title: 'Find great kids channels',
+  body: 'Add safe and educational channels for your kids.',
+  action: 'Add a channel',
+} as const;
+
+export const CHANNEL_SORT_LABELS = { recent: 'Recently added', name: 'A–Z' } as const;
+
 /** Page headings, keyed by mode. */
 export const PARENT_CONTENT_TITLES = {
   channels: 'Channels',

@@ -1,5 +1,5 @@
-/** Download quality heights offered, capped by the family maximum. */
-export const QUALITY_HEIGHTS = [144, 240, 360, 480, 720, 1080];
-
-/** Retention periods, in days. */
-export const RETENTION_DAYS = [7, 30];
+export const DOWNLOADS_TITLE = 'Downloads';
+export const DOWNLOADS_SUBTITLE = 'Videos your children have saved for offline. Deleting removes it for that child only; the file leaves the device when no child has it.';
+export const DOWNLOADS_EMPTY = 'No saved videos yet. Children can save videos from the player.';
+export const DOWNLOADS_OFF_NOTE = 'Saving is turned off in Playback settings.';
+export const DELETE_FAILED = 'Could not delete this download. Try again.';

@@ -13,6 +13,7 @@ export const storageKeys = {
   profilePolicies: '@nestling/profile-policies',
   overrides: '@nestling/playback-overrides',
   channelSync: '@nestling/channel-sync',
+  downloadOwners: '@nestling/download-owners',
 } as const;
 
 /** Earlier builds stored playback settings here; `loadAppData` moves them to `storageKeys.settings`. */

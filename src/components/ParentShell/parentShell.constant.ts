@@ -9,16 +9,6 @@ export const SECTIONS: Array<{ id: ParentSection; label: string; icon: keyof typ
   { id: 'requests', label: 'Requests', icon: 'inbox' },
 ];
 
-/** Reached from the dashboard rather than the nav bar. */
-export const SHORTCUTS: Array<{ id: ParentSection; label: string; hint: string; icon: keyof typeof Feather.glyphMap }> = [
-  { id: 'downloads', label: 'Downloads', hint: 'Save approved videos for travel', icon: 'download' },
-  { id: 'playlists', label: 'Playlists', hint: 'Create and order video collections', icon: 'list' },
-  { id: 'children', label: 'Children', hint: 'Profiles, limits and rules', icon: 'users' },
-  { id: 'activity', label: 'Activity', hint: 'What has been watched', icon: 'bar-chart-2' },
-  { id: 'settings', label: 'Playback', hint: 'Screen time and bedtime', icon: 'sliders' },
-  { id: 'security', label: 'Security', hint: 'Change the parent PIN', icon: 'lock' },
-];
-
 /**
  * How close to the bottom counts as "nearing the end", in pixels.
  *

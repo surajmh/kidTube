@@ -1,10 +1,9 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { ApprovedVideo } from '../../types';
 import { shuffleVideos } from '../../services/playlistService';
 import { FocusablePressable } from '../tv';
-import { VideoCard } from '../youtube/VideoCard';
 import type { Playlist } from './kidHome.type';
 import { ICON } from './kidHome.constant';
 import { Chip, Empty } from './kidHome.primitives';
@@ -47,18 +46,5 @@ export function PlaylistsSection({
         </FocusablePressable>
       ))}
     </>
-  );
-}
-
-/** The Library tab header: videos saved for travel, then the "recently watched" heading. */
-export function SavedShelf({ saved, onVideoPress }: { saved: ApprovedVideo[]; onVideoPress: (video: ApprovedVideo) => void }) {
-  return (
-    <View>
-      <Text style={styles.shelfTitle}>Saved for travel</Text>
-      {saved.length ? <ScrollView horizontal contentContainerStyle={styles.shelf} showsHorizontalScrollIndicator={false}>
-        {saved.map((video) => <VideoCard key={`saved-${video.id}`} video={video} compact onPress={onVideoPress} />)}
-      </ScrollView> : <Text style={styles.noticeText}>Ask a grown-up to save videos before your trip.</Text>}
-      <Text style={styles.shelfTitle}>Recently watched</Text>
-    </View>
   );
 }

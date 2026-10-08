@@ -6,6 +6,8 @@ import { ParentFilters } from '../../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../../ParentFilter/parentFilter.constant';
 import {
   approveLabelFor,
+  categoryNames,
+  sortChannels,
   filterChannels,
   filterVideos,
 } from '../parentContent.helper';
@@ -105,5 +107,37 @@ describe('approveLabelFor', () => {
 
   it('never matches an approval when the target id is absent', () => {
     assert.deepEqual(approveLabelFor([permanent, onceOnChannel], {}), []);
+  });
+});
+
+describe('sortChannels', () => {
+  const list = [
+    { id: '1', name: 'Zebra TV', channelId: 'UC1', approved: true },
+    { id: '2', name: 'apple kids', channelId: 'UC2', approved: true },
+    { id: '3', name: 'Mango', channelId: 'UC3', approved: true },
+  ];
+
+  it('keeps library order, newest first, for "recent"', () => {
+    assert.deepEqual(sortChannels(list, 'recent').map((c) => c.id), ['1', '2', '3']);
+  });
+
+  it('sorts by name ignoring case, without touching the original list', () => {
+    assert.deepEqual(sortChannels(list, 'name').map((c) => c.id), ['2', '3', '1']);
+    assert.deepEqual(list.map((c) => c.id), ['1', '2', '3']);
+  });
+});
+
+describe('categoryNames', () => {
+  const categories = [
+    { id: 'edu', name: 'Educational' },
+    { id: 'music', name: 'Music' },
+  ] as never[];
+
+  it('lists assigned category names in assignment order and skips unknown ids', () => {
+    assert.deepEqual(categoryNames(['music', 'gone', 'edu'], categories), ['Music', 'Educational']);
+  });
+
+  it('is empty when nothing is assigned', () => {
+    assert.deepEqual(categoryNames(undefined, categories), []);
   });
 });

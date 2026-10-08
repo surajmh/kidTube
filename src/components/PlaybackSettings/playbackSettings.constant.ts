@@ -19,3 +19,8 @@ export const CATEGORY_LABELS: Array<[SponsorBlockCategory, string]> = [
 export const QUALITY_HEIGHTS = [144, 240, 360, 480, 720, 1080];
 
 export const DAY_LABELS = [['0', 'Sun'], ['1', 'Mon'], ['2', 'Tue'], ['3', 'Wed'], ['4', 'Thu'], ['5', 'Fri'], ['6', 'Sat']];
+
+export const RETENTION_OPTIONS = [7, 30] as const;
+export const DOWNLOADS_TOGGLE_LABEL = 'Let children save videos for offline';
+export const DOWNLOADS_HELPER = 'Children can save videos they are allowed to watch. Saved videos still follow bedtime, daily limits and blocks.';
+export const DOWNLOADS_QUALITY_HELPER = 'Children can only choose qualities up to this limit.';

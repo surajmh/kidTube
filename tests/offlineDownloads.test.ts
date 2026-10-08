@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { downloadService, downloadableVideos, savedVideos, setNativeDownloadModule } from '../src/services/downloadService';
+import { useAppStore } from '../src/store/appStore';
+import { downloadService, savedVideos, setNativeDownloadModule } from '../src/services/downloadService';
 import type { SavedVideo } from '../src/services/downloadService.type';
 import { parentSessionService } from '../src/services/auth/parentSession';
 import { contentAccessService } from '../src/services/contentAccessService';
@@ -13,54 +14,129 @@ import { localDayKey, PlaybackPolicyService } from '../src/services/playbackPoli
 import { SponsorBlockService } from '../src/services/sponsorBlockService';
 import { ApprovedVideo } from '../src/types';
 
-it('saving needs parent authorization and approval; saved bytes never grant child access', async () => {
-  await AsyncStorage.clear();
-  const a: ApprovedVideo = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'A', approved: true };
-  const b: ApprovedVideo = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'B', approved: false };
-  const videos = [a, b];
-  const profiles = [{ id: 'kid', name: 'Kid', avatar: '' }];
-  whitelistService.setContent(videos, []);
-  contentAccessService.hydrate({ approvals: [], rules: {} });
-  const rows: SavedVideo[] = [{ videoId: a.youtubeVideoId, state: 'ready', expiresAt: Date.now() + 100_000, bytes: 100, percent: 100 }];
-  const downloadVideo = jest.fn(async () => ({ accepted: true }));
-  const authorization = jest.fn(async () => {});
-  const removeDownload = jest.fn(async () => {});
-  const clearDownloads = jest.fn(async () => {});
-  setNativeDownloadModule({ getDownloads: async () => rows, downloadVideo, setDownloadAuthorization: authorization, removeDownload, clearDownloads });
-  // Avoid a network request for the best-effort SponsorBlock cache fill.
-  await AsyncStorage.setItem('@nestling/sponsorblock/aaaaaaaaaaa', JSON.stringify({ fetchedAt: Date.now(), segments: [] }));
-  const session = parentSessionService.grant();
-  try {
-    assert.deepEqual(downloadableVideos(videos, profiles), [a]);
-    const before = Date.now();
-    await downloadService.save(session, a, videos, profiles, 360, 7);
-    expect(authorization).toHaveBeenLastCalledWith([a.youtubeVideoId], session.expiresAt);
-    expect(downloadVideo).toHaveBeenCalledTimes(1);
-    const [id, height, expires] = (downloadVideo.mock.calls as unknown as [string, number, number][])[0];
-    assert.equal(id, a.youtubeVideoId); assert.equal(height, 360);
-    assert.ok(expires >= before + 7 * 86400_000 && expires <= Date.now() + 7 * 86400_000);
-    await assert.rejects(downloadService.save(session, b, videos, profiles, 360, 7), /Approve this video/);
-    await assert.rejects(downloadService.save(session, a, videos, profiles, 4000, 7), /valid download/);
-    const allowed = () => kidContentLibraryService.build({ profileId: 'kid', videos, channels: [], categories: defaultCategories }).videos;
-    assert.deepEqual(savedVideos(await downloadService.list(), allowed()), [a]);
-    assert.deepEqual(savedVideos(rows, allowed(), rows[0].expiresAt), []);
-    assert.deepEqual(savedVideos([{ ...rows[0], state: 'downloading' }], allowed()), []);
-    contentAccessService.setRules({ kid: { ...defaultChildContentRules('kid'), blockedVideoIds: [a.youtubeVideoId] } });
-    assert.deepEqual(savedVideos(rows, allowed()), []);
-    await assert.rejects(downloadService.save(session, a, videos, profiles, 360, 7), /Approve this video/);
-    await downloadService.remove(session, a.youtubeVideoId, videos, profiles);
-    expect(removeDownload).toHaveBeenCalledWith(a.youtubeVideoId);
-    parentSessionService.end();
-    await downloadService.authorize(null, videos, profiles);
-    expect(authorization).toHaveBeenLastCalledWith([], 0);
-    await assert.rejects(downloadService.save(session, a, videos, profiles, 360, 7), /Parent PIN required/);
-    await assert.rejects(downloadService.remove(session, a.youtubeVideoId, videos, profiles), /Parent PIN required/);
-    await downloadService.clear();
-    expect(clearDownloads).toHaveBeenCalledTimes(1);
-  } finally {
+const A: ApprovedVideo = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'A', approved: true };
+const B: ApprovedVideo = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'B', approved: false };
+
+function fakeModule(rows: SavedVideo[] = [], heights?: number[]) {
+  const fake = {
+    getDownloads: jest.fn(async () => rows),
+    downloadVideo: jest.fn(async () => ({ accepted: true })),
+    setDownloadAuthorization: jest.fn(async () => {}),
+    setParentAuthorization: jest.fn(async () => {}),
+    getDownloadOptions: jest.fn(async () => ({ heights })),
+    removeDownload: jest.fn(async () => {}),
+    clearDownloads: jest.fn(async () => {}),
+  };
+  setNativeDownloadModule(fake);
+  return fake;
+}
+const owners = () => useAppStore.getState().downloadOwners;
+
+describe('child downloads', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    useAppStore.setState({ downloadOwners: {} });
+    whitelistService.setContent([A, B], []);
+    contentAccessService.hydrate({ approvals: [], rules: {} });
+    // Avoid a network request for the best-effort SponsorBlock cache fill.
+    await AsyncStorage.setItem('@nestling/sponsorblock/aaaaaaaaaaa', JSON.stringify({ fetchedAt: Date.now(), segments: [] }));
+  });
+  afterEach(() => {
     parentSessionService.end(); setNativeDownloadModule(null);
     contentAccessService.hydrate({ approvals: [], rules: {} }); whitelistService.setContent([], []);
-  }
+    useAppStore.setState({ downloadOwners: {} });
+  });
+  const settings = { ...defaultPlaybackSettings, downloadsEnabled: true, downloadRetentionDays: 7 as const, maxQualityHeight: 480 };
+  const save = (profileId: string, video = A, height = 360, override = {}) => downloadService.save({ profileId, video, height, settings: { ...settings, ...override } });
+
+  it('a child saves an approved video, scoped and short-lived, and is recorded as owner', async () => {
+    const fake = fakeModule();
+    const before = Date.now();
+    await save('kid');
+    const [ids, authExpiry] = (fake.setDownloadAuthorization.mock.calls as unknown as [string[], number][])[0];
+    assert.deepEqual(ids, [A.youtubeVideoId]);
+    assert.ok(authExpiry > before && authExpiry <= Date.now() + 5 * 60_000);
+    const [id, height, expires] = (fake.downloadVideo.mock.calls as unknown as [string, number, number][])[0];
+    assert.equal(id, A.youtubeVideoId); assert.equal(height, 360);
+    assert.ok(expires >= before + 7 * 86400_000 && expires <= Date.now() + 7 * 86400_000);
+    assert.deepEqual(owners(), { [A.youtubeVideoId]: ['kid'] });
+  });
+
+  it('honours the 30 day retention setting', async () => {
+    const fake = fakeModule();
+    const before = Date.now();
+    await save('kid', A, 360, { downloadRetentionDays: 30 });
+    const expires = (fake.downloadVideo.mock.calls as unknown as [string, number, number][])[0][2];
+    assert.ok(expires >= before + 30 * 86400_000 && expires <= Date.now() + 30 * 86400_000);
+  });
+
+  it('refuses when disabled, not allowed, above the ceiling or an invalid height', async () => {
+    const fake = fakeModule();
+    await assert.rejects(save('kid', A, 360, { downloadsEnabled: false }), /turned off/);
+    await assert.rejects(save('kid', B), /not available/);
+    contentAccessService.setRules({ kid: { ...defaultChildContentRules('kid'), blockedVideoIds: [A.youtubeVideoId] } });
+    await assert.rejects(save('kid'), /not available/);
+    contentAccessService.setRules({});
+    await assert.rejects(save('kid', A, 720), /valid download/);
+    await assert.rejects(save('kid', A, 4000), /valid download/);
+    await assert.rejects(save('kid', A, 333), /valid download/);
+    expect(fake.downloadVideo).not.toHaveBeenCalled();
+    assert.deepEqual(owners(), {});
+  });
+
+  it('a second child saving an existing video only adds a claim', async () => {
+    const fake = fakeModule([{ videoId: A.youtubeVideoId, state: 'ready', expiresAt: Date.now() + 100_000, bytes: 1, percent: 100 }]);
+    useAppStore.setState({ downloadOwners: { [A.youtubeVideoId]: ['kid'] } });
+    await save('sibling');
+    expect(fake.downloadVideo).not.toHaveBeenCalled();
+    assert.deepEqual(owners(), { [A.youtubeVideoId]: ['kid', 'sibling'] });
+  });
+
+  it('removeForChild needs a parent session and keeps the file until the last owner leaves', async () => {
+    const fake = fakeModule();
+    useAppStore.setState({ downloadOwners: { [A.youtubeVideoId]: ['kid', 'sibling'] } });
+    await assert.rejects(downloadService.removeForChild('kid', A.youtubeVideoId), /Parent PIN required/);
+    assert.deepEqual(owners(), { [A.youtubeVideoId]: ['kid', 'sibling'] });
+    parentSessionService.grant();
+    await downloadService.removeForChild('kid', A.youtubeVideoId);
+    assert.deepEqual(owners(), { [A.youtubeVideoId]: ['sibling'] });
+    expect(fake.removeDownload).not.toHaveBeenCalled();
+    await downloadService.removeForChild('sibling', A.youtubeVideoId);
+    assert.deepEqual(owners(), {});
+    expect(fake.removeDownload).toHaveBeenCalledWith(A.youtubeVideoId);
+  });
+
+  it('dropProfile removes only orphaned files; clear empties owners', async () => {
+    const fake = fakeModule();
+    useAppStore.setState({ downloadOwners: { [A.youtubeVideoId]: ['kid'], [B.youtubeVideoId]: ['kid', 'sibling'] } });
+    await assert.rejects(downloadService.dropProfile('kid'), /Parent PIN required/);
+    parentSessionService.grant();
+    await downloadService.dropProfile('kid');
+    assert.deepEqual(owners(), { [B.youtubeVideoId]: ['sibling'] });
+    expect(fake.removeDownload).toHaveBeenCalledTimes(1);
+    expect(fake.removeDownload).toHaveBeenCalledWith(A.youtubeVideoId);
+    await downloadService.clear();
+    assert.deepEqual(owners(), {});
+    expect(fake.clearDownloads).toHaveBeenCalledTimes(1);
+  });
+
+  it('options use native heights and fall back to steps within the ceiling', async () => {
+    fakeModule([], [144, 360, 720]);
+    assert.deepEqual(await downloadService.options(A, 480), [144, 360]);
+    fakeModule([], undefined);
+    assert.deepEqual(await downloadService.options(A, 480), [144, 240, 360, 480]);
+  });
+
+  it('saved bytes never grant child access', async () => {
+    const rows: SavedVideo[] = [{ videoId: A.youtubeVideoId, state: 'ready', expiresAt: Date.now() + 100_000, bytes: 100, percent: 100 }];
+    fakeModule(rows);
+    const allowed = () => kidContentLibraryService.build({ profileId: 'kid', videos: [A, B], channels: [], categories: defaultCategories }).videos;
+    assert.deepEqual(savedVideos(await downloadService.list(), allowed()), [A]);
+    assert.deepEqual(savedVideos(rows, allowed(), rows[0].expiresAt), []);
+    assert.deepEqual(savedVideos([{ ...rows[0], state: 'downloading' }], allowed()), []);
+    contentAccessService.setRules({ kid: { ...defaultChildContentRules('kid'), blockedVideoIds: [A.youtubeVideoId] } });
+    assert.deepEqual(savedVideos(rows, allowed()), []);
+  });
 });
 
 it('continuing saved playback rechecks expiry, blocks, schedules and persisted viewing limits without fetching', async () => {

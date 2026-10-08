@@ -1,50 +1,20 @@
 import { useState } from 'react';
-import type { ResolvedChannel } from '../../services/channelSyncService.type';
 import { extractChannelId, extractVideoId } from '../../services/contentValidation';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { id } from '../../utils/id';
-import type { ChannelFormProps, ChannelLookupFormProps, VideoFormProps } from './manualAddContent.type';
+import type { AddContentModalProps, ChannelFormProps, VideoFormProps } from './addContentModal.type';
 
-export function useManualAddSection({ onAddChannel, onAddVideo }: { onAddChannel: (channel: ApprovedChannel) => Promise<void>; onAddVideo: (video: ApprovedVideo) => Promise<void> }) {
-  const [adding, setAdding] = useState<'channel' | 'video' | null>(null);
-  const cancel = () => setAdding(null);
-  const saveChannel = async (channel: ApprovedChannel) => { await onAddChannel(channel); setAdding(null); };
-  const saveVideo = async (video: ApprovedVideo) => { await onAddVideo(video); setAdding(null); };
-  return { adding, setAdding, cancel, saveChannel, saveVideo };
+/** Saving closes the modal; a failed save throws, so the form shows the error and stays open. */
+export function useAddContentModal({ onAddChannel, onAddVideo, onClose }: Pick<AddContentModalProps, 'onAddChannel' | 'onAddVideo' | 'onClose'>) {
+  const saveChannel = async (channel: ApprovedChannel) => { await onAddChannel(channel); onClose(); };
+  const saveVideo = async (video: ApprovedVideo) => { await onAddVideo(video); onClose(); };
+  return { saveChannel, saveVideo };
 }
 
-export function useChannelAddFlow() {
+/** Both flows start with the lookup and fall back to the plain form on request. */
+export function useAddMode() {
   const [mode, setMode] = useState<'lookup' | 'manual'>('lookup');
   return { mode, switchToManual: () => setMode('manual') };
-}
-
-export function useChannelLookupForm({ existingChannels, onSave, onLookup }: Pick<ChannelLookupFormProps, 'existingChannels' | 'onSave' | 'onLookup'>) {
-  const [input, setInput] = useState('');
-  const [resolved, setResolved] = useState<ResolvedChannel | null>(null);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  async function lookUp() {
-    setBusy(true);
-    setError('');
-    setResolved(null);
-    try {
-      setResolved(await onLookup(input));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'That channel could not be looked up.');
-    } finally {
-      setBusy(false);
-    }
-  }
-  const duplicate = resolved ? existingChannels.find((channel) => channel.channelId === resolved.youtubeChannelId) : undefined;
-  async function save() {
-    if (!resolved) { setError('Look up the channel first.'); return; }
-    if (duplicate) { setError(`${duplicate.name} is already in your library.`); return; }
-    await onSave({ id: id('channel'), name: resolved.name, channelId: resolved.youtubeChannelId, thumbnailUrl: resolved.thumbnailUrl, sourceUrl: `https://www.youtube.com/channel/${resolved.youtubeChannelId}`, approved: true });
-  }
-  function changeInput(value: string) {
-    setInput(value); setResolved(null); setError('');
-  }
-  return { input, changeInput, resolved, error, busy, lookUp, save };
 }
 
 export function useChannelForm(onSave: ChannelFormProps['onSave']) {
