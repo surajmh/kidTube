@@ -9,10 +9,8 @@ import type { ChildContentRules } from '../types';
  *
  * Layer order:
  *  1. explicit child blocks            -> child_blocked
- *  2. parent candidates (unapproved)   -> not_approved
- *  3. global whitelist approval, or a child/family grant -> allowed
- *  4. expired grant                    -> expired
- *  5. disabled category                -> category_blocked
+ *  2. global whitelist approval, or a child/family grant -> allowed (otherwise not_approved / expired)
+ *  3. disabled category                -> category_blocked
  */
 export type ContentAccessOutcome = 'allowed' | 'expired' | 'not_approved' | 'category_blocked' | 'child_blocked';
 
@@ -20,8 +18,6 @@ export type ContentAccessInput = {
   videoId?: string;
   channelId?: string;
   categoryIds?: string[];
-  /** Unapproved library rows a parent added as "ask a parent" candidates. */
-  isCandidate?: boolean;
 };
 
 export type ApprovalState = 'allowed' | 'expired' | 'none';

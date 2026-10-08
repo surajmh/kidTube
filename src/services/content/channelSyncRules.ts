@@ -238,7 +238,6 @@ export function toApprovedVideo(
     sourceUrl: `https://www.youtube.com/watch?v=${video.youtubeVideoId}`,
     // Not individually approved: eligibility comes from the approved channel (§8).
     approved: false,
-    candidate: false,
     syncedFromChannel: true,
   };
 }
@@ -249,7 +248,7 @@ export function toApprovedVideo(
  * Guarantees:
  *  - one row per video id — a refresh never duplicates;
  *  - a parent's existing decisions survive (individual approval, category
- *    membership and the "ask a parent" candidate flag are kept);
+ *    membership are kept);
  *  - only metadata is refreshed on rows that already exist;
  *  - nothing already stored is dropped, so a shorter page cannot lose videos.
  */

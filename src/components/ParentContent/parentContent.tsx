@@ -9,7 +9,6 @@ import { ContentTab, ParentContentMode, ParentContentProps } from './parentConte
 import { ParentChannelRow } from './parentContent.channelRow';
 import { ParentVideoRow } from './parentContent.videoRow';
 import { ParentChannelPage } from './parentContent.channelPage';
-import { ParentContentSearch } from './parentContent.search';
 import { RecentlyAdded } from './parentContent.recent';
 
 export type { ContentTab, ParentContentMode };
@@ -27,9 +26,6 @@ export function ParentContentPanel({
   onRemoveChannel,
   onToggleVideoCategory,
   onToggleChannelCategory,
-  onSearch,
-  onSaveCandidate,
-  onApproveCandidate,
   syncStateFor,
   channelBusy,
   onOpenChannelVideos,
@@ -39,7 +35,7 @@ export function ParentContentPanel({
   onRefreshChannel,
   onLoadMoreChannel,
 }: ParentContentProps) {
-  const content = useParentContent({ videos, channels, mode, selectedChannelId, accessFor, onSearch });
+  const content = useParentContent({ videos, channels, mode, selectedChannelId, accessFor });
   const {
     tab,
     filters,
@@ -137,19 +133,12 @@ export function ParentContentPanel({
           {(tab === 'channels' ? filteredChannels.length : filteredVideos.length) === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.rowTitle}>Nothing matches yet</Text>
-              <Text style={styles.rowMeta}>Try clearing the filters, or use parent search below.</Text>
+              <Text style={styles.rowMeta}>Try clearing the filters.</Text>
             </View>
           ) : null}
         </>
       ) : null}
 
-      {mode !== 'dashboard' ? null : (
-        <ParentContentSearch
-          content={content}
-          onSaveCandidate={onSaveCandidate}
-          onApproveCandidate={onApproveCandidate}
-        />
-      )}
       {mode === 'dashboard' && manualAddSlot ? <View style={styles.manualSlot}>{manualAddSlot}</View> : null}
 
       <ParentFilterDrawer

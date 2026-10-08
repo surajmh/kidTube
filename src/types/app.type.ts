@@ -30,8 +30,6 @@ export type ApprovedVideo = {
   approved: boolean;
   /** Phase 4 content categories. A video can belong to several. */
   categoryIds?: string[];
-  /** True when a parent added this as an unapproved candidate a child may ask for. */
-  candidate?: boolean;
   /**
    * True when the row exists only because its channel was approved. These are not
    * individually approved (`approved` stays false): eligibility still comes from

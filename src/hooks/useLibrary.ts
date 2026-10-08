@@ -20,14 +20,13 @@ import { playbackOverrideService } from '../services/playbackOverrideService';
 import type { OverridePreset } from '../services/playbackOverrideService.type';
 import { kidContentLibraryService } from '../services/kidContentLibraryService';
 import { enrichLibrary } from '../services/content/nativeVideoMetadata';
-import { parentContentSearchService } from '../services/parentContentSearchService';
 import { parentContentService } from '../services/parentContentService';
 import { requestService } from '../services/requestService';
 import { playerAdapter } from '../services/playerAdapterInstance';
 import { ApprovedChannel,ApprovedVideo,ChildProfile } from '../types';
 import type { PlaybackSettings } from '../types';
 import { defaultPlaybackSettings } from '../constants/playback.constant';
-import type { ContentApproval,ContentCandidate,ProfilePolicyOverrides,RequestType } from '../types';
+import type { ContentApproval,ProfilePolicyOverrides,RequestType } from '../types';
 import { defaultCategories } from '../constants/parentalControls.constant';
 import { normaliseSettings } from '../repositories/playbackSettingsRepository';
 import { playbackPolicy } from '../services/playbackPolicyService';
@@ -428,63 +427,6 @@ export function useLibrary({
     setRequests(await requestService.clearResolved(parentSession, requests));
   }
 
-  async function searchContent(query: string) {
-    if (!parentSession) throw new Error('Parent mode is required.');
-    return parentContentSearchService.search(parentSession, query, { videos, channels });
-  }
-
-  async function saveCandidate(candidate: ContentCandidate) {
-    if (!parentSession) return;
-    parentContentSearchService.assertNotPlayable(candidate);
-    const next = await parentContentService.addCandidate(candidate, { videos, channels });
-    setVideos(next.videos);
-    setChannels(next.channels);
-  }
-
-  async function approveCandidate(candidate: ContentCandidate) {
-    if (!parentSession) return;
-    parentContentSearchService.assertNotPlayable(candidate);
-    if (candidate.type === 'video' && candidate.youtubeVideoId) {
-      const existing = videos.find((video) => video.youtubeVideoId === candidate.youtubeVideoId);
-      const next = existing
-        ? await parentContentService.setVideoApproved(existing.id, true, videos)
-        : await parentContentService.addVideo(
-            {
-              id: id('video'),
-              youtubeVideoId: candidate.youtubeVideoId,
-              title: candidate.title,
-              thumbnailUrl: candidate.thumbnailUrl,
-              channelName: candidate.channelName,
-              sourceUrl: `https://www.youtube.com/watch?v=${candidate.youtubeVideoId}`,
-              approved: true,
-            },
-            videos,
-          );
-      setVideos(next);
-      return;
-    }
-    if (candidate.type === 'channel' && candidate.youtubeChannelId) {
-      const existing = channels.find((channel) => channel.channelId === candidate.youtubeChannelId);
-      const next = existing
-        ? await parentContentService.setChannelApproved(existing.id, true, channels)
-        : await parentContentService.addChannel(
-            {
-              id: id('channel'),
-              name: candidate.title,
-              channelId: candidate.youtubeChannelId,
-              thumbnailUrl: candidate.thumbnailUrl,
-              sourceUrl: `https://www.youtube.com/channel/${candidate.youtubeChannelId}`,
-              approved: true,
-            },
-            channels,
-          );
-      setChannels(next);
-      // Approving a channel is the moment its uploads become eligible, so fetch them now.
-      const approved = next.find((channel) => channel.channelId === candidate.youtubeChannelId);
-      if (approved) void syncNewlyApprovedChannel(approved);
-    }
-  }
-
   async function removeVideo(video: ApprovedVideo) {
     if (!parentSession) return;
     setVideos(await parentContentService.removeVideo(video.id, videos));
@@ -763,9 +705,6 @@ export function useLibrary({
     decideRequest,
     deleteRequest,
     clearResolvedRequests,
-    searchContent,
-    saveCandidate,
-    approveCandidate,
     removeVideo,
     removeChannel,
     openChannelVideos,

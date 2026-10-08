@@ -39,7 +39,7 @@ export function upsertApprovedContent(
     if (existing) {
       return {
         videos: videos.map((video) =>
-          video.id === existing.id ? { ...video, approved: true, candidate: false, title: video.title || request.title || video.title } : video,
+          video.id === existing.id ? { ...video, approved: true, title: video.title || request.title || video.title } : video,
         ),
         channels,
       };

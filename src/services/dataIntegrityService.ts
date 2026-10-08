@@ -108,8 +108,16 @@ export function repairLocalData(input: LocalDataSnapshot, now = new Date()): Rep
 
   const profileIds = new Set(profiles.map((profile) => profile.id));
 
-  const library = sanitizeLibrary(input.videos ?? [], input.channels ?? []);
-  if (library.videos.length !== (input.videos ?? []).length) repair('videos', 'removed invalid or duplicate videos');
+  // Parent content search is gone. Rows it saved as unapproved "candidates" were never playable on
+  // their own, but an approved channel would now make one playable, so they are dropped instead.
+  const storedVideos = (input.videos ?? []).filter((video) => {
+    const legacy = video as { candidate?: boolean; approved?: boolean };
+    return !(legacy.candidate === true && !legacy.approved);
+  });
+  if (storedVideos.length !== (input.videos ?? []).length) repair('videos', 'removed items saved by the old content search');
+
+  const library = sanitizeLibrary(storedVideos, input.channels ?? []);
+  if (library.videos.length !== storedVideos.length) repair('videos', 'removed invalid or duplicate videos');
   if (library.channels.length !== (input.channels ?? []).length) repair('channels', 'removed invalid or duplicate channels');
 
   const categories = sanitizeCategories(input.categories ?? []);

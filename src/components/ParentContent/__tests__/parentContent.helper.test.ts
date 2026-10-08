@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
-import type { ContentApproval, ContentCandidate } from '../../../types';
+import type { ContentApproval } from '../../../types';
 import { fallbackCategoryId } from '../../../constants/parentalControls.constant';
 import { ParentFilters } from '../../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../../ParentFilter/parentFilter.constant';
 import {
-  applyResultTitle,
   approveLabelFor,
-  candidateKey,
   filterChannels,
   filterVideos,
 } from '../parentContent.helper';
@@ -107,34 +105,5 @@ describe('approveLabelFor', () => {
 
   it('never matches an approval when the target id is absent', () => {
     assert.deepEqual(approveLabelFor([permanent, onceOnChannel], {}), []);
-  });
-});
-
-describe('candidate titles', () => {
-  const candidate: ContentCandidate = {
-    type: 'video',
-    title: 'Video abc',
-    youtubeVideoId: 'abc',
-    source: 'link',
-    alreadyKnown: false,
-  };
-
-  it('keys on the id when there is one', () => {
-    assert.equal(candidateKey(candidate), 'abc');
-  });
-
-  it('falls back to the title when there is no id', () => {
-    assert.equal(candidateKey({ ...candidate, youtubeVideoId: undefined }), 'Video abc');
-  });
-
-  it('applies an edited title without mutating the original', () => {
-    const edited = applyResultTitle(candidate, { abc: '  Counting song  ' });
-    assert.equal(edited.title, 'Counting song');
-    assert.equal(candidate.title, 'Video abc');
-  });
-
-  it('keeps the original title when the edit is blank', () => {
-    assert.equal(applyResultTitle(candidate, { abc: '   ' }).title, 'Video abc');
-    assert.equal(applyResultTitle(candidate, {}).title, 'Video abc');
   });
 });

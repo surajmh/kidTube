@@ -1,5 +1,5 @@
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import type { ContentApproval, ContentCandidate } from '../../types';
+import type { ContentApproval } from '../../types';
 import { resolvedCategoryIds } from '../../utils/parentalControls.helper';
 import { describeApprovalExpiry } from '../../services/approvalRules';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
@@ -58,18 +58,4 @@ export function filterChannels(
     if (filters.childId && !accessFor(filters.childId, { channelId: channel.channelId })) return false;
     return true;
   });
-}
-
-/** A candidate's key for the editable-title map: the id if it has one, else its own title. */
-export function candidateKey(candidate: ContentCandidate): string {
-  return candidate.youtubeVideoId ?? candidate.youtubeChannelId ?? candidate.title;
-}
-
-/** Applies a parent's edited title to a candidate without mutating the original. */
-export function applyResultTitle(
-  candidate: ContentCandidate,
-  titles: Record<string, string>,
-): ContentCandidate {
-  const title = titles[candidateKey(candidate)]?.trim();
-  return title ? { ...candidate, title } : candidate;
 }

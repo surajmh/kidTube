@@ -95,16 +95,3 @@ export type PlaybackOverride = {
   /** `Until bedtime` also unlocks allowed-hours and bedtime restrictions until it expires. */
   grantsScheduleAccess: boolean;
 };
-
-/** Result of a parent content search. Never playable until a parent approves it. */
-export type ContentCandidate = {
-  type: RequestType;
-  youtubeVideoId?: string;
-  youtubeChannelId?: string;
-  title: string;
-  channelName?: string;
-  thumbnailUrl?: string;
-  source: 'link' | 'id';
-  /** Candidate is already in the parent library when true. */
-  alreadyKnown: boolean;
-};

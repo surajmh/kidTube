@@ -61,7 +61,7 @@ export const ParentChannelRow = React.memo(function ParentChannelRow({
         <View style={styles.tagRow}>
           <View style={styles.approvalTag}>
             <Feather name={channel.approved ? 'check' : 'clock'} size={11} color={colors.mintDark} />
-            <Text style={styles.approvalTagText}>{channel.approved ? 'Approved' : 'Candidate'}</Text>
+            <Text style={styles.approvalTagText}>{channel.approved ? 'Approved' : 'Not approved'}</Text>
           </View>
           {/* Never claim "0 videos": an unloaded channel is unknown, not empty. */}
           {channel.approved && hasVideoInfo ? (

@@ -138,7 +138,7 @@ export function VideoRulesCard({
               <View style={styles.ruleInfo}>
                 <Text style={styles.rowTitle} numberOfLines={1}>{video.title}</Text>
                 <Text style={styles.rowMeta} numberOfLines={1}>
-                  {video.approved && !video.candidate ? 'Approved family-wide' : 'Not approved family-wide'}
+                  {video.approved ? 'Approved family-wide' : 'Not approved family-wide'}
                 </Text>
               </View>
               <FocusablePressable

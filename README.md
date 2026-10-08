@@ -50,8 +50,8 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
   of any family default (daily limit, allowed hours, bedtime, autoplay, SponsorBlock).
 - **Screen time & schedule**: daily limits, allowed-hours windows, bedtime, warnings at
   10/5/1 minutes remaining, and bounded temporary overrides (+15 min, +30 min, until bedtime).
-- **Content management**: paste a YouTube link or ID to save a candidate or approve it;
-  approved channels sync their uploads (paginated, cached, quota-aware).
+- **Content management**: add channels and videos by link, then approve them; approved channels
+  sync their uploads (paginated, cached, quota-aware).
 - **Offline downloads** — Parent Mode → Downloads saves approved videos at a selected quality
   for 7 or 30 days. Kid Mode → Recently watched → Saved for travel plays completed downloads.
   Files stay in private app storage excluded from Android backup. Saved videos still obey each

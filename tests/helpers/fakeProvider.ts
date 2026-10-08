@@ -83,7 +83,6 @@ export function syncedVideo(videoId: string, channelId = channelA, title = `Stor
     channelId,
     channelName: 'Story Time',
     approved: false,
-    candidate: false,
     syncedFromChannel: true,
   };
 }

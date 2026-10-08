@@ -21,7 +21,7 @@ export function useKidNavigation({
   setScreen,
   pinModalVisible,
   setPinModalVisible,
-  exitParentMode,
+  onParentBack,
   commitPendingHistory,
   setupStep,
   activeProfile,
@@ -31,7 +31,8 @@ export function useKidNavigation({
   setScreen: (screen: Screen) => void;
   pinModalVisible: boolean;
   setPinModalVisible: (visible: boolean) => void;
-  exitParentMode: () => void;
+  /** Android back inside Parent Mode: one level up, and out to Kid Mode from the top. */
+  onParentBack: () => void;
   commitPendingHistory: () => void;
   setupStep: 'pin' | 'profile' | null;
   activeProfile: ChildProfile | undefined;
@@ -61,7 +62,7 @@ export function useKidNavigation({
       if (overrideForProfileId) { setOverrideForProfileId(null); return true; }
       if (pinModalVisible) { setPinModalVisible(false); return true; }
       if (screen === 'player') { commitPendingHistory(); setScreen('kid'); return true; }
-      if (screen === 'parent') { exitParentMode(); return true; }
+      if (screen === 'parent') { onParentBack(); return true; }
       if (kidPlaylistId) { setKidPlaylistId(null); return true; }
       if (kidTab !== 'home' || kidCategoryId || kidChannelId) {
         setKidTab('home');

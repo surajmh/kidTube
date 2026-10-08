@@ -45,8 +45,8 @@ export const ParentVideoRow = React.memo(function ParentVideoRow({
         </Text>
         <View style={styles.tagRow}>
           <View style={styles.approvalTag}>
-            <Feather name={video.approved && !video.candidate ? 'check' : 'clock'} size={11} color={colors.mintDark} />
-            <Text style={styles.approvalTagText}>{video.approved && !video.candidate ? 'Approved' : 'Can be asked for'}</Text>
+            <Feather name={video.approved ? 'check' : 'clock'} size={11} color={colors.mintDark} />
+            <Text style={styles.approvalTagText}>{video.approved ? 'Approved' : 'Not approved'}</Text>
           </View>
           {expiry.map((label, index) => (
             <View key={`${label}-${index}`} style={styles.expiryTag}>

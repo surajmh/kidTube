@@ -125,26 +125,22 @@ export class ContentAccessService {
   evaluate(profileId: string, input: ContentAccessInput, now = new Date()): ContentAccessOutcome {
     const indexed = this.getIndexedRules(profileId);
     const { rules } = indexed;
-    const { video, videoId, channelId } = this.resolveVideoAndIdentifiers(input);
+    const { videoId, channelId } = this.resolveVideoAndIdentifiers(input);
 
     // 1. Explicit child blocks always win.
     if (videoId && indexed.blockedVideoIds.has(videoId)) return 'child_blocked';
     if (channelId && indexed.blockedChannelIds.has(channelId)) return 'child_blocked';
 
-    const isCandidate = input.isCandidate ?? video?.candidate === true;
     const approvalState = this.resolveApprovalState(profileId, { videoId, channelId }, now);
     const childGranted = this.isChildGranted(profileId, { videoId, channelId });
 
-    // 2. Parent search results stay unplayable until a parent approves or grants them.
-    if (isCandidate && approvalState !== 'allowed' && !childGranted) return 'not_approved';
-
-    // 3. Global approval, a temporary/permanent grant, or a child-specific rule.
+    // 2. Global approval, a temporary/permanent grant, or a child-specific rule.
     const globallyApproved = rules.inheritGlobalApprovals && whitelistService.isVideoAllowed(videoId ?? '', channelId);
     if (!globallyApproved && !childGranted && approvalState !== 'allowed') {
       return approvalState === 'expired' ? 'expired' : 'not_approved';
     }
 
-    // 4. Disabled category for this child.
+    // 3. Disabled category for this child.
     const categoryIds = input.categoryIds ?? whitelistService.categoryIdsFor(videoId, channelId);
     if (categoryIds.some((categoryId) => indexed.blockedCategoryIds.has(categoryId))) return 'category_blocked';
 

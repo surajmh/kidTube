@@ -1,10 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import type { ContentCandidate } from '../../types';
 import { ParentFilters } from '../ParentFilter/parentFilter.type';
 import { emptyParentFilters } from '../ParentFilter/parentFilter.constant';
-import { PARENT_CONTENT_COPY } from './parentContent.constant';
-import { applyResultTitle, candidateKey, filterChannels, filterVideos } from './parentContent.helper';
+import { filterChannels, filterVideos } from './parentContent.helper';
 import { ContentTab } from './parentContent.type';
 import type { UseParentContentInput } from './parentContent.type';
 
@@ -20,18 +18,10 @@ export function useParentContent({
   mode,
   selectedChannelId,
   accessFor,
-  onSearch,
 }: UseParentContentInput) {
   const [filters, setFilters] = useState<ParentFilters>(emptyParentFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<ContentCandidate[] | null>(null);
-  const [searchError, setSearchError] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [resultTitles, setResultTitles] = useState<Record<string, string>>({});
 
   /** The nav picks the page; the lists are still written in terms of a tab. */
   const tab: ContentTab =
@@ -57,33 +47,6 @@ export function useParentContent({
     [tab, channels, videos],
   );
 
-  /** A candidate carrying whatever title the parent typed over it. */
-  const titled = useCallback(
-    (candidate: ContentCandidate) => applyResultTitle(candidate, resultTitles),
-    [resultTitles],
-  );
-
-  const setResultTitle = useCallback((candidate: ContentCandidate, title: string) => {
-    setResultTitles((current) => ({ ...current, [candidateKey(candidate)]: title }));
-  }, []);
-
-  const runSearch = useCallback(async () => {
-    setSearching(true);
-    setSearchError('');
-    setNotice('');
-    try {
-      const found = await onSearch(searchQuery);
-      setResults(found);
-      if (!found.length) setSearchError(PARENT_CONTENT_COPY.noIdFound);
-    } catch (caught) {
-      // A failed lookup must not leave stale results on screen looking approvable.
-      setResults(null);
-      setSearchError(caught instanceof Error ? caught.message : PARENT_CONTENT_COPY.searchFailed);
-    } finally {
-      setSearching(false);
-    }
-  }, [onSearch, searchQuery]);
-
   const toggleExpanded = useCallback((id: string) => {
     setExpandedId((current) => (current === id ? null : id));
   }, []);
@@ -104,15 +67,5 @@ export function useParentContent({
     filteredChannels,
     selectedChannel,
     recentlyAdded,
-    searchQuery,
-    setSearchQuery,
-    results,
-    searchError,
-    searching,
-    notice,
-    setNotice,
-    titled,
-    setResultTitle,
-    runSearch,
   };
 }

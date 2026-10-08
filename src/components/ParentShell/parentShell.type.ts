@@ -1,7 +1,7 @@
 import React from 'react';
 import { ApprovedChannel, ApprovedVideo, ChildProfile, WatchHistory } from '../../types';
 import type { PlaybackSettings, ScreenTimeUsage } from '../../types';
-import type { ContentApproval, ContentCandidate, ContentCategory, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../../types';
+import type { ContentApproval, ContentCategory, ContentRequest, PlaybackOverride, ProfilePolicyOverrides } from '../../types';
 import type { ChildRulesMap } from '../../services/childRulesService.type';
 import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
 import type { OverridePreset } from '../../services/playbackOverrideService.type';
@@ -48,9 +48,6 @@ export type ParentShellActions = {
   onRemoveChannel: (channel: ApprovedChannel) => Promise<void>;
   onToggleVideoCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => Promise<void>;
   onToggleChannelCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => Promise<void>;
-  onSearchContent: (query: string) => Promise<ContentCandidate[]>;
-  onSaveCandidate: (candidate: ContentCandidate) => Promise<void>;
-  onApproveCandidate: (candidate: ContentCandidate) => Promise<void>;
   syncStateFor: (channelId: string) => ChannelSyncState | undefined;
   channelBusy: (channelId: string) => boolean;
   onOpenChannelVideos: (channel: ApprovedChannel) => void;

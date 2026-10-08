@@ -22,6 +22,7 @@ import {
 } from './src/components/AppShell';
 import { useLibrary } from './src/hooks/useLibrary';
 import { useParentAuth } from './src/hooks/useParentAuth';
+import { parentBackAction } from './src/hooks/useKidNavigation.helper';
 import { useKidNavigation } from './src/hooks/useKidNavigation';
 import type { Screen } from './src/hooks/useKidNavigation.type';
 import { useWatchHistory } from './src/hooks/useWatchHistory';
@@ -39,6 +40,7 @@ function App() {
   const setSetupStepRef = useRef<(step: 'pin' | 'profile' | null) => void>(() => undefined);
   const onResetAllRef = useRef<() => void>(() => undefined);
   const onOverrideGrantedRef = useRef<() => void>(() => undefined);
+  const parentBackRef = useRef<() => void>(() => undefined);
 
   const auth = useParentAuth({
     screen,
@@ -65,13 +67,28 @@ function App() {
     setScreen,
     pinModalVisible: auth.pinModalVisible,
     setPinModalVisible: auth.setPinModalVisible,
-    exitParentMode: auth.exitParentMode,
+    onParentBack: () => parentBackRef.current(),
     commitPendingHistory: watchHistory.commitPendingHistory,
     setupStep: library.setupStep,
     activeProfile: library.activeProfile,
     kidLibrary: library.kidLibrary,
   });
 
+  /** Ends the parent session and returns to Kid Mode; clearing the session alone leaves a blank screen. */
+  function leaveParentMode() {
+    auth.exitParentMode();
+    setParentSection('home');
+    nav.setParentChannelId(null);
+    setScreen('kid');
+  }
+
+  // Back steps up one level at a time, and only the top level leaves Parent Mode.
+  parentBackRef.current = () => {
+    const action = parentBackAction(Boolean(nav.parentChannelId), parentSection);
+    if (action === 'close-channel') nav.setParentChannelId(null);
+    else if (action === 'go-home') setParentSection('home');
+    else leaveParentMode();
+  };
   setSetupStepRef.current = library.setSetupStep;
   onOverrideGrantedRef.current = nav.onOverrideGranted;
   onResetAllRef.current = () => {
@@ -171,7 +188,7 @@ function App() {
               history: library.history,
             }}
             actions={{
-              onExit: auth.exitParentMode,
+              onExit: leaveParentMode,
               onDecideRequest: library.decideRequest,
               onDeleteRequest: library.deleteRequest,
               onClearResolved: library.clearResolvedRequests,
@@ -179,9 +196,6 @@ function App() {
               onRemoveChannel: library.removeChannel,
               onToggleVideoCategory: library.toggleVideoCategory,
               onToggleChannelCategory: library.toggleChannelCategory,
-              onSearchContent: library.searchContent,
-              onSaveCandidate: library.saveCandidate,
-              onApproveCandidate: library.approveCandidate,
               syncStateFor: library.syncStateFor,
               channelBusy: library.channelBusy,
               onOpenChannelVideos: (channel) => void library.openChannelVideos(channel),

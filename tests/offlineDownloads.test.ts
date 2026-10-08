@@ -16,7 +16,7 @@ import { ApprovedVideo } from '../src/types';
 it('saving needs parent authorization and approval; saved bytes never grant child access', async () => {
   await AsyncStorage.clear();
   const a: ApprovedVideo = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'A', approved: true };
-  const b: ApprovedVideo = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'B', approved: false, candidate: true };
+  const b: ApprovedVideo = { id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'B', approved: false };
   const videos = [a, b];
   const profiles = [{ id: 'kid', name: 'Kid', avatar: '' }];
   whitelistService.setContent(videos, []);

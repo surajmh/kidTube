@@ -118,9 +118,6 @@ export function ParentShell({
             onRemoveChannel={actions.onRemoveChannel}
             onToggleVideoCategory={actions.onToggleVideoCategory}
             onToggleChannelCategory={actions.onToggleChannelCategory}
-            onSearch={actions.onSearchContent}
-            onSaveCandidate={actions.onSaveCandidate}
-            onApproveCandidate={actions.onApproveCandidate}
             syncStateFor={actions.syncStateFor}
             channelBusy={actions.channelBusy}
             onOpenChannelVideos={actions.onOpenChannelVideos}

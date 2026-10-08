@@ -149,7 +149,6 @@ describe('merge: duplicates, refresh and parent decisions (§5, §6)', () => {
   it('stores fetched videos as not individually approved', () => {
     const created = toApprovedVideo(video(0), { channelId: channelA, channelName: 'Story Time' });
     assert.equal(created.approved, false);
-    assert.equal(created.candidate, false);
     assert.equal(created.syncedFromChannel, true);
     assert.equal(created.channelId, channelA);
     assert.equal(created.duration, 300);
