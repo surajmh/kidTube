@@ -293,8 +293,8 @@ export function usePlayer({
     setShowThumbnailCover(true);
     stoppedByPolicy.current = false;
     lastPlayheadMs.current = null;
-    void playerAdapter
-      .play(video.youtubeVideoId)
+    void resumableAdapter
+      .resume(video.youtubeVideoId)
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 

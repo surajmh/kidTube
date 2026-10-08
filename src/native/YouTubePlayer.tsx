@@ -29,12 +29,15 @@ export function YouTubePlayer({ onEnded, onError, videoId, autoplay = true, ...p
     // A rejected `play()` (the native allow list refusing this id, or any other startup failure)
     // must reach the same error handling as a mid-playback failure — silently swallowing it left
     // the screen looking like it was still loading, forever, with no way out.
+    let active = true;
     void nativeYouTubePlayerAdapter.play(videoId).catch((error: unknown) => {
+      if (!active) return;
       const code = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
       const message = error instanceof Error ? error.message : undefined;
       onErrorRef.current?.({ nativeEvent: { code, message } });
     });
     return () => {
+      active = false;
       void nativeYouTubePlayerAdapter.stop().catch(() => undefined);
     };
   }, [autoplay, videoId]);
