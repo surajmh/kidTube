@@ -1,14 +1,17 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
+
 import { DOWNLOAD_LIST_COPY } from './downloadList.constant';
-import styles from './downloadList.style';
+import useStyles from './downloadList.style';
 import type { SheetOption } from './downloadList.type';
 
 /** A bottom sheet of choices, used for the sort order and for a row's "…" menu. */
 export function DownloadSheet({ visible, title, options, onClose }: { visible: boolean; title?: string; options: SheetOption[]; onClose: () => void }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <Pressable accessibilityLabel={DOWNLOAD_LIST_COPY.cancel} style={styles.scrim} onPress={onClose}>

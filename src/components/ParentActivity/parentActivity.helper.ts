@@ -2,10 +2,10 @@ import type { Feather } from '@expo/vector-icons';
 import { colors } from '../theme';
 
 /** Icon and colour for a content request's status; anything but pending/approved reads as declined. */
-export function requestStatusVisual(status: string): { icon: keyof typeof Feather.glyphMap; color: string } {
-  if (status === 'pending') return { icon: 'clock', color: colors.yellow };
-  if (status === 'approved') return { icon: 'check-circle', color: colors.mintDark };
-  return { icon: 'x-circle', color: colors.danger };
+export function requestStatusVisual(status: string, palette = colors): { icon: keyof typeof Feather.glyphMap; color: string } {
+  if (status === 'pending') return { icon: 'clock', color: palette.yellow };
+  if (status === 'approved') return { icon: 'check-circle', color: palette.mintDark };
+  return { icon: 'x-circle', color: palette.danger };
 }
 
 /**

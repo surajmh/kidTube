@@ -5,7 +5,7 @@ import type { PlaybackSettings } from '../../types';
 import type { ProfilePolicyOverrides } from '../../types';
 import { describeProfilePolicy } from '../../services/profilePolicyService';
 import { FocusablePressable } from '../tv';
-import styles from './parentChildren.style';
+import useStyles from './parentChildren.style';
 import { minutesToTime } from './parentChildren.helper';
 import { LIMIT_OPTIONS } from './parentChildren.constant';
 import { AllowedWindowEditor } from './parentChildren.allowedWindow';
@@ -27,6 +27,7 @@ export function LimitsCard({
   patch: (patch: ProfilePolicyOverrides) => Promise<void>;
   onSetPolicy: (profileId: string, patch: ProfilePolicyOverrides | null) => Promise<void>;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>

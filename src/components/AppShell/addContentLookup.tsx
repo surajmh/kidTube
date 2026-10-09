@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -8,15 +9,17 @@ import { compactCount, formatLength } from '../../services/contentLookupService.
 import { canonicalChannelUrl, canonicalVideoUrl } from '../../services/contentValidation';
 import { id } from '../../utils/id';
 import { FocusablePressable } from '../tv';
-import { colors } from '../theme';
+
 import { ChannelAvatar } from '../youtube/VideoCard';
-import { styles } from './appShell.style';
+import { useStyles as useStyles } from './appShell.style';
 import { CHANNEL_EXAMPLES, LOOKUP_COPY } from './addContentLookup.constant';
 import { useMatchLookup } from './addContentLookup.hook';
 import type { ChannelLookupProps, LookupFrameProps, VideoLookupProps } from './addContentModal.type';
 
 /** The channel flow: type or paste anything, pick the match, approve. */
 export function ChannelLookup({ existingChannels, onFind, onSave, onCancel, onSwitchToManual }: ChannelLookupProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const copy = LOOKUP_COPY.channel;
   const lookup = useMatchLookup<ChannelMatch>({ find: onFind, keyOf: (match) => match.youtubeChannelId });
 
@@ -69,6 +72,8 @@ export function ChannelLookup({ existingChannels, onFind, onSave, onCancel, onSw
 
 /** The video flow, same shape as the channel one. */
 export function VideoLookup({ onFind, onSave, onCancel, onSwitchToManual }: VideoLookupProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const copy = LOOKUP_COPY.video;
   const lookup = useMatchLookup<VideoMatch>({ find: onFind, keyOf: (match) => match.youtubeVideoId });
 
@@ -122,6 +127,8 @@ function channelFacts(match: ChannelMatch) {
 
 /** The input, example chips, match list, allow toggle and buttons both flows share. */
 function LookupFrame({ copy, lookup, examples, keyboardType, onCancel, onApprove, onSwitchToManual, children }: LookupFrameProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { query, changeQuery, busy, saving, error, selected, allow, setAllow } = lookup;
   const approveLabel = allow ? copy.approve : copy.saveOnly;
   return (

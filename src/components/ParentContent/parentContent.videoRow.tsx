@@ -1,12 +1,13 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedVideo } from '../../types';
 import type { ContentApproval, ContentCategory } from '../../types';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 import { CategoryEditor } from './parentContent.categoryEditor';
 import { useVideoRow } from './parentContent.row.hook';
 
@@ -28,6 +29,8 @@ export const ParentVideoRow = React.memo(function ParentVideoRow({
   onToggleCategory: (video: ApprovedVideo, categoryId: string, assigned: boolean) => void;
   onRemove: (video: ApprovedVideo) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const expiry = useVideoRow(approvals, video);
 
   return (

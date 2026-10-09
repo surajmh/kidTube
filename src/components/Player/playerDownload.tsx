@@ -1,24 +1,27 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { ActivityIndicator, Modal, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
+
 import { DOWNLOAD_COPY } from './playerDownload.constant';
 import { downloadView, idleLabel, progressLabel, qualityLabel } from './playerDownload.helper';
 import { usePlayerDownload } from './playerDownload.hook';
-import styles from './playerDownload.style';
+import useStyles from './playerDownload.style';
 import type { PlayerDownloadProps } from './playerDownload.type';
 
 export function PlayerDownload(props: PlayerDownloadProps) {
+  const styles = useStyles();
+  const { yt, colors } = useTheme();
   const { item, busy, choices, message, press, choose, cancel } = usePlayerDownload(props);
   const view = downloadView(item);
 
   if (view === 'ready') {
     return (
       <View style={styles.wrap}>
-        <View accessibilityLabel={DOWNLOAD_COPY.downloaded} style={styles.button}>
-          <Feather name="check" size={18} color={yt.text} />
-          <Text style={styles.label}>{DOWNLOAD_COPY.downloaded}</Text>
+        <View accessibilityLabel={DOWNLOAD_COPY.downloaded} style={[styles.button, styles.saved]}>
+          <Feather name="check" size={18} color={colors.mintDark} />
+          <View><Text style={[styles.label, { color: colors.mintDark }]}>{DOWNLOAD_COPY.downloaded}</Text><Text style={styles.savedMeta}>{item?.bytes ? `${Math.round(item.bytes / 1024 / 1024)} MB · ` : ''}Available offline</Text></View>
         </View>
       </View>
     );

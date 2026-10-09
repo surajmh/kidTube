@@ -1,15 +1,18 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Alert,Text,TextInput,View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
 import { Avatar,avatarIcons,avatarOptions } from '../Avatar';
-import { colors } from '../theme';
-import { styles } from './appShell.style';
+
+import { useStyles as useStyles } from './appShell.style';
 import { PrimaryButton,SecondaryButton } from './appFormControls';
 import { useProfileManager } from './profileManager.hook';
 import type { ProfileManagerProps } from './profileManager.type';
 
 export function ProfileManager({ profiles, activeProfileId, setActiveProfileId, onChange, onDelete }: ProfileManagerProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { name, setName, avatar, setAvatar, editingId, error, beginEdit, cancelEdit, save } = useProfileManager(profiles, onChange);
   return (
     <View>

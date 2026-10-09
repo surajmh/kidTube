@@ -1,9 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
-import { yt } from '../youtube/theme';
 
 /** Channel video list styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   wrap: { marginTop: 6, width: '100%' },
   headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 },
   status: { color: colors.muted, flex: 1, fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
@@ -34,4 +34,9 @@ const styles = StyleSheet.create({
   loadMoreText: { color: colors.ink, fontSize: 13, fontWeight: '800' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

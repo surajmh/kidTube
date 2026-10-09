@@ -2,6 +2,7 @@ import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
 import type { PlayerCommandResult, YouTubePlayerModuleEvents, NativeVideoMetadata, NativeChannelMetadata, NativeChannelVideoPage, NativeChannelSearch, NativeVideoSearch } from './YouTubePlayerModule.type';
 
 declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModuleEvents> {
+  readonly managesBackgroundPlayback?: boolean;
   /** Removal is a parent action; this authorizes it until the parent session ends. */
   setParentAuthorization(expiresAt: number): Promise<void>;
   /** Heights this video can really be saved at, from the stream itself. */
@@ -25,6 +26,9 @@ declare class NestlingYouTubePlayerModule extends NativeModule<YouTubePlayerModu
   derivePinHash(pin: string, saltHex: string, iterations: number): Promise<{ hash?: string; failed?: boolean }>;
   /** Fail-closed allow list: native refuses ids that are not in it. */
   setAllowedVideoIds(videoIds: string[]): Promise<PlayerCommandResult>;
+  enterPictureInPicture(): Promise<PlayerCommandResult>;
+  setPlaybackAuthorization(videoId: string, profileId: string, date: string, usedMs: number, acknowledgedMs: number, remainingMs: number, stopAt: number, backgroundAudio: boolean): Promise<void>;
+  getPlaybackUsage(): Promise<import('../types').ScreenTimeUsage[]>;
   play(videoId: string): Promise<PlayerCommandResult>;
   pause(): Promise<PlayerCommandResult>;
   resume(videoId: string): Promise<PlayerCommandResult>;

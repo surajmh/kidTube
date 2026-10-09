@@ -32,3 +32,20 @@ it('ignores rejected start commands after a switch or unmount', async () => {
     expect(onError).toHaveBeenCalledTimes(1);
   } finally { view.unmount(); }
 });
+
+it('awaits authorization and never starts a video replaced while authorization was pending', async () => {
+  jest.clearAllMocks();
+  const authorize: (() => void)[] = [];
+  const beforePlay = () => new Promise<void>((resolve) => authorize.push(resolve));
+  (nativeYouTubePlayerAdapter.play as jest.Mock).mockResolvedValue(undefined);
+  const view = render(<YouTubePlayer videoId="aaaaaaaaaaa" beforePlay={beforePlay} />);
+  try {
+    expect(nativeYouTubePlayerAdapter.play).not.toHaveBeenCalled();
+    view.rerender(<YouTubePlayer videoId="bbbbbbbbbbb" beforePlay={beforePlay} />);
+    await act(async () => authorize[0]());
+    expect(nativeYouTubePlayerAdapter.play).not.toHaveBeenCalled();
+    await act(async () => authorize[1]());
+    expect(nativeYouTubePlayerAdapter.play).toHaveBeenCalledTimes(1);
+    expect(nativeYouTubePlayerAdapter.play).toHaveBeenCalledWith('bbbbbbbbbbb');
+  } finally { view.unmount(); }
+});

@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../youtube/theme';
 
 /** Parent home dashboard styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   childCard: { alignItems: 'center', backgroundColor: yt.surface, borderRadius: 20, flexDirection: 'row', gap: 14, marginTop: 18, padding: 12 },
   childInfo: { flex: 1 },
   childName: { color: yt.text, fontSize: 18, fontWeight: '700' },
@@ -32,4 +33,9 @@ const styles = StyleSheet.create({
   tileHint: { color: yt.textDim, fontSize: 12.5, lineHeight: 17, marginTop: 3 },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

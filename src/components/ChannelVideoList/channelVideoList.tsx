@@ -1,12 +1,13 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedVideo } from '../../types';
 import { describeChannelSync } from '../../services/content/channelSyncRules';
-import { colors, cardTints } from '../theme';
+
 import { formatDuration } from '../shared/duration.helper';
-import styles from './channelVideoList.style';
+import useStyles from './channelVideoList.style';
 import { channelListState, isLoadingMore, videoCountLabel } from './channelVideoList.helper';
 import { CHANNEL_LIST_COPY, CHANNEL_LIST_PAGE_SIZE } from './channelVideoList.constant';
 import { ChannelVideoListProps } from './channelVideoList.type';
@@ -36,6 +37,8 @@ export function ChannelVideoList({
   onLoadMore,
   variant,
 }: ChannelVideoListProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const parent = variant === 'parent';
   const listState = channelListState({ busy, videoCount: videos.length, hasError: Boolean(errorMessage) });
   const loading = listState === 'loading';
@@ -151,6 +154,8 @@ const ChannelVideoRow = React.memo(function ChannelVideoRow({
   video: ApprovedVideo;
   index: number;
 }) {
+  const styles = useStyles();
+  const { colors, cardTints } = useTheme();
   return (
     <View style={[styles.row, { backgroundColor: cardTints[index % cardTints.length] }]}>
       {video.thumbnailUrl ? (

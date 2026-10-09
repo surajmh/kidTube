@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -5,9 +6,9 @@ import type { ApprovedVideo } from '../../types';
 import { shuffleVideos } from '../../services/playlistService';
 import { FocusablePressable } from '../tv';
 import type { Playlist } from './kidHome.type';
-import { ICON } from './kidHome.constant';
+
 import { Chip, Empty } from './kidHome.primitives';
-import styles from './kidHome.style';
+import useStyles from './kidHome.style';
 
 /** The Playlists tab header: either the list of playlists or the chosen playlist's controls. */
 export function PlaylistsSection({
@@ -21,6 +22,8 @@ export function PlaylistsSection({
   onSelectPlaylist?: (id: string | null) => void;
   onPlayPlaylist?: (videos: ApprovedVideo[], name: string) => void;
 }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   if (selectedPlaylist) {
     return (
       <View>

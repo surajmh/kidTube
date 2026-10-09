@@ -1,10 +1,11 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FocusablePressable } from '../tv';
-import { colors } from '../theme';
-import { styles } from './appShell.style';
+
+import { useStyles as useStyles } from './appShell.style';
 import { Field, FormCard } from './appFormControls';
 import { ChannelLookup, VideoLookup } from './addContentLookup';
 import { LOOKUP_COPY } from './addContentLookup.constant';
@@ -13,6 +14,8 @@ import type { AddContentModalProps, ChannelAddFlowProps, ChannelFormProps, Video
 
 /** Full-screen form for adding one channel or video, closed from the corner button. */
 export function AddContentModal({ kind, channels, onAddChannel, onAddVideo, onFindChannels, onFindVideos, onClose }: AddContentModalProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { saveChannel, saveVideo } = useAddContentModal({ onAddChannel, onAddVideo, onClose });
   const copy = LOOKUP_COPY[kind];
   return (
@@ -55,6 +58,7 @@ function VideoAddFlow({ channels, onFind, onSave, onCancel }: VideoAddFlowProps)
 
 /** Fallback for when the lookup cannot reach YouTube: every detail typed by hand. */
 function ChannelForm({ onSave }: ChannelFormProps) {
+  const styles = useStyles();
   const { name, setName, channelId, setChannelId, sourceUrl, setSourceUrl, thumbnailUrl, setThumbnailUrl, error, save } = useChannelForm(onSave);
   return <FormCard subtitle="This lets videos from this channel appear in Kid Mode." onSave={save}>
     <Field label="Channel name" value={name} onChangeText={setName} placeholder="e.g. Bluey" />
@@ -66,6 +70,7 @@ function ChannelForm({ onSave }: ChannelFormProps) {
 }
 
 function VideoForm({ channels, onSave }: VideoFormProps) {
+  const styles = useStyles();
   const { title, setTitle, videoInput, setVideoInput, channelName, setChannelName, channelId, setChannelId, duration, setDuration, thumbnailUrl, setThumbnailUrl, error, save } = useVideoForm(onSave);
   return <FormCard subtitle="Paste a video ID or URL and type its title." onSave={save}>
     <Field label="Video title" value={title} onChangeText={setTitle} placeholder="e.g. A calm morning song" />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler, Platform } from 'react-native';
 import { ApprovedVideo } from '../../types';
 import { channelAvailability, searchLibrary, videosForChannel, videosInCategory } from './kidHome.helper';
 import { KidTab } from './kidHome.type';
@@ -23,11 +24,15 @@ export function useKidHome({
   onSelectChannel,
   channelSyncStateFor,
   downloadsEnabled = true,
+  selectedPlaylistId,
+  tvFocusTarget,
+  onTvFocusTargetChange,
 }: UseKidHomeInput) {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [tvFocusMenu, setTvFocusMenu] = useState(() => !tvFocusTarget || !library.videos.some((video) => tvFocusTarget.endsWith(`:${video.id}`)));
 
   // The library scan runs once typing pauses, not on every keystroke.
   useEffect(() => {
@@ -86,12 +91,25 @@ export function useKidHome({
     [onSelectChannel, onTabChange],
   );
 
+  useEffect(() => {
+    if (!Platform.isTV || (!searching && !switcherOpen && tvFocusMenu)) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (switcherOpen) { closeSwitcher(); return true; }
+      if (searching) { closeSearch(); setTvFocusMenu(true); return true; }
+      if (selectedChannelId || selectedPlaylistId) return false;
+      setTvFocusMenu(true);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [searching, switcherOpen, tvFocusMenu, selectedChannelId, selectedPlaylistId, closeSearch, closeSwitcher]);
+
   const changeTab = useCallback(
     (next: KidTab) => {
       setSearching(false);
+      if (Platform.isTV) { onTvFocusTargetChange?.(null); setTvFocusMenu(true); }
       onTabChange(next);
     },
-    [onTabChange],
+    [onTabChange, onTvFocusTargetChange],
   );
 
   /** `categories` is not a destination; selecting a chip keeps the child on the feed. */
@@ -104,6 +122,8 @@ export function useKidHome({
   );
 
   return {
+    tvFocusMenu,
+    setTvFocusMenu,
     tab,
     searching,
     query,

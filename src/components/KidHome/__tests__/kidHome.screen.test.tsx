@@ -124,3 +124,38 @@ describe('Downloads tab', () => {
     view.unmount();
   });
 });
+
+it('uses the TV hero and top navigation without changing the mobile layout', () => {
+  const { Platform } = require('react-native');
+  const tv = jest.spyOn(Platform, 'isTV', 'get');
+  const video = { id: 'tv', youtubeVideoId: 'aaaaaaaaaaa', title: 'Approved story', approved: true, channelId: 'channel' };
+  const props: KidHomeProps = {
+    profiles: [], library: { profileId: 'kid', videos: [video], recentVideos: [video], channels: [{ id: 'c', channelId: 'channel', name: 'Stories', approved: true }], categories: [], askableVideos: [], askableChannels: [] },
+    tab: 'home', selectedCategoryId: null, selectedChannelId: null, notice: '', requests: [], pendingRequestCount: 0,
+    onSelectProfile: jest.fn(), onTabChange: jest.fn(), onSelectCategory: jest.fn(), onSelectChannel: jest.fn(), onVideoPress: jest.fn(), onParentPress: jest.fn(), onSubmitRequest: jest.fn(), onRequestVideo: jest.fn(), onRequestChannel: jest.fn(), channelSyncStateFor: () => undefined, onBottomNavLayout: jest.fn(),
+  };
+  tv.mockReturnValue(true);
+  const view = render(<KidHomeScreen {...props} />);
+  try {
+    expect(view.getByTestId('tv-home-feed')).toBeTruthy();
+    expect(props.onBottomNavLayout).toHaveBeenCalledWith(0);
+    fireEvent.press(view.getByLabelText('Watch featured Approved story'));
+    expect(props.onVideoPress).toHaveBeenCalledWith(video);
+    fireEvent.press(view.getByLabelText('More like this'));
+    expect(props.onSelectChannel).toHaveBeenCalledWith('channel');
+    expect(props.onTabChange).toHaveBeenCalledWith('channels');
+    fireEvent.press(view.getByLabelText('Open parent mode'));
+    expect(props.onParentPress).toHaveBeenCalled();
+    view.rerender(<KidHomeScreen {...props} downloadsEnabled={false} />);
+    expect(view.queryByLabelText('Downloads')).toBeNull();
+    tv.mockReturnValue(false);
+    view.unmount();
+    const mobile = render(<KidHomeScreen {...props} />);
+    try {
+      expect(mobile.queryByTestId('tv-home-feed')).toBeNull();
+      expect(mobile.queryByText('Watch now')).toBeNull();
+      expect(mobile.getByText('Keep watching')).toBeTruthy();
+      expect(mobile.getAllByLabelText('Play Approved story').length).toBeGreaterThan(0);
+    } finally { mobile.unmount(); }
+  } finally { view.unmount(); tv.mockRestore(); }
+});

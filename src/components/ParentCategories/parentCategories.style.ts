@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
 /** Categories panel styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   formCard: { backgroundColor: colors.card, borderRadius: 18, marginTop: 16, padding: 14 },
   formLabel: { color: colors.ink, fontSize: 15, fontWeight: '800' },
   input: { backgroundColor: colors.canvas, borderRadius: 13, color: colors.ink, fontSize: 15, height: 50, marginTop: 10, paddingHorizontal: 13 },
@@ -22,4 +23,9 @@ const styles = StyleSheet.create({
   helper: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 12 },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

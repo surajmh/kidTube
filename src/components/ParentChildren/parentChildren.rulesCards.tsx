@@ -1,13 +1,14 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text,View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel,ApprovedVideo,ChildProfile } from '../../types';
 import type { ContentApproval,ContentCategory } from '../../types';
 import { describeApprovalExpiry,describeApprovalTarget } from '../../services/approvalRules';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
 import type { CardProps } from './parentChildren.type';
-import styles from './parentChildren.style';
+import useStyles from './parentChildren.style';
 
 export function CategoriesCard({
   profile,
@@ -19,6 +20,8 @@ export function CategoriesCard({
   categories: ContentCategory[];
   onToggleCategory: (profileId: string, categoryId: string) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Categories for {profile.name}</Text>
@@ -59,6 +62,8 @@ export function ChannelRulesCard({
   onToggleBlockChannel: (profileId: string, channelId: string) => Promise<void>;
   onToggleInherit: (profileId: string, inherit: boolean) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Channel rules for {profile.name}</Text>
@@ -123,6 +128,8 @@ export function VideoRulesCard({
   onToggleGrantVideo: (profileId: string, videoId: string) => Promise<void>;
   onToggleBlockVideo: (profileId: string, videoId: string) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Video rules for {profile.name}</Text>
@@ -172,6 +179,8 @@ export function ApprovalsCard({
   childApprovals: ContentApproval[];
   onRevokeApproval: (approval: ContentApproval) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Temporary approvals for {profile.name}</Text>

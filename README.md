@@ -70,6 +70,16 @@ No accounts, no ads, no recommendations, no tracking, no server — everything l
 - **Ad & sponsor skipping** through SponsorBlock categories configured by the parent.
 - **Resilient playback**: bounded retry with exponential backoff, stream-expiry refresh,
   resume-at-last-position, and lifecycle-safe player release.
+- **Mini player** — swipe down on the portrait video (or press Back) to browse the approved library while it keeps playing.
+  Tap or swipe up on the mini player to expand it; swipe sideways or close to stop. Changing children or entering Parent Mode stops playback.
+- **Picture-in-picture** — pressing Home or swiping Home automatically floats the playing video on supported Android devices.
+  Parent-enabled background audio takes precedence and continues listening instead. The native player enforces the remaining playtime and approval/schedule deadlines even while JavaScript sleeps.
+- **Background audio** — off by default; parents enable it in Playback settings. Approved videos
+  can continue with the screen locked, with headset and lock-screen controls. Listening counts as
+  playtime; a native usage journal recovers time after process death. Closing the app's task stops playback.
+- **DeArrow** — parents preview community titles and thumbnails in Playback settings, then approve
+  each exact replacement. Enable the DeArrow switch to show approved replacements in Kid Mode;
+  originals remain available, and replacements never grant playback access. Suggestions do not update automatically.
 - **Player settings** — 0.25×–2× speed, available caption languages with normal/large text,
   and adaptive quality limits under a parent-set ceiling. Screen time counts actual viewing time
   at every speed. Captions and quality choices depend on the tracks available for each video.

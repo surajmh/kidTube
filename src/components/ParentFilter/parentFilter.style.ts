@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../youtube/theme';
 
 /** Filter drawer styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   trigger: {
     alignItems: 'center',
     backgroundColor: yt.surfaceAlt,
@@ -79,4 +80,9 @@ const styles = StyleSheet.create({
   applyText: { color: yt.chipActiveText, fontSize: 14, fontWeight: '700' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

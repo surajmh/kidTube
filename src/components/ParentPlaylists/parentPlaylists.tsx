@@ -1,13 +1,16 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
 import { FocusablePressable } from '../tv';
 import { Field, PrimaryButton, SecondaryButton } from '../AppShell/appFormControls';
-import { styles } from '../AppShell/appShell.style';
-import { colors } from '../theme';
+import { useStyles as useStyles } from '../AppShell/appShell.style';
+
 import { useParentPlaylists } from './parentPlaylists.hook';
 import { ParentPlaylistsProps } from './parentPlaylists.type';
 
 export function ParentPlaylists({ playlists, videos, onSave, onRemove }: ParentPlaylistsProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { draft, setDraft, query, setQuery, busy, error, byId, run, edit, move } = useParentPlaylists(videos);
   return <View style={styles.formPanel}>
     <Text style={styles.formPanelTitle}>Curated playlists</Text>

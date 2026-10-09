@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   more: {
     alignItems: 'center',
     backgroundColor: colors.lavender,
@@ -15,4 +16,9 @@ const styles = StyleSheet.create({
   moreCount: { color: colors.muted, fontSize: 11, fontWeight: '700' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

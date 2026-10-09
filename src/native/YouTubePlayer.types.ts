@@ -2,6 +2,9 @@ import type { ViewProps } from 'react-native';
 
 export type YouTubePlaybackEvent = {
   videoId?: string;
+  playedMs?: number;
+  remote?: boolean;
+  inPictureInPicture?: boolean;
   position?: number;
   duration?: number;
   bufferedPosition?: number;
@@ -9,6 +12,8 @@ export type YouTubePlaybackEvent = {
   offline?: boolean;
   captions?: { id: string; label: string }[];
   qualityHeights?: number[];
+  chapters?: { title: string; startMs: number }[];
+  audio?: { language: string; label: string; selected: boolean }[];
   isPlaying?: boolean;
   message?: string;
   code?: string;
@@ -19,16 +24,21 @@ export type YouTubePlaybackEvent = {
 };
 
 export type YouTubePlayerProps = ViewProps & {
+  beforePlay?: () => Promise<void>;
+  displayTitle?: string;
   videoId?: string;
   autoplay?: boolean;
   fullscreen?: boolean;
   volume?: number;
+  brightness?: number;
+  audioLanguage?: string | null;
   playbackSpeed?: number;
   qualityHeight?: number;
   maxQualityHeight?: number;
   captionTrack?: string | null;
   captionScale?: number;
   onTracksChanged?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
+  onPictureInPictureChanged?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onLoad?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onReady?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;
   onPlay?: (event: { nativeEvent: YouTubePlaybackEvent }) => void;

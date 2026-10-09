@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
 /** Parent override sheet styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   scrim: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.6)', flex: 1, justifyContent: 'center', padding: 20 },
   sheet: { backgroundColor: colors.card, borderRadius: 24, padding: 20, width: '100%' },
   header: { alignItems: 'center', flexDirection: 'row', gap: 13 },
@@ -24,4 +25,9 @@ const styles = StyleSheet.create({
   cancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

@@ -22,6 +22,11 @@ export type KidSearchResults = {
 };
 
 export type KidHomeProps = {
+  /** TV-only origin restored after closing the player. */
+  tvFocusTarget?: string | null;
+  onTvFocusTargetChange?: (target: string | null) => void;
+  miniPlayerVisible?: boolean;
+  onBottomNavLayout?: (height: number) => void;
   /** This child's downloads only, in any state. */
   downloads?: import('../../services/downloadService.type').SavedVideo[];
   /** Defaults to true. When false the Downloads tab is hidden. */
@@ -55,7 +60,7 @@ export type KidHomeProps = {
 
 export type UseKidHomeInput = Pick<
   KidHomeProps,
-  'library' | 'tab' | 'downloadsEnabled' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
+  'tvFocusTarget' | 'onTvFocusTargetChange' | 'selectedPlaylistId' | 'library' | 'tab' | 'downloadsEnabled' | 'onTabChange' | 'selectedCategoryId' | 'selectedChannelId' | 'onSelectChannel' | 'channelSyncStateFor'
 >;
 
 export type Playlist = CuratedPlaylist & { videos: ApprovedVideo[] };

@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   input: {
     backgroundColor: colors.canvas,
     borderColor: colors.line,
@@ -38,4 +39,9 @@ const styles = StyleSheet.create({
   submitBusy: { opacity: 0.7 },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

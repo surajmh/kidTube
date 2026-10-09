@@ -1,13 +1,14 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
 import { ChannelAvatar } from '../youtube/VideoCard';
-import { ICON, KID_COPY } from './kidHome.constant';
+import { KID_COPY } from './kidHome.constant';
 import { ChannelAvailability } from './kidHome.type';
 import { Empty } from './kidHome.primitives';
-import styles from './kidHome.style';
+import useStyles from './kidHome.style';
 
 export function ChannelRow({
   channel,
@@ -20,6 +21,8 @@ export function ChannelRow({
   onOpen: (channelId: string) => void;
   subtitle?: string;
 }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   return (
     <FocusablePressable
       accessibilityLabel={`Open ${channel.name}`}
@@ -51,6 +54,8 @@ export function ChannelHeader({
   availability: ChannelAvailability;
   onBack: () => void;
 }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   return (
     <>
       <FocusablePressable

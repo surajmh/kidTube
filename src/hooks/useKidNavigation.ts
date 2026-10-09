@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, Platform } from 'react-native';
 import { describePlaybackDecision, isTimeRelatedReason, playbackPolicy } from '../services/playbackPolicyService';
 import { ApprovedVideo, ChildProfile } from '../types';
 import type { PlaybackDecision } from '../types';
@@ -42,11 +42,13 @@ export function useKidNavigation({
   const [kidPlaylistId, setKidPlaylistId] = useState<string | null>(null);
   useEffect(() => { setQueue(null); setKidPlaylistId(null); }, [activeProfile?.id]);
   const [selectedVideo, setSelectedVideo] = useState<ApprovedVideo | null>(null);
+  useEffect(() => { if (screen === 'parent') setSelectedVideo(null); }, [screen]);
   const [kidNotice, setKidNotice] = useState('');
   const [kidNoticeAction, setKidNoticeAction] = useState<'override' | null>(null);
   const [contentTab, setContentTab] = useState<ContentTab>('channels');
   /** Which channel's own page is open in Parent Mode, if any. */
   const [parentChannelId, setParentChannelId] = useState<string | null>(null);
+  const [tvFocusTarget, setTvFocusTarget] = useState<string | null>(null);
   const [kidTab, setKidTab] = useState<KidTab>('home');
   const [kidCategoryId, setKidCategoryId] = useState<string | null>(null);
   const [kidChannelId, setKidChannelId] = useState<string | null>(null);
@@ -61,10 +63,12 @@ export function useKidNavigation({
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (overrideForProfileId) { setOverrideForProfileId(null); return true; }
       if (pinModalVisible) { setPinModalVisible(false); return true; }
-      if (screen === 'player') { commitPendingHistory(); setScreen('kid'); return true; }
+      if (screen === 'player') { if (Platform.isTV) return false; commitPendingHistory(); setScreen('kid'); return true; }
       if (screen === 'parent') { onParentBack(); return true; }
-      if (kidPlaylistId) { setKidPlaylistId(null); return true; }
+      if (kidPlaylistId) { setKidPlaylistId(null); if (Platform.isTV) setTvFocusTarget(null); return true; }
+      if (Platform.isTV && kidChannelId) { setKidChannelId(null); setTvFocusTarget(null); return true; }
       if (kidTab !== 'home' || kidCategoryId || kidChannelId) {
+        if (Platform.isTV) setTvFocusTarget(null);
         setKidTab('home');
         setKidCategoryId(null);
         setKidChannelId(null);
@@ -83,6 +87,14 @@ export function useKidNavigation({
     const videos = kidLibrary.videos;
     const index = videos.findIndex((item) => item.id === selectedVideo.id);
     return videos[(index + 1) % Math.max(1, videos.length)];
+  }, [selectedVideo, kidLibrary, queue]);
+
+  const upNextVideos = useMemo(() => {
+    if (!selectedVideo) return [];
+    const videos = queue ? queue.ids.flatMap((id) => kidLibrary.videos.filter((video) => video.id === id)) : kidLibrary.videos;
+    const index = videos.findIndex((video) => video.id === selectedVideo.id);
+    const upcoming = queue ? videos.slice(index + 1) : [...videos.slice(index + 1), ...videos.slice(0, index)];
+    return upcoming.filter((video) => video.id !== selectedVideo.id).slice(0, 8);
   }, [selectedVideo, kidLibrary, queue]);
 
   // Stable identity: `openPlayer` reaches KidHome's memoized video cards, and re-creating it on
@@ -143,6 +155,7 @@ export function useKidNavigation({
 
   /** The navigation half of a full PIN reset (`screen` itself is reset by the caller). */
   function resetAll() {
+    setTvFocusTarget(null);
     setQueue(null);
     setKidPlaylistId(null);
     setSelectedVideo(null);
@@ -157,6 +170,8 @@ export function useKidNavigation({
   }
 
   return {
+    tvFocusTarget,
+    setTvFocusTarget,
     queueLabel: queue?.label,
     openPlaylist,
     kidPlaylistId,
@@ -181,6 +196,7 @@ export function useKidNavigation({
     setOverrideForProfileId,
     retrySignal,
     nextVideo,
+    upNextVideos,
     playbackDecision,
     explainDecision,
     openPlayer,

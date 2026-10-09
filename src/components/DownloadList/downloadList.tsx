@@ -1,18 +1,21 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
+
 import { DOWNLOAD_LIST_COPY, SORT_LABELS, SORT_ORDER } from './downloadList.constant';
 import { isWorking } from './downloadList.helper';
 import { useDownloadList } from './downloadList.hook';
-import styles from './downloadList.style';
+import useStyles from './downloadList.style';
 import type { DownloadListProps } from './downloadList.type';
 import { DownloadRow } from './downloadRow';
 import { DownloadSheet } from './downloadSheet';
 
 /** The saved-video list: a count and sort control, then one card per video. */
 export function DownloadList({ entries, showHeader = true, onDelete, onPlay, busyId }: DownloadListProps) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   const list = useDownloadList(entries);
   const menuEntry = list.menuFor;
   const deleteLabel = menuEntry && isWorking(menuEntry.item) ? DOWNLOAD_LIST_COPY.cancelSaving : DOWNLOAD_LIST_COPY.deleteReady;

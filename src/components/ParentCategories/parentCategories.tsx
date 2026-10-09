@@ -1,9 +1,10 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors, cardTints } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentCategories.style';
+import useStyles from './parentCategories.style';
 import { useParentCategories } from './parentCategories.hook';
 import { categoryCounts } from './parentCategories.helper';
 import { ParentCategoriesProps } from './parentCategories.type';
@@ -16,6 +17,8 @@ export function ParentCategoriesPanel({
   onRename,
   onDelete,
 }: ParentCategoriesProps) {
+  const styles = useStyles();
+  const { colors, cardTints } = useTheme();
   const { name, setName, editingId, error, startEdit, cancelEdit, submit } = useParentCategories({
     onCreate,
     onRename,
@@ -24,7 +27,6 @@ export function ParentCategoriesPanel({
   function countsFor(categoryId: string) {
     return categoryCounts(categoryId, videos, channels);
   }
-
 
 
   return (

@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -5,8 +6,8 @@ import { Feather } from '@expo/vector-icons';
 import type { ApprovedChannel, ApprovedVideo } from '../../types';
 import { channelVideosFrom, describeSyncAge } from '../../services/content/channelSyncRules';
 import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
-import { colors } from '../theme';
-import styles from './parentContent.style';
+
+import useStyles from './parentContent.style';
 
 /** The newest few channels as picture cards, so a parent can spot what they just added. */
 export function RecentChannels({
@@ -18,6 +19,8 @@ export function RecentChannels({
   videos: ApprovedVideo[];
   syncStateFor: (channelId: string) => ChannelSyncState | undefined;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View>
       <Text style={styles.sectionHeading}>Recently added</Text>

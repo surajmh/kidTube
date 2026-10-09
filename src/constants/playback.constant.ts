@@ -2,6 +2,10 @@ import type { PlaybackSettings } from '../types';
 
 export const defaultPlaybackSettings: PlaybackSettings = {
   autoplay: false,
+  themeMode: 'system',
+  backgroundAudioEnabled: false,
+  deArrowEnabled: false,
+  deArrowReplacements: {},
   maxQualityHeight: 1080,
   downloadsEnabled: true,
   downloadRetentionDays: 7,

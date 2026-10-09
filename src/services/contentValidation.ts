@@ -190,6 +190,15 @@ export function sanitizeSettings(input: Partial<PlaybackSettings> | null | undef
     ...defaultPlaybackSettings,
     ...input,
     dailyLimitMinutes,
+    themeMode: input.themeMode === 'light' || input.themeMode === 'dark' ? input.themeMode : 'system',
+    backgroundAudioEnabled: input.backgroundAudioEnabled === true,
+    deArrowEnabled: input.deArrowEnabled === true,
+    deArrowReplacements: Object.fromEntries(Object.entries(input.deArrowReplacements ?? {}).flatMap(([id, value]) => {
+      if (!/^[A-Za-z0-9_-]{11}$/.test(id) || !value || typeof value !== 'object') return [];
+      const title = typeof value.title === 'string' && value.title.trim() && value.title.length <= 500 ? value.title : undefined;
+      const thumbnailUrl = typeof value.thumbnailUrl === 'string' && /^https:\/\/dearrow-thumb\.ajay\.app\/api\/v1\/getThumbnail\?/.test(value.thumbnailUrl) ? value.thumbnailUrl : undefined;
+      return title || thumbnailUrl ? [[id, { title, thumbnailUrl }]] : [];
+    })),
     maxQualityHeight: [144, 240, 360, 480, 720, 1080].includes(input.maxQualityHeight ?? 0) ? input.maxQualityHeight : 1080,
     downloadsEnabled: typeof input.downloadsEnabled === 'boolean' ? input.downloadsEnabled : defaultPlaybackSettings.downloadsEnabled,
     downloadRetentionDays: input.downloadRetentionDays === 30 ? 30 : 7,

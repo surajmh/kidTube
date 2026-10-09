@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../youtube/theme';
 
 /** Download list styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, marginTop: 4 },
   count: { color: yt.text, fontSize: 18, fontWeight: '700' },
   sortPill: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 32, paddingHorizontal: 4 },
@@ -32,8 +33,13 @@ const styles = StyleSheet.create({
   sheetTitle: { color: yt.textDim, fontSize: 13, marginBottom: 6, paddingHorizontal: 4 },
   sheetOption: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 52, paddingHorizontal: 4 },
   sheetText: { color: yt.text, fontSize: 16, fontWeight: '600' },
-  sheetDanger: { color: '#FF6E6E' },
+  sheetDanger: { color: colors.danger },
   sheetCancel: { alignItems: 'center', backgroundColor: yt.surfaceAlt, borderRadius: 14, justifyContent: 'center', marginTop: 8, minHeight: 48 },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

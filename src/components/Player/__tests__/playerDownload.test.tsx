@@ -10,7 +10,7 @@ import type { ApprovedVideo } from '../../../types';
 jest.mock('@expo/vector-icons', () => ({ Feather: () => null }));
 jest.mock('../../../native', () => ({ isNativeYouTubePlayerAvailable: true, YouTubePlayer: jest.fn(() => null) }));
 jest.mock('../player.hook', () => ({ usePlayer: () => ({ isAllowed: true, nativeHandlers: {}, progress: 0, durationMs: 0 }) }));
-jest.mock('../playerOptions.hook', () => ({ usePlayerOptions: () => ({ speed: 1, setSpeed: jest.fn(), quality: 0, setQuality: jest.fn(), captionTrack: null, setCaptionTrack: jest.fn(), captionScale: 1, setCaptionScale: jest.fn(), tracks: { captions: [], heights: [] }, setTracks: jest.fn(), optionsOpen: false, setOptionsOpen: jest.fn() }) }));
+jest.mock('../playerOptions.hook', () => ({ usePlayerOptions: () => ({ chapters: [], setChapters: jest.fn(), audioLanguage: null, setAudioLanguage: jest.fn(), preferenceError: '', speed: 1, setSpeed: jest.fn(), quality: 0, setQuality: jest.fn(), captionTrack: null, setCaptionTrack: jest.fn(), captionScale: 1, setCaptionScale: jest.fn(), tracks: { captions: [], heights: [], audio: [] }, setTracks: jest.fn(), optionsOpen: false, setOptionsOpen: jest.fn() }) }));
 
 const video = { id: 'v1', youtubeVideoId: 'yt1', title: 'A video', approved: true } as ApprovedVideo;
 const saved = (state: SavedVideo['state'], percent = 0): SavedVideo => ({ videoId: 'yt1', state, expiresAt: 0, bytes: 0, percent });

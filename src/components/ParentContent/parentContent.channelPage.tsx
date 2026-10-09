@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -5,10 +6,10 @@ import { Feather } from '@expo/vector-icons';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
 import { channelVideosFrom, describeChannelSync } from '../../services/content/channelSyncRules';
 import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
 import { ChannelVideoList } from '../ChannelVideoList';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 
 /**
  * A channel's own page: just that channel and its uploads. More pages arrive as the parent
@@ -31,6 +32,8 @@ export function ParentChannelPage({
   onRefresh: () => void;
   onLoadMore: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const channelVideos = channelVideosFrom(videos, channel.channelId);
   return (
     <View>

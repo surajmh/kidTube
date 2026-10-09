@@ -1,5 +1,6 @@
-import React from 'react';
-import { FlatList, ScrollView, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { FlatList, Platform, ScrollView, Text, View } from 'react-native';
+import type { ApprovedVideo } from '../../types';
 import { VideoCard } from '../youtube/VideoCard';
 import { KID_COPY } from './kidHome.constant';
 import { videoKey } from './kidHome.helper';
@@ -14,7 +15,8 @@ import { ProfileSwitcher, TopBar } from './kidHome.topBar';
 import { BottomNav } from './kidHome.bottomNav';
 import { PlaylistsSection } from './kidHome.library';
 import { DownloadsSection } from './kidHome.downloads';
-import styles from './kidHome.style';
+import useStyles from './kidHome.style';
+import { TvHomeFeed, TvTopBar, TvVideoCard } from './kidHome.tv';
 
 /**
  * Kid Mode.
@@ -24,6 +26,7 @@ import styles from './kidHome.style';
  * screen (search, a channel's page, the ask-a-parent form, …) is its own file alongside this one.
  */
 export function KidHomeScreen(props: KidHomeProps) {
+  const styles = useStyles();
   const {
     profiles,
     activeProfile,
@@ -46,6 +49,18 @@ export function KidHomeScreen(props: KidHomeProps) {
   const kid = useKidHome(props);
   const tab = kid.tab;
   const { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts } = useKidHomeList(props, kid);
+
+  useEffect(() => {
+    if (Platform.isTV && kid.tvFocusMenu) list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [kid.tvFocusMenu, list]);
+
+  function playTvVideo(video: ApprovedVideo) {
+    props.onTvFocusTargetChange?.(`grid:${video.id}`);
+    if (selectedPlaylist && tab === 'playlists' && !kid.searching) {
+      const index = selectedPlaylist.videos.findIndex((entry) => entry.id === video.id);
+      props.onPlayPlaylist?.(selectedPlaylist.videos.slice(index), selectedPlaylist.name);
+    } else onVideoPress(video);
+  }
 
   let channelsBody: React.ReactNode;
   if (kid.selectedChannel) {
@@ -72,7 +87,7 @@ export function KidHomeScreen(props: KidHomeProps) {
 
   return (
     <View style={styles.screen}>
-      <TopBar
+      {Platform.isTV ? <TvTopBar props={props} kid={kid} /> : <TopBar
         searching={kid.searching}
         query={kid.query}
         setQuery={kid.setQuery}
@@ -81,7 +96,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         openSearch={kid.openSearch}
         toggleSwitcher={kid.toggleSwitcher}
         onParentPress={onParentPress}
-      />
+      />}
 
       {kid.switcherOpen && profiles.length > 1 ? (
         <ProfileSwitcher
@@ -93,7 +108,7 @@ export function KidHomeScreen(props: KidHomeProps) {
       ) : null}
 
       {kid.onFeed && !kid.searching && library.categories.length > 0 ? (
-        <View style={styles.chipBar}>
+        <View style={[styles.chipBar, Platform.isTV && { paddingHorizontal: 20 }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
             <Chip label="All" active={!selectedCategoryId} onPress={() => onSelectCategory(null)} />
             {library.categories.map((entry) => (
@@ -111,8 +126,16 @@ export function KidHomeScreen(props: KidHomeProps) {
       <FlatList
         ref={list}
         key={`${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}:${props.selectedPlaylistId}`}
-        data={videos}
-        renderItem={renderVideo}
+        data={Platform.isTV && kid.onFeed && !kid.searching ? [] : videos}
+        numColumns={Platform.isTV ? 4 : 1}
+        renderItem={Platform.isTV ? ({ item }) => (
+          <TvVideoCard
+            video={item}
+            restoreFocus={!kid.tvFocusMenu && props.tvFocusTarget === `grid:${item.id}`}
+            onFocus={() => kid.setTvFocusMenu(false)}
+            onPress={playTvVideo}
+          />
+        ) : renderVideo}
         keyExtractor={videoKey}
         initialNumToRender={4}
         maxToRenderPerBatch={4}
@@ -120,7 +143,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         removeClippedSubviews={false}
         keyboardShouldPersistTaps="handled"
         style={styles.body}
-        contentContainerStyle={styles.bodyContent}
+        contentContainerStyle={[styles.bodyContent, Platform.isTV && { paddingHorizontal: 20 }, props.miniPlayerVisible && { paddingBottom: 126 }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={<>
 
@@ -134,7 +157,8 @@ export function KidHomeScreen(props: KidHomeProps) {
             />
           ) : null}
 
-          {!kid.searching && kid.onFeed ? (
+          {!kid.searching && kid.onFeed && Platform.isTV ? <TvHomeFeed props={props} kid={kid} /> : null}
+          {!kid.searching && kid.onFeed && !Platform.isTV ? (
             <>
               {kid.keepWatching.length > 0 ? (
                 <>
@@ -186,7 +210,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         </>}
       />
 
-      <BottomNav tab={tab} downloadsEnabled={props.downloadsEnabled ?? true} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} />
+      {!Platform.isTV && <BottomNav tab={tab} downloadsEnabled={props.downloadsEnabled ?? true} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} onLayout={props.onBottomNavLayout} />}
     </View>
   );
 }

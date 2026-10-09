@@ -1,14 +1,15 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import type { ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
+
 import { ChannelAvatar } from '../youtube/VideoCard';
 import { DOWNLOAD_LIST_COPY } from './downloadList.constant';
 import { durationLabel, ringSvgUri, rowMeta, thumbnailFor } from './downloadList.helper';
-import styles from './downloadList.style';
+import useStyles from './downloadList.style';
 import type { DownloadEntry } from './downloadList.type';
 
 /** One saved video: picture, title, channel and size, a status mark, and (parents only) a "…" menu. */
@@ -23,6 +24,8 @@ export function DownloadRow({
   onPlay?: (video: ApprovedVideo) => void;
   onMenu?: (entry: DownloadEntry) => void;
 }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   const { video, item } = entry;
   const title = video?.title ?? DOWNLOAD_LIST_COPY.removed;
   const length = durationLabel(video?.duration);
@@ -37,7 +40,7 @@ export function DownloadRow({
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
         {video?.channelName ? (
           <View style={styles.channelRow}>
-            <ChannelAvatar name={video.channelName} size={20} />
+            <ChannelAvatar name={video.channelName} channelId={video.channelId} size={20} />
             <Text style={styles.channel} numberOfLines={1}>{video.channelName}</Text>
           </View>
         ) : null}
@@ -65,6 +68,8 @@ export function DownloadRow({
 }
 
 function StatusMark({ state, percent }: { state: DownloadEntry['item']['state']; percent: number }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   if (state === 'ready') {
     return <View style={styles.status} accessibilityLabel="Saved"><View style={styles.doneBadge}><Feather name="check" size={20} color="#14301F" /></View></View>;
   }

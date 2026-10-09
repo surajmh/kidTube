@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
 import { PinEntry } from '../PinEntry';
-import { colors } from '../theme';
+
 import { resetConfirmationPhrase } from '../../services/auth/parentResetService';
-import { styles } from './appShell.style';
+import { useStyles as useStyles } from './appShell.style';
 import { PrimaryButton, SecondaryButton } from './appFormControls';
 import { formatLockRemaining } from './parentPinModal.helper';
 import { useParentPinModal } from './parentPinModal.hook';
@@ -13,6 +14,8 @@ import type { ParentPinModalProps } from './parentPinModal.type';
 
 /** Self-contained unlock keypad: PIN keystrokes and error copy never reach the app shell. */
 export function ParentPinModal({ visible, lockRemainingMs, resetting, onClose, onSubmit, onReset }: ParentPinModalProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { pin, setPin, error, busy, stage, setStage, confirmText, setConfirmText, submit, locked, canConfirmReset } = useParentPinModal({ visible, lockRemainingMs, resetting, onSubmit });
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>

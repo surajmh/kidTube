@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -6,9 +7,9 @@ import { ApprovedChannel, ApprovedVideo } from '../../types';
 import type { ContentApproval, ContentCategory } from '../../types';
 import { describeSyncAge } from '../../services/content/channelSyncRules';
 import type { ChannelSyncState } from '../../services/content/channelSyncRules.type';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 import { PARENT_CONTENT_COPY } from './parentContent.constant';
 import { CategoryEditor } from './parentContent.categoryEditor';
 import { useChannelRow } from './parentContent.row.hook';
@@ -42,6 +43,8 @@ export const ParentChannelRow = React.memo(function ParentChannelRow({
   onToggleCategory: (channel: ApprovedChannel, categoryId: string, assigned: boolean) => void;
   onRemove: (channel: ApprovedChannel) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { expiry, channelVideos } = useChannelRow(approvals, videos, channel.channelId);
   const hasVideoInfo = channelVideos.length > 0 || Boolean(syncState?.fetchedAt);
 

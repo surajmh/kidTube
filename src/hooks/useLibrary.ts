@@ -1,3 +1,5 @@
+import NativeYouTubePlayer from '../native/YouTubePlayerModule';
+import { withDeArrow } from '../services/deArrowService';
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { profileRepository } from '../repositories/profileRepository';
 import type { Screen } from './useKidNavigation.type';
@@ -134,10 +136,20 @@ export function useLibrary({
       setProfiles(profiles);
       setActiveProfileId(profiles[0]?.id ?? '');
       setHydrated(true);
-      void hydrateLibrary(data, profiles);
+      void hydrateLibrary(data, profiles).catch(() => {
+        if (!cancelled) { setLoadFailed(true); setHydrated(false); }
+      });
     }
 
     async function hydrateLibrary(data: AppData, profiles: ChildProfile[]) {
+      const nativeUsage = await NativeYouTubePlayer?.getPlaybackUsage?.() ?? [];
+      if (cancelled) return;
+      const recoveredUsage = data.screenTimeUsage.map((record) => ({ ...record }));
+      for (const record of nativeUsage) {
+        const previous = recoveredUsage.find((item) => item.profileId === record.profileId && item.date === record.date);
+        if (previous) previous.secondsWatched = Math.max(previous.secondsWatched, record.secondsWatched);
+        else recoveredUsage.push(record);
+      }
       const input = {
         profiles,
         videos: data.videos,
@@ -149,7 +161,7 @@ export function useLibrary({
         childRules: data.childRules,
         profilePolicies: data.profilePolicies,
         history: data.history,
-        screenTime: data.screenTimeUsage,
+        screenTime: recoveredUsage,
         settings: normaliseSettings(data.playbackSettings),
         channelSync: data.channelSyncStates,
       };
@@ -259,12 +271,12 @@ export function useLibrary({
     () =>
       kidContentLibraryService.build({
         profileId: activeProfile?.id ?? '',
-        videos,
+        videos: videos.map((video) => withDeArrow(video, playbackSettings)),
         channels,
         categories,
         history,
       }),
-    [activeProfile?.id, videos, channels, categories, history, childRules, approvals, accessClock],
+    [activeProfile?.id, videos, channels, categories, history, childRules, approvals, accessClock, playbackSettings],
   );
   useEffect(() => {
     void downloadService.authorizeParent(parentSession).catch(() => undefined);

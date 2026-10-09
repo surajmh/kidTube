@@ -1,10 +1,11 @@
+import { useTheme } from '../theme';
 import React from 'react';
-import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
 import { digits } from './pinEntry.constant';
-import styles from './pinEntry.style';
+import useStyles from './pinEntry.style';
 import type { PinEntryProps } from './pinEntry.type';
 
 /**
@@ -24,10 +25,12 @@ export function PinEntry({
   busy = false,
   submitLabel = 'Unlock parent mode',
 }: PinEntryProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View>
       <View pointerEvents={busy ? 'none' : 'auto'}>
-        <TextInput
+        {!Platform.isTV ? <TextInput
           value={pin}
           onChangeText={(value) => onChange(value.replace(/\D/g, '').slice(0, 4))}
           keyboardType="number-pad"
@@ -37,8 +40,8 @@ export function PinEntry({
           placeholderTextColor={colors.muted}
           style={[styles.input, error ? styles.inputError : null]}
           accessibilityLabel="Four digit parent PIN"
-        />
-        <View style={styles.dots}>
+        /> : null}
+        <View style={[styles.dots, Platform.isTV && { marginTop: 4, marginBottom: 8 }]} accessibilityLabel={`${pin.length} of 4 PIN digits entered`}>
           {[0, 1, 2, 3].map((index) => (
             <View key={index} style={[styles.dot, pin.length > index && styles.dotFilled]} />
           ))}
@@ -48,6 +51,7 @@ export function PinEntry({
             <FocusablePressable
               key={digit}
               accessibilityLabel={`PIN digit ${digit}`}
+              hasTVPreferredFocus={Platform.isTV && digit === '1'}
               style={styles.key}
               onPress={() => onChange((pin + digit).slice(0, 4))}
             >

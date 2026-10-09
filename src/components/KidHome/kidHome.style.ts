@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../youtube/theme';
 
 /**
  * Kid Mode styles.
@@ -8,7 +9,7 @@ import { yt } from '../youtube/theme';
  * class names do not apply at runtime on this Expo 54 / RN 0.81 New Architecture setup, so the
  * screen would render unstyled. The tokens mirror tailwind.config.js -- keep the two in step.
  */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   downloadsWrap: { paddingHorizontal: 16, paddingTop: 8 },
   screen: { backgroundColor: yt.bg, flex: 1 },
 
@@ -158,4 +159,9 @@ const styles = StyleSheet.create({
   navBadgeText: { color: yt.onAccent, fontSize: 10, fontWeight: '700' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

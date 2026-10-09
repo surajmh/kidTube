@@ -4,6 +4,7 @@ import android.util.Log
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -25,6 +26,7 @@ class YouTubePlayerModule : Module() {
   private fun canDownload(videoId: String) = System.currentTimeMillis() < downloadUntil && videoId in downloadIds
 
   private var activeView: WeakReference<YouTubePlayerView>? = null
+  private var pendingAuthorization: ((YouTubePlayerView) -> Unit)? = null
 
   /**
    * NewPipe extraction is blocking network work with a 30s timeout. On the default async queue it
@@ -52,11 +54,45 @@ class YouTubePlayerModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("NestlingYouTubePlayer")
+    Constants("managesBackgroundPlayback" to true)
+
+    OnUserLeavesActivity {
+      if (android.os.Build.VERSION.SDK_INT < 31) activeView?.get()?.let { view ->
+        if (view.controller.canAutoEnterPictureInPicture()) view.enterPictureInPicture()
+      }
+    }
 
     // Safety net only: stopping on background is always safe, and resuming stays a JS decision so
     // the native player can never bypass the parental playback policy.
     OnActivityEntersBackground {
       activeView?.get()?.pauseForBackground()
+    }
+
+    OnActivityEntersForeground {
+      activeView?.get()?.let { view ->
+        view.controller.onActivityForeground()
+        view.pictureInPictureChanged(false)
+        view.updatePictureInPictureParams()
+      }
+    }
+
+    AsyncFunction("getPlaybackUsage") { PlaybackUsage.records(requireNotNull(appContext.reactContext)) }
+    AsyncFunction("setPlaybackAuthorization") { videoId: String, profileId: String, date: String, usedMs: Double, acknowledgedMs: Double, remainingMs: Double, stopAt: Double, backgroundAudio: Boolean ->
+      require(listOf(usedMs, acknowledgedMs, remainingMs, stopAt).all { it.isFinite() && it >= 0 }) { "Invalid playback authorization" }
+      check(allowedVideoIds.contains(videoId)) { "Video is not approved for playback" }
+      val authorize: (YouTubePlayerView) -> Unit = { view ->
+        view.controller.authorize(videoId, profileId, date, usedMs.toLong(), acknowledgedMs.toLong(), remainingMs.toLong(), stopAt.toLong(), backgroundAudio)
+        view.updatePictureInPictureParams()
+      }
+      pendingAuthorization = authorize
+      activeView?.get()?.let(authorize)
+      // Awaiting this bridge call must mean the main-thread budget is already installed.
+    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("enterPictureInPicture") { promise: Promise ->
+      main.post {
+        try { promise.resolve(mapOf("accepted" to (activeView?.get()?.enterPictureInPicture() == true))) }
+        catch (error: Exception) { promise.resolve(mapOf("accepted" to false)) }
+      }
     }
 
     // An Activity recreation must not leave a player (or its Activity context) behind.
@@ -124,6 +160,7 @@ class YouTubePlayerModule : Module() {
         try {
           activeView?.get()?.controller?.stop()
           OfflineDownloads.clear(requireNotNull(appContext.reactContext))
+          PlaybackUsage.clear(requireNotNull(appContext.reactContext))
           promise.resolve(null)
         } catch (error: Exception) { promise.reject("E_DOWNLOAD", "Could not clear downloads.", error) }
       }
@@ -249,7 +286,7 @@ class YouTubePlayerModule : Module() {
     }
 
     View(YouTubePlayerView::class) {
-      Events("onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError", "onTracksChanged")
+      Events("onPictureInPictureChanged", "onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError", "onTracksChanged")
 
       // Props are not re-sent when they did not change, so the mounted view is also registered here.
       OnViewDidUpdateProps { view ->
@@ -261,9 +298,14 @@ class YouTubePlayerModule : Module() {
         view.setVideo(videoId)
       }
 
+      Prop("displayTitle") { view: YouTubePlayerView, title: String -> view.controller.mediaTitle = title.take(500) }
       Prop("playbackSpeed") { view: YouTubePlayerView, speed: Double -> view.playbackSpeed = speed.toFloat() }
       Prop("qualityHeight") { view: YouTubePlayerView, height: Int -> view.qualityHeight = height }
       Prop("maxQualityHeight") { view: YouTubePlayerView, height: Int -> view.maxQualityHeight = height }
+      Prop("fullscreen") { view: YouTubePlayerView, value: Boolean -> view.fullscreen = value }
+      Prop("volume") { view: YouTubePlayerView, value: Double -> view.volume = value.toFloat() }
+      Prop("brightness") { view: YouTubePlayerView, value: Double -> view.setBrightness(value.toFloat()) }
+      Prop("audioLanguage") { view: YouTubePlayerView, value: String? -> view.audioLanguage = value }
       Prop("captionTrack") { view: YouTubePlayerView, track: String? -> view.captionTrack = track }
       Prop("captionScale") { view: YouTubePlayerView, scale: Double -> view.setCaptionScale(scale.toFloat()) }
 
@@ -308,6 +350,7 @@ class YouTubePlayerModule : Module() {
   /** Registers the mounted view and starts any play request that arrived before it existed. */
   private fun registerView(view: YouTubePlayerView) {
     activeView = WeakReference(view)
+    pendingAuthorization?.let { authorize -> pendingAuthorization = null; authorize(view) }
     val pending = pendingPlayVideoId ?: return
     pendingPlayVideoId = null
     if (allowedVideoIds.contains(pending)) view.controller.play(pending, true)

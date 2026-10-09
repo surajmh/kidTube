@@ -1,10 +1,11 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Avatar } from '../Avatar';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentChildren.style';
+import useStyles from './parentChildren.style';
 import { useParentChildren } from './parentChildren.hook';
 import { PARENT_CHILDREN_COPY } from './parentChildren.constant';
 import { ParentChildrenProps } from './parentChildren.type';
@@ -35,6 +36,8 @@ export function ParentChildrenPanel({
   onRevokeApproval,
   profilesSlot,
 }: ParentChildrenProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const children = useParentChildren({
     profiles,
     initialProfileId,
