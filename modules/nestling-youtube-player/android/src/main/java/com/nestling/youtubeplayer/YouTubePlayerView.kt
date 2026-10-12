@@ -3,6 +3,7 @@ package com.nestling.youtubeplayer
 import android.content.Context
 import android.content.res.Configuration
 import android.view.ViewGroup
+import android.view.KeyEvent
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.FrameLayout
@@ -28,6 +29,7 @@ class YouTubePlayerView(
   private val onEnd by EventDispatcher<Map<String, Any>>()
   private val onTracksChanged by EventDispatcher<Map<String, Any>>()
   private val onError by EventDispatcher<Map<String, Any>>()
+  private val onTvRemote by EventDispatcher<Map<String, Any>>()
 
   private val pipListener = androidx.core.util.Consumer<androidx.core.app.PictureInPictureModeChangedInfo> { info -> pictureInPictureChanged(info.isInPictureInPictureMode) }
   private var lastPipParams: Pair<Boolean, android.graphics.Rect>? = null
@@ -37,6 +39,31 @@ class YouTubePlayerView(
   private var pipActivity: androidx.activity.ComponentActivity? = null
 
   private val isTelevision = (resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION
+
+  var tvRemoteEnabled: Boolean = false
+    set(value) {
+      field = value
+      if (!isTelevision) return
+      isFocusable = value
+      if (value) post { if (tvRemoteEnabled && isAttachedToWindow) requestFocus() }
+    }
+
+  override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+    if (!isTelevision || !tvRemoteEnabled) return super.onKeyDown(keyCode, event)
+    val key = when (keyCode) {
+      KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> "left"
+      KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> "right"
+      KeyEvent.KEYCODE_DPAD_UP -> "up"
+      KeyEvent.KEYCODE_DPAD_DOWN -> "down"
+      KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> "select"
+      KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> "playPause"
+      else -> return super.onKeyDown(keyCode, event)
+    }
+    if (event.repeatCount == 0 || ((key == "left" || key == "right") && event.repeatCount % 3 == 0)) {
+      onTvRemote(mapOf("key" to key))
+    }
+    return true
+  }
 
   private val playerView = PlayerView(context).apply {
     setBackgroundColor(Color.BLACK)
@@ -113,7 +140,7 @@ class YouTubePlayerView(
     if (isTelevision) descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
     addView(playerView)
     controller
-    if (!isTelevision) requestFocus()
+    if (!isTelevision || tvRemoteEnabled) requestFocus()
   }
 
   fun setVideo(videoId: String?) {
@@ -219,7 +246,7 @@ class YouTubePlayerView(
       pipActivity?.lifecycle?.addObserver(lifecycleObserver)
     }
     updatePictureInPictureParams()
-    if (!isTelevision) requestFocus()
+    if (!isTelevision || tvRemoteEnabled) requestFocus()
   }
 
   override fun onDetachedFromWindow() {

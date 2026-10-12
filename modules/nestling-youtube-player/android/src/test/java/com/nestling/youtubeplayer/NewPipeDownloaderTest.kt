@@ -11,6 +11,16 @@ import org.junit.Test
 import org.schabi.newpipe.extractor.downloader.Request
 
 class NewPipeDownloaderTest {
+  @Test fun iosClientKeepsKidsHdStreamsWithoutChangingOtherClients() {
+    val ios = """{"context":{"client":{"clientName":"IOS","clientVersion":"21.03.2"}},"videoId":"approved-id"}""".toByteArray()
+    val adapted = String(NewPipeDownloader.compatibleIosBody(ios)!!, Charsets.UTF_8)
+    assertTrue(adapted.contains("\"clientVersion\":\"20.10.4\""))
+    assertTrue(adapted.contains("\"videoId\":\"approved-id\""))
+    val android = """{"context":{"client":{"clientName":"ANDROID","clientVersion":"21.03.2"}}}""".toByteArray()
+    org.junit.Assert.assertArrayEquals(android, NewPipeDownloader.compatibleIosBody(android))
+    org.junit.Assert.assertNull(NewPipeDownloader.compatibleIosBody(null))
+  }
+
   @Test
   fun interruptedExtractionDoesNotStartAnotherHttpCall() {
     var started = 0

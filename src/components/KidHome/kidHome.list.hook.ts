@@ -14,6 +14,15 @@ export function useKidHomeList(props: KidHomeProps, kid: ReturnType<typeof useKi
   const playlists = useMemo(() => (props.playlists ?? []).map((playlist) => ({ ...playlist, videos: playlistVideos(playlist, library.videos) })).filter((playlist) => playlist.videos.length > 0), [props.playlists, library.videos]);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === props.selectedPlaylistId);
   const list = useRef<FlatList<ApprovedVideo>>(null);
+  const channelId = !kid.searching && tab === 'channels' ? kid.selectedChannel?.channelId : undefined;
+  useEffect(() => {
+    if (channelId) void props.onBrowseChannel?.(channelId, 'initial');
+  }, [channelId, library.profileId, props.onBrowseChannel]);
+  const loadMore = () => {
+    if (channelId && !props.channelBusy?.(channelId) && props.channelSyncStateFor(channelId)?.nextPageToken) {
+      void props.onBrowseChannel?.(channelId, 'more');
+    }
+  };
   let videos = EMPTY_VIDEOS;
   if (kid.searching) videos = kid.query.trim() ? kid.results.videos : EMPTY_VIDEOS;
   else if (kid.onFeed) videos = kid.feedVideos;
@@ -39,5 +48,5 @@ export function useKidHomeList(props: KidHomeProps, kid: ReturnType<typeof useKi
     return counts;
   }, [library.videos]);
 
-  return { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts };
+  return { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts, loadMore };
 }

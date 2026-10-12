@@ -17,6 +17,7 @@ import { useStyles as useStyles } from '../AppShell/appShell.style';
 import { SecondaryButton } from '../AppShell/appFormControls';
 import { usePlayer } from './player.hook';
 import { PlayerDownload } from './playerDownload';
+import { TvPlayer } from './player.tv';
 import type { PlayerScreenProps } from './player.type';
 
 export function PlayerScreen(props: PlayerScreenProps) {
@@ -35,16 +36,13 @@ export function PlayerScreen(props: PlayerScreenProps) {
     return () => cancelAnimationFrame(frame);
   }, [gestures.fullscreen, viewport.width, viewport.height]);
   useEffect(() => {
-    if (props.minimized || (!Platform.isTV && !gestures.fullscreen)) return;
+    if (props.minimized || Platform.isTV || !gestures.fullscreen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (Platform.isTV && optionsOpen) setOptionsOpen(false);
-      else if (Platform.isTV && player.controlsVisible && player.isAllowed && !player.error && !player.policyMessage) player.toggleControls();
-      else if (gestures.fullscreen) gestures.setFullscreen(false);
-      else player.leavePlayer();
+      gestures.setFullscreen(false);
       return true;
     });
     return () => subscription.remove();
-  }, [gestures.fullscreen, props.minimized, optionsOpen, player.controlsVisible, player.isAllowed, player.error, player.policyMessage, player.leavePlayer]);
+  }, [gestures.fullscreen, props.minimized]);
   const activeChapter = chapters.filter((chapter) => chapter.startMs <= player.progress * player.durationMs).at(-1);
   const maximum = props.settings.maxQualityHeight ?? 1080;
   const compact = Boolean(props.minimized);
@@ -89,10 +87,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
     );
   }
 
-  return (
-    <ScrollView ref={scrollRef} style={compact && !pip ? miniCardStyle : styles.playerScreen} onLayout={({ nativeEvent }) => setViewport({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })} scrollEnabled={!pip && !gestures.fullscreen && !compact} contentContainerStyle={compact || pip || gestures.fullscreen ? undefined : optionStyles.scroll}>
-      <View testID="video-stage" style={pip ? { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' } : compact ? optionStyles.miniStage : gestures.fullscreen ? { aspectRatio: 'auto', backgroundColor: '#000', overflow: 'hidden', width: viewport.width, height: viewport.height } : [styles.nativePlayerStage, optionStyles.hero, viewport.height > 0 && { aspectRatio: 'auto', height: Math.min(viewport.width * 9 / 16, viewport.height) }]}>
-        <YouTubePlayer {...player.nativeHandlers} beforePlay={player.authorizePlayback} displayTitle={video.title} autoplay videoId={video.youtubeVideoId}
+  const nativePlayer = (<YouTubePlayer {...player.nativeHandlers} beforePlay={player.authorizePlayback} displayTitle={video.title} autoplay videoId={video.youtubeVideoId}
           onPictureInPictureChanged={({ nativeEvent }) => { setPip(Boolean(nativeEvent.inPictureInPicture)); player.setPictureInPicture(Boolean(nativeEvent.inPictureInPicture)); props.onPictureInPictureChange?.(Boolean(nativeEvent.inPictureInPicture)); }}
           fullscreen={gestures.fullscreen} volume={gestures.volume} brightness={gestures.brightness} audioLanguage={audioLanguage}
           onReady={(event) => {
@@ -106,7 +101,31 @@ export function PlayerScreen(props: PlayerScreenProps) {
             if (nativeEvent.videoId !== video.youtubeVideoId) return;
             setTracks({ captions: nativeEvent.captions ?? [], heights: nativeEvent.qualityHeights ?? [], audio: nativeEvent.audio ?? [] });
             setCaptionTrack((current) => nativeEvent.captions?.some((track) => track.id === current) ? current : null);
-          }} style={styles.nativePlayer} />
+          }} style={styles.nativePlayer} />);
+  const settingsPanel = (<ScrollView style={[optionStyles.panel, gestures.fullscreen && { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }]} contentContainerStyle={{ gap: 10 }}>
+          <FocusablePressable accessibilityLabel="Close player settings" hasTVPreferredFocus={Platform.isTV} focusStyle={Platform.isTV ? { borderColor: '#fff' } : undefined} style={optionStyles.choice} onPress={() => setOptionsOpen(false)}><Text style={optionStyles.text}>Close settings</Text></FocusablePressable>
+          <Text style={optionStyles.label}>Chapters</Text>
+          {chapters.length ? chapters.map((chapter) => <FocusablePressable key={chapter.startMs} accessibilityLabel={`Chapter: ${chapter.title}, ${formatDuration(chapter.startMs / 1000)}`} accessibilityState={{ selected: activeChapter?.startMs === chapter.startMs }} style={[optionStyles.choice, activeChapter?.startMs === chapter.startMs && optionStyles.selected]} onPress={() => { player.seekToPosition(chapter.startMs); setOptionsOpen(false); }}><Text style={optionStyles.text}>{formatDuration(chapter.startMs / 1000)} · {chapter.title}</Text></FocusablePressable>) : <Text style={optionStyles.hint}>No chapters available for this video.</Text>}
+          <ChoiceRow label="Audio language" value={tracks.audio.find((track) => track.selected)?.language ?? ''} options={[{ value: '', label: 'Video default' }, ...tracks.audio.map((track) => ({ value: track.language, label: track.label }))]} onChange={(value) => setAudioLanguage(value || null)} />
+          {audioLanguage && !tracks.audio.some((track) => track.language === audioLanguage) ? <Text style={optionStyles.hint}>Your preferred language is unavailable. Using the video default.</Text> : null}
+          {tracks.audio.some((track) => track.selected) ? <Text style={optionStyles.hint}>Playing: {tracks.audio.find((track) => track.selected)?.label}</Text> : null}
+          {preferenceError ? <Text style={optionStyles.hint}>{preferenceError}</Text> : null}
+          <Text style={optionStyles.hint}>{Platform.isTV ? 'Use the D-pad to move between settings. Press Back to return to playback.' : 'Swipe horizontally to seek. Swipe up/down at the left edge for brightness, at the right edge for volume, in fullscreen. Swipe up to enter fullscreen; swipe down to exit fullscreen or minimize. Press Home to keep watching in picture-in-picture.'}</Text>
+          {!Platform.isTV ? <><ChoiceRow label="Volume" value={gestures.volume} options={[{ value: 0, label: 'Mute' }, { value: 0.5, label: '50%' }, { value: 1, label: '100%' }]} onChange={gestures.setVolume} />
+          <ChoiceRow label="Brightness" value={gestures.brightness ?? 0.5} options={[{ value: 0.25, label: 'Low' }, { value: 0.5, label: 'Medium' }, { value: 1, label: 'High' }]} onChange={gestures.setBrightness} /></> : null}
+          <ChoiceRow label="Speed" value={speed} options={SPEED_OPTIONS} onChange={setSpeed} />
+          <ChoiceRow label="Quality" value={quality > maximum ? 0 : quality} options={[{ value: 0, label: 'Auto' }, ...tracks.heights.filter((height) => height <= maximum).map((height) => ({ value: height, label: `Up to ${height}p` }))]} onChange={setQuality} />
+          <Text style={optionStyles.hint}>Auto adjusts to your connection, up to {maximum}p.</Text>
+          <ChoiceRow label="Captions" value={captionTrack ?? ''} options={[{ value: '', label: 'Off' }, ...tracks.captions.map((track) => ({ value: track.id, label: track.label }))]} onChange={(value) => setCaptionTrack(value || null)} />
+          {!tracks.captions.length ? <Text style={optionStyles.hint}>No captions available for this video.</Text> : null}
+          {captionTrack ? <ChoiceRow label="Caption size" value={captionScale} options={[{ value: 1, label: 'Normal' }, { value: 1.5, label: 'Large' }]} onChange={setCaptionScale} /> : null}
+        </ScrollView>);
+  if (Platform.isTV && !compact && !pip) return <TvPlayer props={props} player={player} nativePlayer={nativePlayer} settingsPanel={settingsPanel} optionsOpen={optionsOpen} setOptionsOpen={setOptionsOpen} />;
+
+  return (
+    <ScrollView ref={scrollRef} style={compact && !pip ? miniCardStyle : styles.playerScreen} onLayout={({ nativeEvent }) => setViewport({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })} scrollEnabled={!pip && !gestures.fullscreen && !compact} contentContainerStyle={compact || pip || gestures.fullscreen ? undefined : optionStyles.scroll}>
+      <View testID="video-stage" style={pip ? { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' } : compact ? optionStyles.miniStage : gestures.fullscreen ? { aspectRatio: 'auto', backgroundColor: '#000', overflow: 'hidden', width: viewport.width, height: viewport.height } : [styles.nativePlayerStage, optionStyles.hero, viewport.height > 0 && { aspectRatio: 'auto', height: Math.min(viewport.width * 9 / 16, viewport.height) }]}>
+        {nativePlayer}
         {player.showThumbnailCover ? (
           // The native surface still shows whatever it last rendered until this video's own
           // stream starts — covering it with this video's thumbnail (plus a spinner) makes a
@@ -182,26 +201,7 @@ export function PlayerScreen(props: PlayerScreenProps) {
           ) : null}
         </View>
       </View>
-      {!pip && !compact && optionsOpen ? (
-        <ScrollView style={[optionStyles.panel, gestures.fullscreen && { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }]} contentContainerStyle={{ gap: 10 }}>
-          <FocusablePressable accessibilityLabel="Close player settings" style={optionStyles.choice} onPress={() => setOptionsOpen(false)}><Text style={optionStyles.text}>Close settings</Text></FocusablePressable>
-          <Text style={optionStyles.label}>Chapters</Text>
-          {chapters.length ? chapters.map((chapter) => <FocusablePressable key={chapter.startMs} accessibilityLabel={`Chapter: ${chapter.title}, ${formatDuration(chapter.startMs / 1000)}`} accessibilityState={{ selected: activeChapter?.startMs === chapter.startMs }} style={[optionStyles.choice, activeChapter?.startMs === chapter.startMs && optionStyles.selected]} onPress={() => { player.seekToPosition(chapter.startMs); setOptionsOpen(false); }}><Text style={optionStyles.text}>{formatDuration(chapter.startMs / 1000)} · {chapter.title}</Text></FocusablePressable>) : <Text style={optionStyles.hint}>No chapters available for this video.</Text>}
-          <ChoiceRow label="Audio language" value={tracks.audio.find((track) => track.selected)?.language ?? ''} options={[{ value: '', label: 'Video default' }, ...tracks.audio.map((track) => ({ value: track.language, label: track.label }))]} onChange={(value) => setAudioLanguage(value || null)} />
-          {audioLanguage && !tracks.audio.some((track) => track.language === audioLanguage) ? <Text style={optionStyles.hint}>Your preferred language is unavailable. Using the video default.</Text> : null}
-          {tracks.audio.some((track) => track.selected) ? <Text style={optionStyles.hint}>Playing: {tracks.audio.find((track) => track.selected)?.label}</Text> : null}
-          {preferenceError ? <Text style={optionStyles.hint}>{preferenceError}</Text> : null}
-          <Text style={optionStyles.hint}>Swipe horizontally to seek. Swipe up/down at the left edge for brightness, at the right edge for volume, in fullscreen. Swipe up to enter fullscreen; swipe down to exit fullscreen or minimize. Press Home to keep watching in picture-in-picture.</Text>
-          <ChoiceRow label="Volume" value={gestures.volume} options={[{ value: 0, label: 'Mute' }, { value: 0.5, label: '50%' }, { value: 1, label: '100%' }]} onChange={gestures.setVolume} />
-          <ChoiceRow label="Brightness" value={gestures.brightness ?? 0.5} options={[{ value: 0.25, label: 'Low' }, { value: 0.5, label: 'Medium' }, { value: 1, label: 'High' }]} onChange={gestures.setBrightness} />
-          <ChoiceRow label="Speed" value={speed} options={SPEED_OPTIONS} onChange={setSpeed} />
-          <ChoiceRow label="Quality" value={quality > maximum ? 0 : quality} options={[{ value: 0, label: 'Auto' }, ...tracks.heights.filter((height) => height <= maximum).map((height) => ({ value: height, label: `Up to ${height}p` }))]} onChange={setQuality} />
-          <Text style={optionStyles.hint}>Auto adjusts to your connection, up to {maximum}p.</Text>
-          <ChoiceRow label="Captions" value={captionTrack ?? ''} options={[{ value: '', label: 'Off' }, ...tracks.captions.map((track) => ({ value: track.id, label: track.label }))]} onChange={(value) => setCaptionTrack(value || null)} />
-          {!tracks.captions.length ? <Text style={optionStyles.hint}>No captions available for this video.</Text> : null}
-          {captionTrack ? <ChoiceRow label="Caption size" value={captionScale} options={[{ value: 1, label: 'Normal' }, { value: 1.5, label: 'Large' }]} onChange={setCaptionScale} /> : null}
-        </ScrollView>
-      ) : null}
+      {!pip && !compact && optionsOpen ? settingsPanel : null}
       {!gestures.fullscreen && !compact && !pip ? <><View style={optionStyles.details}>
         <Text style={optionStyles.detailTitle}>{video.title}</Text>
         <FocusablePressable accessibilityLabel={`Channel: ${video.channelName?.trim() || 'Approved by your parent'}`} disabled={!props.onBrowseChannel} onPress={props.onBrowseChannel} style={optionStyles.channelRow}>

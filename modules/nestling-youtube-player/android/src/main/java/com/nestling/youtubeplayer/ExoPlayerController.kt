@@ -18,6 +18,7 @@ import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import org.json.JSONObject
@@ -150,6 +151,7 @@ class ExoPlayerController(
   @Volatile private var requestGeneration = 0L
   private var resolutionTask: Future<*>? = null
   private var retryAttempt = 0
+  private var retryPreferAdaptive = false
   private var resumePositionMs = 0L
   private var wantsPlayback = false
   private var offlinePlayback = false
@@ -249,6 +251,10 @@ class ExoPlayerController(
           }
           emit(if (isPlaying) "onPlay" else "onPause", event(mapOf("isPlaying" to isPlaying, "remote" to remoteCommand)))
           remoteCommand = false
+        }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+          diagnostic("video_size", mapOf("width" to videoSize.width, "height" to videoSize.height, "parentMaxHeight" to maxQualityHeight))
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -618,7 +624,7 @@ class ExoPlayerController(
   }
 
   private fun prepare(info: PlaybackInfo, startPositionMs: Long) {
-    diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) "hls" else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
+    diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) { if (info.mimeType == "application/dash+xml") "dash" else "hls" } else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
     val source = createMediaSource(info)
     if (source == null) {
       Log.w(TAG, "prepare(${info.videoId}) resolved but no playable source: $info")
@@ -655,6 +661,7 @@ class ExoPlayerController(
     }
 
     retryAttempt += 1
+    retryPreferAdaptive = retryPolicy.preferAdaptive(code, retryAttempt)
     recovering = true
     val delayMs = retryPolicy.delayForAttempt(retryAttempt)
     emit(
@@ -677,9 +684,8 @@ class ExoPlayerController(
     if (destroyed || !recovering || !wantsPlayback) return
     val videoId = currentVideoId ?: return
     emit("onBuffer", event())
-    // The adaptive stream is what just failed, so recovery takes the plain progressive route:
-    // 360p and throttled-proof, and better than a retry loop that re-requests a dead manifest.
-    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, preferAdaptive = false)
+    // An expired URL needs fresh HD streams; repeated failures still get the progressive fallback.
+    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, preferAdaptive = retryPreferAdaptive)
   }
 
   private fun cancelPendingRetry() {

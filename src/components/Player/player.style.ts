@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTheme, type Palette, type VideoPalette } from '../theme';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   hero: { overflow: 'hidden', borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
@@ -39,7 +39,7 @@ const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   scroll: { paddingBottom: 24 },
   panel: { padding: 12, gap: 10, backgroundColor: yt.surface },
   label: { color: yt.text, fontWeight: '700', marginBottom: 6 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  row: { flexDirection: Platform.isTV ? 'column' : 'row', flexWrap: 'wrap', gap: 6 },
   choice: { padding: 12, minHeight: 44, borderRadius: 8, backgroundColor: yt.surfaceAlt },
   selected: { borderWidth: 1, borderColor: yt.text },
   text: { color: yt.text },
@@ -48,7 +48,7 @@ const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
 
 export function useStyles() {
   const { colors, yt } = useTheme();
-  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+  return useMemo(() => makeStyles(colors, Platform.isTV ? { ...yt, surface: '#202020', surfaceAlt: '#303030', text: '#fff', textDim: '#bbb' } : yt), [colors, yt]);
 }
 
 export default useStyles;

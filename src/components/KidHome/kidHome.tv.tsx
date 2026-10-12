@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { FlatList, Image, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { ApprovedVideo } from '../../types';
 import { FocusablePressable } from '../tv';
@@ -16,6 +17,7 @@ type KidState = ReturnType<typeof useKidHome>;
 export function TvTopBar({ props, kid }: { props: KidHomeProps; kid: KidState }) {
   const styles = useStyles();
   const { colors } = useTheme();
+  const touch = !Platform.isTV;
   useEffect(() => { props.onBottomNavLayout?.(0); }, [props.onBottomNavLayout]);
   return (
     <View style={styles.header}>
@@ -25,34 +27,34 @@ export function TvTopBar({ props, kid }: { props: KidHomeProps; kid: KidState })
       </View>
       {kid.searching ? (
         <View style={styles.search}>
-          <FocusablePressable accessibilityLabel="Close search" style={styles.icon} onPress={kid.closeSearch}>
+          <FocusablePressable accessibilityLabel="Close search" style={[styles.icon, touch && styles.touchIcon]} onPress={kid.closeSearch}>
             <Feather name="arrow-left" size={20} color={colors.ink} />
           </FocusablePressable>
           <TextInput autoFocus value={kid.query} onChangeText={kid.setQuery} placeholder={KID_COPY.searchPlaceholder} placeholderTextColor={colors.muted} style={styles.searchInput} accessibilityLabel={KID_COPY.searchPlaceholder} />
         </View>
       ) : (
-        <View style={styles.nav}>
+        <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={styles.nav} showsHorizontalScrollIndicator={false}>
           {KID_DESTINATIONS.filter((item) => item.id !== 'downloads' || props.downloadsEnabled !== false).map((item) => (
-            <FocusablePressable key={item.id} accessibilityLabel={item.label} accessibilityState={{ selected: kid.tab === item.id }} hasTVPreferredFocus={kid.tvFocusMenu && (kid.onFeed ? item.id === 'home' : kid.tab === item.id)} onFocus={() => kid.setTvFocusMenu(true)} style={[styles.navItem, kid.tab === item.id && styles.navActive]} onPress={() => kid.changeTab(item.id)}>
+            <FocusablePressable key={item.id} accessibilityLabel={item.label} accessibilityState={{ selected: kid.tab === item.id }} hasTVPreferredFocus={Platform.isTV && kid.tvFocusMenu && (kid.onFeed ? item.id === 'home' : kid.tab === item.id)} onFocus={() => kid.setTvFocusMenu(true)} style={[styles.navItem, touch && { minHeight: 48 }, kid.tab === item.id && styles.navActive]} onPress={() => kid.changeTab(item.id)}>
               <Feather name={item.icon as React.ComponentProps<typeof Feather>['name']} size={16} color={kid.tab === item.id ? '#251744' : colors.muted} />
               <Text style={[styles.navLabel, kid.tab === item.id && styles.navLabelActive]}>{item.label}{item.id === 'requests' && props.pendingRequestCount ? ` (${props.pendingRequestCount})` : ''}</Text>
             </FocusablePressable>
           ))}
-        </View>
+        </ScrollView>
       )}
       <View style={styles.actions}>
-        {!kid.searching && <FocusablePressable accessibilityLabel="Search" style={styles.icon} onPress={kid.openSearch}><Feather name="search" size={20} color={colors.ink} /></FocusablePressable>}
-        <FocusablePressable accessibilityLabel={`Signed in as ${props.activeProfile?.name ?? 'explorer'}`} style={styles.icon} onPress={kid.toggleSwitcher}><ChannelAvatar name={props.activeProfile?.name ?? '?'} size={28} /></FocusablePressable>
-        <FocusablePressable accessibilityLabel="Open parent mode" style={styles.icon} onPress={props.onParentPress}><Feather name="lock" size={18} color={colors.muted} /></FocusablePressable>
+        {!kid.searching && <FocusablePressable accessibilityLabel="Search" style={[styles.icon, touch && styles.touchIcon]} onPress={kid.openSearch}><Feather name="search" size={20} color={colors.ink} /></FocusablePressable>}
+        <FocusablePressable accessibilityLabel={`Signed in as ${props.activeProfile?.name ?? 'explorer'}`} style={[styles.icon, touch && styles.touchIcon]} onPress={kid.toggleSwitcher}><ChannelAvatar name={props.activeProfile?.name ?? '?'} size={28} /></FocusablePressable>
+        <FocusablePressable accessibilityLabel="Open parent mode" style={[styles.icon, touch && styles.touchIcon]} onPress={props.onParentPress}><Feather name="lock" size={18} color={colors.muted} /></FocusablePressable>
       </View>
     </View>
   );
 }
 
-export function TvVideoCard({ video, onPress, onFocus, restoreFocus = false }: { video: ApprovedVideo; onPress: (video: ApprovedVideo) => void; onFocus?: () => void; restoreFocus?: boolean }) {
+export function TvVideoCard({ video, onPress, onFocus, restoreFocus = false, style }: { video: ApprovedVideo; onPress: (video: ApprovedVideo) => void; onFocus?: () => void; restoreFocus?: boolean; style?: StyleProp<ViewStyle> }) {
   const styles = useStyles();
   return (
-    <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.videoCard} hasTVPreferredFocus={restoreFocus} onPress={() => onPress(video)} onFocus={onFocus}>
+    <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={[styles.videoCard, style]} hasTVPreferredFocus={restoreFocus} onPress={() => onPress(video)} onFocus={onFocus}>
       <Thumbnail video={video} radius={10} />
       <Text numberOfLines={2} style={styles.videoTitle}>{video.title}</Text>
       <Text numberOfLines={1} style={styles.videoMeta}>{video.channelName || KID_COPY.unknownChannel}</Text>

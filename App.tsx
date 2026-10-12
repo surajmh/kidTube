@@ -193,6 +193,8 @@ function AppContent() {
             }
             pendingRequestCount={library.childRequests.filter((request) => request.status === 'pending').length}
             channelSyncStateFor={library.syncStateFor}
+            onBrowseChannel={library.browseKidChannel}
+            channelBusy={library.channelBusy}
           />
         )}
         {/* Parent Mode renders only with a live session — hiding the button is not the control. */}

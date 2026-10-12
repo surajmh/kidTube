@@ -54,7 +54,9 @@ export type KidHomeProps = {
   onRequestVideo: (video: ApprovedVideo) => Promise<void>;
   onRequestChannel: (channel: ApprovedChannel) => Promise<void>;
   pendingRequestCount: number;
-  /** Cached fetch state per channel. Kid Mode only reads this and never triggers a fetch. */
+  onBrowseChannel?: (channelId: string, mode: 'initial' | 'more') => Promise<void>;
+  channelBusy?: (channelId: string) => boolean;
+  /** Metadata cache and pagination state; approval remains channel-wide. */
   channelSyncStateFor: (channelId: string) => ChannelSyncState | undefined;
 };
 

@@ -286,7 +286,9 @@ class YouTubePlayerModule : Module() {
     }
 
     View(YouTubePlayerView::class) {
-      Events("onPictureInPictureChanged", "onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError", "onTracksChanged")
+      Events("onPictureInPictureChanged", "onTvRemote", "onLoad", "onReady", "onPlay", "onPause", "onBuffer", "onProgress", "onRetry", "onEnd", "onError", "onTracksChanged")
+
+      Prop("tvRemoteEnabled") { view: YouTubePlayerView, value: Boolean -> view.tvRemoteEnabled = value }
 
       // Props are not re-sent when they did not change, so the mounted view is also registered here.
       OnViewDidUpdateProps { view ->

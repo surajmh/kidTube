@@ -1,6 +1,7 @@
 import type { ApprovedChannel, ApprovedVideo } from '../types';
 import type { ChannelSyncState } from './content/channelSyncRules.type';
 import type { ClassifiedProviderError } from './content/youtubeContentProvider.type';
+import type { YouTubeVideo } from './content/youtubeContentProvider.type';
 
 export type ResolvedChannel = {
   youtubeChannelId: string;
@@ -11,6 +12,8 @@ export type ResolvedChannel = {
 };
 
 export type ChannelSyncResult = {
+  /** This page's metadata, for merging against the latest library after an async fetch. */
+  uploads?: YouTubeVideo[];
   videos: ApprovedVideo[];
   channels: ApprovedChannel[];
   state: ChannelSyncState;

@@ -1,6 +1,6 @@
 import { useTheme } from '../theme';
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
 
@@ -61,7 +61,7 @@ export function ChoiceRow<T extends string | number>({ label, value, options, on
 }) {
   const optionStyles = useOptionStyles();
   return <View><Text style={optionStyles.label}>{label}</Text><View style={optionStyles.row}>
-    {options.map((option) => <FocusablePressable key={option.value} accessibilityRole="radio" accessibilityLabel={`${label}: ${option.label}`} accessibilityState={{ selected: option.value === value }} onPress={() => onChange(option.value)} style={[optionStyles.choice, option.value === value && optionStyles.selected]}>
+    {options.map((option) => <FocusablePressable key={option.value} focusStyle={Platform.isTV ? { borderColor: '#fff', transform: [{ scale: 1 }] } : undefined} accessibilityRole="radio" accessibilityLabel={`${label}: ${option.label}`} accessibilityState={{ selected: option.value === value }} onPress={() => onChange(option.value)} style={[optionStyles.choice, option.value === value && optionStyles.selected]}>
       <Text style={optionStyles.text}>{option.label}</Text>
     </FocusablePressable>)}
   </View></View>;

@@ -12,6 +12,10 @@ class PlaybackRetryPolicy(
   private val baseDelayMs: Long = 1_000L,
   private val maxDelayMs: Long = 8_000L,
 ) {
+  /** Refresh transient failures once before dropping the adaptive quality ladder. */
+  fun preferAdaptive(code: String, attempt: Int): Boolean =
+    attempt == 1 && (code == PlaybackCodes.STREAM_EXPIRED || code == PlaybackCodes.NETWORK_ERROR)
+
   /** Transient failures worth refreshing the stream for. */
   fun isRecoverable(code: String): Boolean = when (code) {
     PlaybackCodes.NETWORK_ERROR,

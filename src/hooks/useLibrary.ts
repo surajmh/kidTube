@@ -8,6 +8,7 @@ import { fieldSetter,loadAppData,useAppStore } from '../store/appStore';
 import { withDefaultCategories } from '../repositories/parentalControlsRepository';
 import { channelSyncService } from '../services/channelSyncService';
 import type { SyncMode } from '../services/content/channelSyncRules.type';
+import { mergeSyncedVideos } from '../services/content/channelSyncRules';
 import { parentSessionService } from '../services/auth/parentSession';
 import type { ParentSession } from '../services/auth/parentSession.type';
 import { parentPinService } from '../services/auth/parentPinService';
@@ -520,6 +521,53 @@ export function useLibrary({
     await syncChannel(channel, 'initial');
   }
 
+  const kidChannelFetches = useRef(new Set<string>());
+  const browseKidChannel = useCallback(async (channelId: string, mode: 'initial' | 'more' = 'initial') => {
+    const profileId = activeProfile?.id;
+    if (!libraryReady || !profileId || kidChannelFetches.current.has(channelId)) return;
+    kidChannelFetches.current.add(channelId);
+    setBusyChannelIds((current) => [...current, channelId]);
+    try {
+      const result = await channelSyncService.browse(profileId, { channelId, mode, videos: useAppStore.getState().videos });
+      useAppStore.setState((current) => {
+        const channel = current.channels.find((item) => item.channelId === channelId);
+        if (!channel || !current.profiles.some((profile) => profile.id === profileId) ||
+            contentAccessService.evaluate(profileId, { channelId }) !== 'allowed') return current;
+        const states = channelSyncService.allStates();
+        if (!result.fetched) return { channelSyncStates: states };
+        // Merge only the fetched page so concurrent downloads, approvals and other channel fetches survive.
+        const merged = mergeSyncedVideos(current.videos, result.uploads ?? [], { channelId, channelName: channel.name });
+        const metadata = result.channels[0];
+        return {
+          videos: merged.videos,
+          channels: current.channels.map((item) => item.channelId === channelId
+            ? { ...item, name: metadata.name, thumbnailUrl: metadata.thumbnailUrl } : item),
+          channelSyncStates: states,
+        };
+      });
+    } catch (error) {
+      console.warn('[channels] browse failed:', error instanceof Error ? error.message : error);
+    } finally {
+      kidChannelFetches.current.delete(channelId);
+      setBusyChannelIds((current) => current.filter((id) => id !== channelId));
+    }
+  }, [activeProfile?.id, libraryReady]);
+
+  useEffect(() => {
+    if (screen !== 'kid' || !libraryReady) return;
+    let cancelled = false;
+    const channels = useAppStore.getState().channels;
+    void (async () => {
+      for (const channel of channels) {
+        if (cancelled) return;
+        if (activeProfile && contentAccessService.evaluate(activeProfile.id, { channelId: channel.channelId }) === 'allowed') {
+          await browseKidChannel(channel.channelId);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [screen, libraryReady, browseKidChannel]);
+
   /**
    * Runs right after a parent approves a channel, which is what makes the channel
    * page show videos instead of "0 videos" without a second tap.
@@ -729,6 +777,7 @@ export function useLibrary({
     removeChannel,
     openChannelVideos,
     syncChannel,
+    browseKidChannel,
     syncNewlyApprovedChannel,
     findChannels: (query: string) => {
       if (!parentSession) throw new Error('Parent mode is required.');

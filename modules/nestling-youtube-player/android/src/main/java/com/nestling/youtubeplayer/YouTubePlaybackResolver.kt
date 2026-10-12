@@ -93,8 +93,14 @@ class AuthorizedPlaybackResolver(
       )
     }
 
-    // Only the HLS ladder reaches beyond 360p; the separate video-only and audio-only URLs are
-    // throttled just as badly, so a forced fallback goes straight to the muxed stream.
+    // The iOS response also offers directly fetchable MP4 renditions when no HLS URL is supplied.
+    val videos = info.videoOnlyStreams.orEmpty().filter { isDirectUrl(it) && it.format?.mimeType == "video/mp4" && (heightOf(it) ?: 0) in 1..1080 }
+    val mp4Audio = info.audioStreams.orEmpty().filter { isDirectUrl(it) && it.format?.mimeType == "audio/mp4" }.maxByOrNull { it.averageBitrate }
+    if (preferAdaptive && videos.isNotEmpty() && mp4Audio != null && info.duration > 0) {
+      return PlaybackInfo(videoId = videoId, durationMs = durationMs, captions = captions, chapters = chapters,
+        manifestUrl = ProgressiveDashManifest.create(videos, mp4Audio, info.duration), mimeType = "application/dash+xml")
+    }
+
     val audio = if (preferAdaptive) bestAudio(info.audioStreams) else null
     val adaptive = if (preferAdaptive) bestVideo(info.videoOnlyStreams) else null
 

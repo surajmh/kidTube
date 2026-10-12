@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, renderHook } from '@testing-library/react-native';
-import { AppState, ScrollView, StyleSheet } from 'react-native';
+import { AppState, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { usePlayer } from '../player.hook';
 import type { PlayerScreenProps } from '../player.type';
 import { defaultPlaybackSettings } from '../../../constants/playback.constant';
@@ -514,10 +514,113 @@ it('TV Back closes player settings, hides controls, then leaves playback', () =>
     pressBack();
     expect(view.queryByLabelText('Player settings')).toBeNull();
     expect(onBack).not.toHaveBeenCalled();
-    fireEvent.press(view.getByLabelText('Show player controls'));
+    act(() => (YouTubePlayer as jest.Mock).mock.calls.at(-1)?.[0].onTvRemote({ nativeEvent: { key: 'select' } }));
     expect(view.getByLabelText('Player settings')).toBeTruthy();
     pressBack();
     pressBack();
     expect(onBack).toHaveBeenCalledTimes(1);
   } finally { view.unmount(); back.mockRestore(); appState.mockRestore(); tv.mockRestore(); }
+});
+
+it('TV plays fullscreen, hides idle controls, seeks with the remote, and keeps approved up next separate', async () => {
+  const { Platform } = require('react-native');
+  const tv = jest.spyOn(Platform, 'isTV', 'get').mockReturnValue(true);
+  const appState = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
+  jest.useFakeTimers();
+  const onNextVideo = jest.fn();
+  const next = { ...props.video, id: 'b', youtubeVideoId: 'bbbbbbbbbbb', title: 'Approved story' };
+  const view = render(<PlayerScreen {...props} upNextVideos={[props.video, next]} onNextVideo={onNextVideo} />);
+  const native = () => (YouTubePlayer as jest.Mock).mock.calls.at(-1)?.[0];
+  try {
+    expect(view.getByTestId('tv-player')).toBeTruthy();
+    expect(native().fullscreen).toBe(true);
+    expect(view.queryByLabelText('Share video')).toBeNull();
+    act(() => native().onPlay());
+    await act(async () => native().onProgress({ nativeEvent: { videoId: 'aaaaaaaaaaa', duration: 100_000, position: 30_000, isPlaying: true } }));
+    await act(async () => jest.advanceTimersByTime(6000));
+    expect(view.queryByLabelText('Pause video')).toBeNull();
+    expect(native().tvRemoteEnabled).toBe(true);
+    act(() => native().onTvRemote({ nativeEvent: { key: 'right' } }));
+    expect(playerAdapter.seek).toHaveBeenLastCalledWith(40_000);
+    expect(view.getByText('+10 seconds')).toBeTruthy();
+    act(() => native().onTvRemote({ nativeEvent: { key: 'select' } }));
+    fireEvent.press(view.getByLabelText('Seek video'));
+    expect(native().tvRemoteEnabled).toBe(true);
+    act(() => native().onTvRemote({ nativeEvent: { key: 'left' } }));
+    expect(playerAdapter.seek).toHaveBeenLastCalledWith(30_000);
+    act(() => native().onTvRemote({ nativeEvent: { key: 'select' } }));
+    expect(native().tvRemoteEnabled).toBe(false);
+    fireEvent.press(view.getByLabelText('Player settings'));
+    expect(view.getByTestId('tv-player-settings')).toBeTruthy();
+    expect(view.queryByLabelText('Pause video')).toBeNull();
+    await act(async () => jest.advanceTimersByTime(6000));
+    expect(view.getByLabelText('Close player settings')).toBeTruthy();
+    fireEvent.press(view.getByLabelText('Close player settings'));
+    fireEvent.press(view.getByLabelText('Up next'));
+    expect(view.queryByLabelText('Play A')).toBeNull();
+    fireEvent.press(view.getByLabelText('Play Approved story'));
+    expect(onNextVideo).toHaveBeenCalledWith(next);
+    fireEvent.press(view.getByLabelText('Close up next'));
+    await act(async () => { fireEvent.press(view.getByLabelText('Pause video')); });
+    await act(async () => native().onPause());
+    await act(async () => jest.advanceTimersByTime(10_000));
+    expect(view.getByLabelText('Play video')).toBeTruthy();
+  } finally { view.unmount(); appState.mockRestore(); tv.mockRestore(); jest.useRealTimers(); }
+});
+
+it('TV Down opens the approved rail without interrupting playback, keeps focused cards visible, and Back dismisses it', async () => {
+  const { BackHandler, Platform } = require('react-native');
+  const tv = jest.spyOn(Platform, 'isTV', 'get').mockReturnValue(true);
+  const appState = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
+  const handlers = new Set<() => boolean>();
+  const back = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_: unknown, listener: unknown) => {
+    handlers.add(listener as () => boolean);
+    return { remove: () => handlers.delete(listener as () => boolean) };
+  });
+  const scroll = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => {});
+  const upcoming = Array.from({ length: 8 }, (_, index) => ({ ...props.video, id: `next-${index}`, youtubeVideoId: `next${index}`, title: `Story ${index}` }));
+  const onNextVideo = jest.fn();
+  const onBack = jest.fn();
+  jest.useFakeTimers();
+  const view = render(<PlayerScreen {...props} upNextVideos={[props.video, ...upcoming]} onNextVideo={onNextVideo} onBack={onBack} />);
+  const native = () => (YouTubePlayer as jest.Mock).mock.calls.at(-1)?.[0];
+  try {
+    act(() => native().onPlay());
+    await act(async () => jest.advanceTimersByTime(6000));
+    const pauses = (playerAdapter.pause as jest.Mock).mock.calls.length;
+    const stops = (playerAdapter.stop as jest.Mock).mock.calls.length;
+    act(() => native().onTvRemote({ nativeEvent: { key: 'down' } }));
+    expect(view.getByTestId('tv-up-next')).toBeTruthy();
+    expect(view.queryByLabelText('Play A')).toBeNull();
+    expect(native().tvRemoteEnabled).toBe(false);
+    fireEvent(view.getByLabelText('Play Story 7'), 'focus');
+    expect(scroll).toHaveBeenLastCalledWith({ index: 7, viewPosition: 0.5, animated: false });
+    await act(async () => jest.advanceTimersByTime(10_000));
+    expect(view.getByTestId('tv-up-next')).toBeTruthy();
+    expect(playerAdapter.pause).toHaveBeenCalledTimes(pauses);
+    expect(playerAdapter.stop).toHaveBeenCalledTimes(stops);
+    act(() => { expect([...handlers].at(-1)?.()).toBe(true); });
+    expect(view.queryByTestId('tv-up-next')).toBeNull();
+    expect(view.getByLabelText('Pause video')).toBeTruthy();
+    expect(onBack).not.toHaveBeenCalled();
+    fireEvent.press(view.getByLabelText('Up next'));
+    fireEvent.press(view.getByLabelText('Play Story 7'));
+    expect(onNextVideo).toHaveBeenCalledWith(upcoming[7]);
+    view.rerender(<PlayerScreen {...props} video={upcoming[7]} upNextVideos={upcoming} onNextVideo={onNextVideo} onBack={onBack} />);
+    expect(view.queryByTestId('tv-up-next')).toBeNull();
+  } finally { view.unmount(); scroll.mockRestore(); back.mockRestore(); appState.mockRestore(); tv.mockRestore(); jest.useRealTimers(); }
+});
+
+it('TV Down falls back to playback controls when there are no other approved videos', () => {
+  const { Platform } = require('react-native');
+  const tv = jest.spyOn(Platform, 'isTV', 'get').mockReturnValue(true);
+  const appState = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
+  const view = render(<PlayerScreen {...props} upNextVideos={[props.video]} />);
+  try {
+    const native = () => (YouTubePlayer as jest.Mock).mock.calls.at(-1)?.[0];
+    act(() => native().onTvRemote({ nativeEvent: { key: 'down' } }));
+    expect(view.queryByTestId('tv-up-next')).toBeNull();
+    expect(view.queryByLabelText('Up next')).toBeNull();
+    expect(view.getByLabelText('Player settings')).toBeTruthy();
+  } finally { view.unmount(); appState.mockRestore(); tv.mockRestore(); }
 });

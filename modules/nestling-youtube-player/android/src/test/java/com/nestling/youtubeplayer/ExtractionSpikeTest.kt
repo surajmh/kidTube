@@ -144,6 +144,24 @@ class ExtractionSpikeTest {
   }
 
   @Test
+  fun madeForKidsOffersHdLadder() {
+    val info = AuthorizedPlaybackResolver().resolve("aac0IendYOQ")
+    val uri = info.manifestUrl ?: error("Made-for-kids playback needs an adaptive manifest")
+    val xml = String(java.util.Base64.getDecoder().decode(uri.substringAfter(',')), Charsets.UTF_8)
+    val document = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+      .parse(org.xml.sax.InputSource(java.io.StringReader(xml)))
+    val representations = document.getElementsByTagName("Representation")
+    val heights = (0 until representations.length).mapNotNull {
+      (representations.item(it) as org.w3c.dom.Element).getAttribute("height").toIntOrNull()
+    }.toSet()
+    println("Made-for-kids DASH heights: ${heights.sorted()}")
+    assertTrue("720p and 1080p must be available", heights.containsAll(listOf(720, 1080)))
+    assertTrue("No rendition may exceed the supported 1080p ceiling", heights.all { it <= 1080 })
+    val urls = document.getElementsByTagName("BaseURL")
+    for (index in 0 until urls.length) assertTrue("Rendition $index must serve bytes", probeStream("DASH rendition $index", urls.item(index).textContent))
+  }
+
+  @Test
   fun readsMetadata() {
     for ((id, label) in SAMPLES) {
       val meta = NewPipeMetadata.video(id)

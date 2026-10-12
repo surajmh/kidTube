@@ -29,6 +29,8 @@ export type YouTubePlayerProps = ViewProps & {
   videoId?: string;
   autoplay?: boolean;
   fullscreen?: boolean;
+  tvRemoteEnabled?: boolean;
+  onTvRemote?: (event: { nativeEvent: { key: 'left' | 'right' | 'up' | 'down' | 'select' | 'playPause' } }) => void;
   volume?: number;
   brightness?: number;
   audioLanguage?: string | null;

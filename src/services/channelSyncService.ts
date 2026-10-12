@@ -9,6 +9,8 @@ import { YouTubeProviderError,providerErrorMessage } from './content/youtubeCont
 import type { YouTubeChannel,YouTubeContentProvider } from './content/youtubeContentProvider.type';
 import { fetchChannelPage } from './content/channelPageFetcher';
 import { nativeYouTubeContentProvider } from './content/nativeYouTubeContentProvider';
+import { contentAccessService } from './contentAccessService';
+import { whitelistService } from './whitelistService';
 import type { ResolvedChannel,ChannelSyncResult } from './channelSyncService.type';
 
 /**
@@ -27,8 +29,8 @@ import type { ResolvedChannel,ChannelSyncResult } from './channelSyncService.typ
  * still comes from the approved channel and `PlaybackPolicy` remains the single
  * authority — nothing here can make content playable on its own.
  *
- * Every mutating method is refused without a live parent session; Kid Mode reads
- * the cached library through `KidContentLibraryService` and never calls this.
+ * Approvals still require Parent Mode. Kid Mode can fetch metadata only for a
+ * stored channel the active child already has permission to watch.
  */
 
 /** Channels synced automatically in one pass, so a large library cannot burn the quota. */
@@ -107,7 +109,32 @@ export class ChannelSyncService {
     session: ParentSession,
     input: { channel: ApprovedChannel; videos: ApprovedVideo[]; mode?: SyncMode },
   ): Promise<ChannelSyncResult> {
-    parentSessionService.require('refresh channel videos');
+    return this.syncAuthorized(input, () => { parentSessionService.require('refresh channel videos'); });
+  }
+
+  async browse(profileId: string, input: { channelId: string; videos: ApprovedVideo[]; mode?: SyncMode }): Promise<ChannelSyncResult> {
+    const authorize = () => {
+      if (!profileId || !isCanonicalChannelId(input.channelId) || !whitelistService.findChannel(input.channelId) ||
+          contentAccessService.evaluate(profileId, { channelId: input.channelId }) !== 'allowed') {
+        throw new Error('This channel is not available to this child.');
+      }
+    };
+    authorize();
+    const channel = whitelistService.findChannel(input.channelId)!;
+    const state = this.states[input.channelId];
+    // Automatic pagination must stop at the end and respect failures rather than retry on each scroll.
+    if ((input.mode === 'more' && !state?.nextPageToken) ||
+        (state?.lastError && !shouldFetchChannel({ ...state, fetchedAt: undefined }, 'initial'))) {
+      return { videos: input.videos, channels: [channel], state: state ?? emptyChannelSyncState(input.channelId), fetched: false, added: 0, updated: 0 };
+    }
+    return this.syncAuthorized({ ...input, channel }, authorize);
+  }
+
+  private async syncAuthorized(
+    input: { channel: ApprovedChannel; videos: ApprovedVideo[]; mode?: SyncMode },
+    authorize: () => void,
+  ): Promise<ChannelSyncResult> {
+    authorize();
 
     const channelId = input.channel.channelId;
     const mode = effectiveSyncMode(this.states[channelId], input.mode ?? 'initial');
@@ -132,7 +159,7 @@ export class ChannelSyncService {
       return { videos: input.videos, channels: [input.channel], state, fetched: false, added: 0, updated: 0 };
     }
 
-    const promise = this.perform(session, input.channel, input.videos, mode, state);
+    const promise = this.perform(authorize, input.channel, input.videos, mode, state);
     this.inFlight.set(channelId, promise);
     try {
       return await promise;
@@ -142,14 +169,13 @@ export class ChannelSyncService {
   }
 
   private async perform(
-    session: ParentSession,
+    authorize: () => void,
     channel: ApprovedChannel,
     videos: ApprovedVideo[],
     mode: SyncMode,
     state: ChannelSyncState,
   ): Promise<ChannelSyncResult> {
-    // Re-check inside the in-flight window: the session may have expired while we waited.
-    parentSessionService.require('refresh channel videos');
+    authorize();
     const channelId = channel.channelId;
 
     const result = await fetchChannelPage({
@@ -160,6 +186,9 @@ export class ChannelSyncService {
       state,
       existingVideos: videos,
     });
+
+    // A channel can be revoked or blocked while its page is being fetched.
+    authorize();
 
     // The fetch state is persisted either way: a failure has to be remembered so the
     // next attempt can back off instead of hammering the provider.
@@ -174,6 +203,7 @@ export class ChannelSyncService {
       added: result.added,
       updated: result.updated,
       error: result.error,
+      uploads: result.uploads,
     };
   }
 

@@ -40,8 +40,8 @@ export function ChannelRow({
 }
 
 /**
- * A channel's page. Reads cached sync state only -- refreshing is a Parent Mode control -- and
- * never shows provider wording, error codes or host names.
+ * A channel's page. Shows cached videos while metadata loads and never shows
+ * provider wording, error codes or host names.
  */
 export function ChannelHeader({
   channel,

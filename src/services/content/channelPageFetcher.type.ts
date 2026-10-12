@@ -1,6 +1,6 @@
 import type { ApprovedVideo } from '../../types';
 import type { ChannelSyncState, SyncMode } from './channelSyncRules.type';
-import type { ClassifiedProviderError, YouTubeChannel, YouTubeContentProvider } from './youtubeContentProvider.type';
+import type { ClassifiedProviderError, YouTubeChannel, YouTubeContentProvider, YouTubeVideo } from './youtubeContentProvider.type';
 
 /**
  * One fetch of one channel page, expressed as a pure async function.
@@ -23,6 +23,7 @@ export type ChannelPageFetchInput = {
 };
 
 export type ChannelPageFetchResult = {
+  uploads?: YouTubeVideo[];
   state: ChannelSyncState;
   videos: ApprovedVideo[];
   added: number;

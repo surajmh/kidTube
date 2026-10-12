@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { FlatList, Platform, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import type { ApprovedVideo } from '../../types';
 import { VideoCard } from '../youtube/VideoCard';
 import { KID_COPY } from './kidHome.constant';
@@ -27,6 +27,10 @@ import { TvHomeFeed, TvTopBar, TvVideoCard } from './kidHome.tv';
  */
 export function KidHomeScreen(props: KidHomeProps) {
   const styles = useStyles();
+  const { width, height } = useWindowDimensions();
+  const tablet = Math.min(width, height) >= 600;
+  const wideLayout = Platform.isTV || (tablet && width > height);
+  const columns = wideLayout ? 4 : tablet ? 2 : 1;
   const {
     profiles,
     activeProfile,
@@ -48,7 +52,8 @@ export function KidHomeScreen(props: KidHomeProps) {
 
   const kid = useKidHome(props);
   const tab = kid.tab;
-  const { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts } = useKidHomeList(props, kid);
+  const { playlists, selectedPlaylist, list, videos, renderVideo, channelVideoCounts, loadMore } = useKidHomeList(props, kid);
+  const channelBusy = Boolean(kid.selectedChannel && props.channelBusy?.(kid.selectedChannel.channelId));
 
   useEffect(() => {
     if (Platform.isTV && kid.tvFocusMenu) list.current?.scrollToOffset({ offset: 0, animated: false });
@@ -68,7 +73,7 @@ export function KidHomeScreen(props: KidHomeProps) {
       <ChannelHeader
         channel={kid.selectedChannel}
         videos={kid.channelVideos}
-        availability={kid.availability}
+        availability={channelBusy && !kid.channelVideos.length ? 'ready' : kid.availability}
         onBack={() => onSelectChannel(null)}
       />
     );
@@ -87,7 +92,7 @@ export function KidHomeScreen(props: KidHomeProps) {
 
   return (
     <View style={styles.screen}>
-      {Platform.isTV ? <TvTopBar props={props} kid={kid} /> : <TopBar
+      {wideLayout ? <TvTopBar props={props} kid={kid} /> : <TopBar
         searching={kid.searching}
         query={kid.query}
         setQuery={kid.setQuery}
@@ -108,7 +113,7 @@ export function KidHomeScreen(props: KidHomeProps) {
       ) : null}
 
       {kid.onFeed && !kid.searching && library.categories.length > 0 ? (
-        <View style={[styles.chipBar, Platform.isTV && { paddingHorizontal: 20 }]}>
+        <View style={[styles.chipBar, wideLayout && { paddingHorizontal: 20 }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
             <Chip label="All" active={!selectedCategoryId} onPress={() => onSelectCategory(null)} />
             {library.categories.map((entry) => (
@@ -125,16 +130,21 @@ export function KidHomeScreen(props: KidHomeProps) {
 
       <FlatList
         ref={list}
-        key={`${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}:${props.selectedPlaylistId}`}
-        data={Platform.isTV && kid.onFeed && !kid.searching ? [] : videos}
-        numColumns={Platform.isTV ? 4 : 1}
-        renderItem={Platform.isTV ? ({ item }) => (
-          <TvVideoCard
-            video={item}
-            restoreFocus={!kid.tvFocusMenu && props.tvFocusTarget === `grid:${item.id}`}
-            onFocus={() => kid.setTvFocusMenu(false)}
-            onPress={playTvVideo}
-          />
+        key={`${columns}:${activeProfile?.id}:${kid.searching ? 'search' : tab}:${selectedCategoryId}:${props.selectedChannelId}:${props.selectedPlaylistId}`}
+        data={wideLayout && kid.onFeed && !kid.searching ? [] : videos}
+        numColumns={columns}
+        renderItem={columns > 1 ? (info) => (
+          <View style={{ width: `${100 / columns}%`, paddingHorizontal: 6 }}>
+            {wideLayout ? (
+              <TvVideoCard
+                video={info.item}
+                style={{ width: '100%', marginBottom: 20 }}
+                restoreFocus={Platform.isTV && !kid.tvFocusMenu && props.tvFocusTarget === `grid:${info.item.id}`}
+                onFocus={() => kid.setTvFocusMenu(false)}
+                onPress={playTvVideo}
+              />
+            ) : renderVideo(info)}
+          </View>
         ) : renderVideo}
         keyExtractor={videoKey}
         initialNumToRender={4}
@@ -143,8 +153,12 @@ export function KidHomeScreen(props: KidHomeProps) {
         removeClippedSubviews={false}
         keyboardShouldPersistTaps="handled"
         style={styles.body}
-        contentContainerStyle={[styles.bodyContent, Platform.isTV && { paddingHorizontal: 20 }, props.miniPlayerVisible && { paddingBottom: 126 }]}
+        contentContainerStyle={[styles.bodyContent, columns > 1 && { paddingHorizontal: wideLayout ? 20 : 6 }, props.miniPlayerVisible && { paddingBottom: 126 }]}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={!kid.searching && tab === 'channels' && channelBusy
+          ? <ActivityIndicator accessibilityLabel="Loading channel videos" /> : null}
         ListHeaderComponent={<>
 
           {notice ? <Notice notice={notice} action={noticeAction} /> : null}
@@ -157,8 +171,8 @@ export function KidHomeScreen(props: KidHomeProps) {
             />
           ) : null}
 
-          {!kid.searching && kid.onFeed && Platform.isTV ? <TvHomeFeed props={props} kid={kid} /> : null}
-          {!kid.searching && kid.onFeed && !Platform.isTV ? (
+          {!kid.searching && kid.onFeed && wideLayout ? <TvHomeFeed props={props} kid={kid} /> : null}
+          {!kid.searching && kid.onFeed && !wideLayout ? (
             <>
               {kid.keepWatching.length > 0 ? (
                 <>
@@ -210,7 +224,7 @@ export function KidHomeScreen(props: KidHomeProps) {
         </>}
       />
 
-      {!Platform.isTV && <BottomNav tab={tab} downloadsEnabled={props.downloadsEnabled ?? true} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} onLayout={props.onBottomNavLayout} />}
+      {!wideLayout && <BottomNav tab={tab} downloadsEnabled={props.downloadsEnabled ?? true} pendingRequestCount={pendingRequestCount} onChangeTab={kid.changeTab} onLayout={props.onBottomNavLayout} />}
     </View>
   );
 }
