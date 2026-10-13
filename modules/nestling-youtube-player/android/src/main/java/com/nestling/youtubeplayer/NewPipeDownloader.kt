@@ -24,7 +24,7 @@ class NewPipeDownloader(
     // Stop superseded extraction between HTTP calls without cancelling unrelated metadata/prefetch.
     if (Thread.currentThread().isInterrupted) throw InterruptedIOException("Extraction cancelled")
     val builder = okhttp3.Request.Builder()
-      .method(request.httpMethod(), request.dataToSend()?.toRequestBody())
+      .method(request.httpMethod(), compatibleIosBody(request.dataToSend())?.toRequestBody())
       .url(request.url())
       .addHeader("User-Agent", USER_AGENT)
 
@@ -51,6 +51,13 @@ class NewPipeDownloader(
   }
 
   companion object {
+    internal fun compatibleIosBody(body: ByteArray?): ByteArray? {
+      val json = body?.toString(Charsets.UTF_8) ?: return null
+      if (!json.contains("\"clientName\":\"IOS\"")) return body
+      // shortcut: NewPipe's iOS client returns SABR-only kids videos; remove when upstream restores direct streams.
+      return json.replace(Regex("\"clientVersion\":\"[^\"]+\""), "\"clientVersion\":\"20.10.4\"").toByteArray(Charsets.UTF_8)
+    }
+
     private const val TIMEOUT_SECONDS = 30L
     private const val HTTP_TOO_MANY_REQUESTS = 429
 

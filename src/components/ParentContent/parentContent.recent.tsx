@@ -1,10 +1,13 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { ApprovedChannel, ApprovedVideo } from '../../types';
-import { cardTints } from '../theme';
-import styles from './parentContent.style';
+
+import useStyles from './parentContent.style';
 
 export function RecentlyAdded({ items }: { items: Array<ApprovedVideo | ApprovedChannel> }) {
+  const styles = useStyles();
+  const { cardTints } = useTheme();
   return (
     <>
       <Text style={styles.filterLabel}>RECENTLY ADDED</Text>

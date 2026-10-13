@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -5,9 +6,9 @@ import { ChildProfile } from '../../types';
 import type { PlaybackOverride } from '../../types';
 import { overridePresets } from '../../services/playbackOverrideService';
 import type { OverridePreset } from '../../services/playbackOverrideService.type';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentChildren.style';
+import useStyles from './parentChildren.style';
 
 export function OverrideCard({
   profile,
@@ -26,6 +27,8 @@ export function OverrideCard({
   onGrantOverride: (profileId: string, preset: OverridePreset, grantsScheduleAccess: boolean) => Promise<void>;
   onRevokeOverride: (profileId: string) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Temporary parent override</Text>

@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -8,10 +9,9 @@ import { ParentChildrenPanel } from '../ParentChildren';
 import { ParentCategoriesPanel } from '../ParentCategories';
 import { ParentSecurityPanel } from '../ParentSecurity';
 import { ParentDashboard } from '../ParentDashboard';
-import { colors } from '../theme';
-import { yt } from '../youtube/theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentShell.style';
+import useStyles from './parentShell.style';
 import { useParentShell } from './parentShell.hook';
 import { SECTIONS } from './parentShell.constant';
 import { ParentSection, ParentShellProps } from './parentShell.type';
@@ -33,6 +33,8 @@ export function ParentShell({
   addContentSlot,
   notice,
 }: ParentShellProps) {
+  const styles = useStyles();
+  const { colors, yt } = useTheme();
   const { pendingCount, contentPage, contentMode, handleScroll } = useParentShell({
     data,
     actions,
@@ -51,7 +53,6 @@ export function ParentShell({
       onClearResolved={actions.onClearResolved}
     />
   );
-
 
   return (
     <ScrollView

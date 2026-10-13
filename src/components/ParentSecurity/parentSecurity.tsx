@@ -1,13 +1,16 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentSecurity.style';
+import useStyles from './parentSecurity.style';
 import { useParentSecurity } from './parentSecurity.hook';
 import { PIN_LENGTH } from './parentSecurity.constant';
 
 export function ParentSecurityPanel() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const {
     currentPin, nextPin, confirmPin, error, notice, saving,
     setCurrentPin, setNextPin, setConfirmPin, submit,

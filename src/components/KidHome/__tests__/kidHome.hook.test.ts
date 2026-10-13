@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { BackHandler, Platform } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
 import { ApprovedChannel, ApprovedVideo } from '../../../types';
 import type { KidLibrary } from '../../../services/kidContentLibraryService.type';
@@ -151,4 +152,33 @@ describe('useKidHome', () => {
     act(() => result.current.toggleSwitcher());
     assert.equal(result.current.feedVideos, before, 'opening the switcher must not re-filter the feed');
   });
+});
+
+it('TV Back dismisses overlays and returns content focus to the menu; mobile adds no handler', () => {
+  const tv = jest.spyOn(Platform, 'isTV', 'get').mockReturnValue(true);
+  const handlers = new Set<() => boolean | null | undefined>();
+  const back = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_, listener) => {
+    handlers.add(listener);
+    return { remove: () => handlers.delete(listener) };
+  });
+  const view = setup({ tvFocusTarget: 'feed:a' });
+  const pressBack = () => act(() => { expect([...handlers].at(-1)?.()).toBe(true); });
+  try {
+    expect(view.result.current.tvFocusMenu).toBe(false);
+    pressBack();
+    expect(view.result.current.tvFocusMenu).toBe(true);
+    expect(handlers.size).toBe(0);
+    act(() => view.result.current.openSearch());
+    pressBack();
+    expect(view.result.current.searching).toBe(false);
+    act(() => view.result.current.toggleSwitcher());
+    pressBack();
+    expect(view.result.current.switcherOpen).toBe(false);
+    view.unmount();
+    tv.mockReturnValue(false);
+    const mobile = setup();
+    act(() => mobile.result.current.openSearch());
+    expect(handlers.size).toBe(0);
+    mobile.unmount();
+  } finally { view.unmount(); back.mockRestore(); tv.mockRestore(); }
 });

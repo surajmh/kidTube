@@ -1,9 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
-import { yt } from '../youtube/theme';
 
 /** Parent content styles. Tokens come from `../theme`; see youtube/theme.ts for the palette. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   filterLabel: { color: colors.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1, marginBottom: 8, marginTop: 20 },
   chip: { backgroundColor: colors.card, borderRadius: 12, justifyContent: 'center', minHeight: 42, paddingHorizontal: 11 },
   chipActive: { backgroundColor: colors.lavender },
@@ -76,4 +76,9 @@ const styles = StyleSheet.create({
   empty: { backgroundColor: colors.card, borderRadius: 15, marginBottom: 8, padding: 16 },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

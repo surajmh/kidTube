@@ -4,7 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { ParentFilterButton, ParentFilterDrawer } from '../ParentFilter';
 import { PagedGrid } from '../PagedGrid';
 import { FocusablePressable } from '../tv';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 import { useParentContent } from './parentContent.hook';
 import { PARENT_CONTENT_PAGE_SIZE, PARENT_CONTENT_SUBTITLES, PARENT_CONTENT_TITLES } from './parentContent.constant';
 import { ContentTab, ParentContentMode, ParentContentProps } from './parentContent.type';
@@ -40,6 +40,7 @@ export function ParentContentPanel({
   onRefreshChannel,
   onLoadMoreChannel,
 }: ParentContentProps) {
+  const styles = useStyles();
   const content = useParentContent({ videos, channels, mode, selectedChannelId, accessFor });
   const {
     tab,

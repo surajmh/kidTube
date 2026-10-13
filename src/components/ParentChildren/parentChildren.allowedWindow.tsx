@@ -1,9 +1,10 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentChildren.style';
+import useStyles from './parentChildren.style';
 import { minutesToTime } from './parentChildren.helper';
 import { DAY_LABELS } from './parentChildren.constant';
 import { useAllowedWindow } from './parentChildren.allowedWindow.hook';
@@ -15,6 +16,8 @@ export function AllowedWindowEditor({
   schedules: Record<string, { startMinutes: number; endMinutes: number }[]>;
   onChange: (schedules: Record<string, { startMinutes: number; endMinutes: number }[]>) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { day, setDay, window, shift } = useAllowedWindow(schedules, onChange);
 
   return (

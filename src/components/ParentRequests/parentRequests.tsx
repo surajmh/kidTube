@@ -1,3 +1,4 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -5,9 +6,9 @@ import { Feather } from '@expo/vector-icons';
 import type { ContentRequest } from '../../types';
 import { approvalDurationLabels, approvalDurationOrder } from '../../constants/parentalControls.constant';
 import { describeRequestTarget, requestTarget } from '../../services/requestService';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentRequests.style';
+import useStyles from './parentRequests.style';
 import { useParentRequests } from './parentRequests.hook';
 import { profileNameFor, thumbnailFor as thumbnailForRequest, timeAgo } from './parentRequests.helper';
 import { ParentRequestsProps, RequestDecisionInput } from './parentRequests.type';
@@ -23,6 +24,8 @@ export function ParentRequestsPanel({
   onDelete,
   onClearResolved,
 }: ParentRequestsProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const {
     openId,
     toggleOpen,
@@ -44,8 +47,6 @@ export function ParentRequestsPanel({
   function thumbnailFor(request: ContentRequest) {
     return thumbnailForRequest(request, videos);
   }
-
-
 
 
 

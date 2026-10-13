@@ -2,11 +2,12 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 import { CHANNEL_BANNER } from './parentContent.constant';
 
 /** An empty-state style nudge at the top of Channels; its button opens the add form. */
 export function ParentContentBanner({ onAdd }: { onAdd: () => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.banner}>
       <View style={styles.bannerText}>

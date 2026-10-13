@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { overridePresets } from '../../services/playbackOverrideService';
 import { PinEntry } from '../PinEntry';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import styles from './parentOverride.style';
+import useStyles from './parentOverride.style';
 import { useParentOverride } from './parentOverride.hook';
 import { ParentOverrideProps } from './parentOverride.type';
 
@@ -17,9 +18,10 @@ export function ParentOverrideSheet({
   onClose,
   onGranted,
 }: ParentOverrideProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { session, pin, setPin, error, busy, scheduleAccess, setScheduleAccess, close, verify, grant } =
     useParentOverride({ profile, settings, onClose, onGranted });
-
 
 
   return (

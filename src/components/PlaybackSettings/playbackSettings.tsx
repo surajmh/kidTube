@@ -1,17 +1,20 @@
+import { useTheme } from '../theme';
 import React from 'react';
+import { DeArrowPreview } from './deArrowPreview';
+import type { ApprovedVideo } from '../../types';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { PlaybackSettings, ScreenTimeUsage } from '../../types';
 import { localDayKey } from '../../services/playbackPolicyService';
 import { ChildProfile } from '../../types';
-import { colors } from '../theme';
-import styles from './playbackSettings.style';
+
+import useStyles from './playbackSettings.style';
 import { minutesToInput, minutesToTime } from '../shared/time.helper';
 import { LIMIT_OPTIONS, CATEGORY_LABELS, QUALITY_HEIGHTS, DAY_LABELS, RETENTION_OPTIONS, DOWNLOADS_TOGGLE_LABEL, DOWNLOADS_HELPER, DOWNLOADS_QUALITY_HELPER } from './playbackSettings.constant';
 import { usePlaybackSettings } from './playbackSettings.hook';
 
-
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
+  const styles = useStyles();
   return (
     <Pressable onPress={() => onChange(!value)} style={styles.toggleRow} accessibilityRole="switch" accessibilityState={{ checked: value }}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -20,15 +23,32 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
   );
 }
 
-export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: { settings: PlaybackSettings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: PlaybackSettings) => void }) {
+export function PlaybackSettingsPanel({ settings, usage, profiles, onChange, videos = [] }: { videos?: ApprovedVideo[]; settings: PlaybackSettings; usage: ScreenTimeUsage[]; profiles: ChildProfile[]; onChange: (settings: PlaybackSettings) => void }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { selectedDay, setSelectedDay, currentWindow, patch, updateWindow, toggleCategory } = usePlaybackSettings(settings, onChange);
 
   return (
     <View>
       <View style={styles.intro}><View><Text style={styles.title}>Family playback defaults</Text><Text style={styles.subtitle}>Applies to every child. Per-child overrides live in the Children tab.</Text></View><Feather name="sliders" size={24} color={colors.ink} /></View>
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>Appearance</Text>
+        <Text style={styles.helper}>One theme for child and parent screens. System follows your device.</Text>
+        <View style={styles.limitWrap} accessibilityRole="radiogroup">
+          {(['light', 'dark', 'system'] as const).map((themeMode) => {
+            const selected = (settings.themeMode ?? 'system') === themeMode;
+            return <Pressable key={themeMode} accessibilityRole="radio" accessibilityLabel={`${themeMode} theme`} accessibilityState={{ selected }} onPress={() => patch({ themeMode })} style={[styles.limitChip, selected && styles.limitChipSelected]}>
+              <Text style={[styles.limitText, selected && styles.limitTextSelected]}>{themeMode[0].toUpperCase() + themeMode.slice(1)}</Text>
+            </Pressable>;
+          })}
+        </View>
+      </View>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Player behavior</Text>
         <ToggleRow label="Autoplay next approved video" value={settings.autoplay} onChange={(autoplay) => patch({ autoplay })} />
+        <ToggleRow label="Allow background audio" value={Boolean(settings.backgroundAudioEnabled)} onChange={(backgroundAudioEnabled) => patch({ backgroundAudioEnabled })} />
+        <Text style={styles.helper}>Listening with the screen locked still counts toward playtime and follows bedtime, allowed hours and approvals.</Text>
+        <ToggleRow label="Use parent-approved DeArrow replacements" value={Boolean(settings.deArrowEnabled)} onChange={(deArrowEnabled) => patch({ deArrowEnabled })} />
         <Text style={styles.cardTitle}>Maximum video quality</Text>
         <View style={styles.limitWrap}>
           {QUALITY_HEIGHTS.map((height) => <Pressable key={height} accessibilityRole="radio" accessibilityLabel={`Maximum quality ${height}p`} accessibilityState={{ selected: (settings.maxQualityHeight ?? 1080) === height }} onPress={() => patch({ maxQualityHeight: height })} style={[styles.limitChip, (settings.maxQualityHeight ?? 1080) === height && styles.limitChipSelected]}><Text style={[styles.limitText, (settings.maxQualityHeight ?? 1080) === height && styles.limitTextSelected]}>{height}p</Text></Pressable>)}
@@ -75,6 +95,7 @@ export function PlaybackSettingsPanel({ settings, usage, profiles, onChange }: {
         <ToggleRow label="Pause Kid Mode during bedtime" value={settings.bedtimeEnabled} onChange={(bedtimeEnabled) => patch({ bedtimeEnabled })} />
         <Text style={styles.helper}>Bedtime: {minutesToTime(settings.bedtimeStartMinutes)} · Available again: {minutesToTime(settings.bedtimeEndMinutes)}</Text>
       </View>
+      <DeArrowPreview videos={videos} settings={settings} onChange={onChange} />
       <Text style={styles.saveHint}>Changes are saved locally on this device.</Text>
     </View>
   );

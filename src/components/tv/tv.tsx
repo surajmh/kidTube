@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable } from 'react-native';
 import { useFocusablePressable } from './tv.hook';
-import styles from './tv.style';
+import useStyles from './tv.style';
 import type { FocusablePressableProps } from './tv.type';
 
 export function FocusablePressable({
@@ -12,6 +12,7 @@ export function FocusablePressable({
   children,
   ...rest
 }: FocusablePressableProps) {
+  const styles = useStyles();
   const { focused, setFocused } = useFocusablePressable();
   return (
     <Pressable

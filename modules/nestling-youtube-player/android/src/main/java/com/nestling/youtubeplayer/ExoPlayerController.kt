@@ -1,6 +1,8 @@
 package com.nestling.youtubeplayer
 
 import android.app.Activity
+import android.content.Intent
+import androidx.media3.common.MediaMetadata
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.os.Handler
@@ -16,6 +18,7 @@ import androidx.media3.common.PlaybackException as Media3PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import org.json.JSONObject
@@ -57,9 +60,98 @@ class ExoPlayerController(
   private val progressIntervalMs = 500L
 
   private var currentVideoId: String? = null
+  var mediaTitle = "Approved video"
+  private val budget = PlaybackBudget()
+  private var usageProfile = ""
+  private var usageDate = ""
+  var backgroundAudioEnabled = false
+    private set
+  var inBackground = false
+  var inPictureInPicture = false
+  private var remoteCommand = false
+  private var serviceStarted = false
+  private var boundaryNotified = false
+  private val budgetStop = Runnable { enforceBudget() }
+
+  fun authorize(videoId: String, profileId: String, date: String, usedMs: Long, acknowledgedMs: Long, remainingMs: Long, stopAt: Long, backgroundAudio: Boolean) = onMainThread {
+    samplePlayback()
+    if (currentVideoId != null && currentVideoId != videoId) stop()
+    usageProfile = profileId
+    usageDate = date
+    PlaybackUsage.record(context, profileId, date, usedMs)
+    budget.authorize(videoId, acknowledgedMs, remainingMs, stopAt, SystemClock.elapsedRealtime(), System.currentTimeMillis())
+    val unacknowledged = (budget.playedMs - acknowledgedMs).coerceAtLeast(0)
+    val previousSessionTime = (PlaybackUsage.usedMs(context, profileId, date) - usedMs - unacknowledged).coerceAtLeast(0)
+    if (previousSessionTime > 0) budget.authorize(videoId, acknowledgedMs, (remainingMs - previousSessionTime).coerceAtLeast(0), stopAt, SystemClock.elapsedRealtime(), System.currentTimeMillis())
+    if (Log.isLoggable("KidTubePerf", Log.DEBUG)) Log.i("KidTubePerf", "authorization used=$usedMs acknowledged=$acknowledgedMs remaining=$remainingMs journal=${PlaybackUsage.usedMs(context, profileId, date)} prior=$previousSessionTime played=${budget.playedMs} budgetRemaining=${budget.remaining(SystemClock.elapsedRealtime(), System.currentTimeMillis())}")
+    boundaryNotified = false
+    backgroundAudioEnabled = backgroundAudio
+    if (inBackground && !backgroundAudio && !inPictureInPicture) pause()
+    if (currentVideoId != null) enforceBudget()
+  }
+
+  private fun samplePlayback() {
+    val counted = budget.sample(SystemClock.elapsedRealtime(), player.isPlaying)
+    if (counted > 0 && usageProfile.isNotBlank()) PlaybackUsage.record(context, usageProfile, usageDate, 0, counted)
+  }
+
+  fun canAutoEnterPictureInPicture() = !destroyed && !inBackground && !backgroundAudioEnabled && player.playWhenReady && player.playbackState != Player.STATE_ENDED && authorized()
+
+  private fun authorized() = currentVideoId?.let { budget.allowed(it, SystemClock.elapsedRealtime(), System.currentTimeMillis()) } == true
+
+  private fun enforceBudget() {
+    mainHandler.removeCallbacks(budgetStop)
+    samplePlayback()
+    if (!authorized()) {
+      currentVideoId?.let { blockedId ->
+        if (boundaryNotified) return
+        boundaryNotified = true
+        val expired = budget.timeExpired(SystemClock.elapsedRealtime(), System.currentTimeMillis())
+        emit("onProgress", event())
+        if (expired) pause() else stop()
+        emit("onError", event(mapOf("code" to if (expired) "authorization_expired" else "policy_blocked", "videoId" to blockedId)))
+      }
+      return
+    }
+    if (player.isPlaying) mainHandler.postDelayed(budgetStop, budget.remaining(SystemClock.elapsedRealtime(), System.currentTimeMillis()))
+  }
+
+  fun remotePlay() {
+    if (!authorized() || (inBackground && !backgroundAudioEnabled && !inPictureInPicture)) return
+    remoteCommand = true
+    currentVideoId?.let { resume(it) }
+  }
+  fun remotePause() {
+    val wasPlaying = player.isPlaying
+    remoteCommand = true
+    pause()
+    if (!wasPlaying) { remoteCommand = false; emit("onPause", event(mapOf("remote" to true))) }
+  }
+
+  private fun startMediaSession() {
+    if (serviceStarted || destroyed) return
+    PlaybackAudioService.activeController = this
+    try {
+      context.applicationContext.startService(Intent(context, PlaybackAudioService::class.java))
+      serviceStarted = true
+    } catch (error: RuntimeException) {
+      Log.w(TAG, "Could not start playback controls", error)
+      // Without a foreground service, background listening must fail closed.
+      backgroundAudioEnabled = false
+      if (inBackground && !inPictureInPicture) pause()
+    }
+  }
+  private fun stopMediaSession() {
+    if (PlaybackAudioService.activeController === this) {
+      context.applicationContext.stopService(Intent(context, PlaybackAudioService::class.java))
+      PlaybackAudioService.activeController = null
+    }
+    serviceStarted = false
+  }
   @Volatile private var requestGeneration = 0L
   private var resolutionTask: Future<*>? = null
   private var retryAttempt = 0
+  private var retryPreferAdaptive = false
   private var resumePositionMs = 0L
   private var wantsPlayback = false
   private var offlinePlayback = false
@@ -68,6 +160,8 @@ class ExoPlayerController(
   @Volatile private var destroyed = false
   private var attachedView: PlayerView? = null
   private var captionTrack: String? = null
+  private var audioLanguage: String? = null
+  private var chapters: List<PlaybackChapter> = emptyList()
   private var qualityHeight = 0
   private var maxQualityHeight = 1080
   private var fullscreenActive = false
@@ -106,7 +200,8 @@ class ExoPlayerController(
     .build()
     .also { exoPlayer ->
       // Keeps the CPU awake; the attached view separately keeps the display on while playing.
-      exoPlayer.setWakeMode(C.WAKE_MODE_LOCAL)
+      exoPlayer.setWakeMode(C.WAKE_MODE_NETWORK)
+      exoPlayer.setHandleAudioBecomingNoisy(true)
       // The ladder tops out at 1080p: more costs battery and decode headroom the family
       // devices in this app's target do not have.
       exoPlayer.setTrackSelectionParameters(
@@ -127,10 +222,12 @@ class ExoPlayerController(
             Player.STATE_READY -> {
               recovering = false
               cancelBufferStallWatchdog()
-              emit("onReady", event())
+              emit("onReady", event(mapOf("chapters" to chapters.map { mapOf("title" to it.title, "startMs" to it.startMs) })))
             }
             Player.STATE_ENDED -> {
               cancelBufferStallWatchdog()
+              samplePlayback()
+              emit("onProgress", event())
               resumePositionMs = 0L
               emit("onEnd", event())
             }
@@ -139,7 +236,10 @@ class ExoPlayerController(
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-          attachedView?.keepScreenOn = isPlaying
+          samplePlayback()
+          if (isPlaying) startMediaSession()
+          enforceBudget()
+          attachedView?.keepScreenOn = isPlaying && !inBackground
           diagnostic("playing", mapOf("playing" to isPlaying, "positionMs" to exoPlayer.currentPosition))
           if (isPlaying) {
             recovering = false
@@ -149,7 +249,12 @@ class ExoPlayerController(
             if (recovering) return
             updatePositionTracking()
           }
-          emit(if (isPlaying) "onPlay" else "onPause", event(mapOf("isPlaying" to isPlaying)))
+          emit(if (isPlaying) "onPlay" else "onPause", event(mapOf("isPlaying" to isPlaying, "remote" to remoteCommand)))
+          remoteCommand = false
+        }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+          diagnostic("video_size", mapOf("width" to videoSize.width, "height" to videoSize.height, "parentMaxHeight" to maxQualityHeight))
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -167,7 +272,16 @@ class ExoPlayerController(
               group.getTrackFormat(index).height.takeIf { group.isTrackSupported(index) && it > 0 }
             }
           }.distinct().sorted()
-          emit("onTracksChanged", event(mapOf("captions" to captions, "qualityHeights" to heights)))
+          val audio = tracks.groups.flatMap { group ->
+            if (group.type != C.TRACK_TYPE_AUDIO) emptyList() else (0 until group.length).mapNotNull { index ->
+              if (!group.isTrackSupported(index)) return@mapNotNull null
+              val format = group.getTrackFormat(index)
+              val language = format.language ?: return@mapNotNull null
+              mapOf("language" to language, "label" to (format.label ?: java.util.Locale.forLanguageTag(language).displayLanguage),
+                "selected" to group.isTrackSelected(index))
+            }
+          }.groupBy { it["language"] }.values.map { variants -> variants.firstOrNull { it["selected"] == true } ?: variants.first() }
+          emit("onTracksChanged", event(mapOf("captions" to captions, "qualityHeights" to heights, "audio" to audio)))
         }
 
         override fun onPlayerError(error: Media3PlaybackException) {
@@ -252,12 +366,18 @@ class ExoPlayerController(
       return@onMainThread
     }
     if (destroyed) return@onMainThread
+    if (!budget.allowed(normalizedId, SystemClock.elapsedRealtime(), System.currentTimeMillis())) {
+      if (Log.isLoggable("KidTubePerf", Log.DEBUG)) Log.i("KidTubePerf", "authorization refused matching=${budget.videoId == normalizedId} played=${budget.playedMs} remaining=${budget.remaining(SystemClock.elapsedRealtime(), System.currentTimeMillis())}")
+      emitError(budget.rejectionCode(normalizedId, SystemClock.elapsedRealtime(), System.currentTimeMillis()))
+      return@onMainThread
+    }
 
     cancelPendingRetry()
     // A new play request restores the retry budget; recovery chains never reset it.
     retryAttempt = 0
     recovering = false
     wantsPlayback = autoplay
+    chapters = emptyList()
     currentVideoId = normalizedId
     diagnosticStartedAt = SystemClock.elapsedRealtime()
     diagnosticSession = "${System.identityHashCode(this)}:$diagnosticStartedAt"
@@ -286,6 +406,7 @@ class ExoPlayerController(
     }
     if (destroyed) return@onMainThread
 
+    if (!authorized()) { emitError(budget.rejectionCode(normalizedId, SystemClock.elapsedRealtime(), System.currentTimeMillis())); return@onMainThread }
     wantsPlayback = true
     val failed = player.playerError != null || player.playbackState == Player.STATE_IDLE
     if (failed) {
@@ -307,7 +428,7 @@ class ExoPlayerController(
   fun seekBy(deltaMs: Long) = onMainThread { seek(player.currentPosition + deltaMs) }
 
   fun setVolume(volume: Float) = onMainThread {
-    player.volume = volume.coerceIn(0f, 1f)
+    if (volume.isFinite()) player.volume = volume.coerceIn(0f, 1f)
   }
 
   fun setPlaybackSpeed(speed: Float) = onMainThread {
@@ -325,9 +446,15 @@ class ExoPlayerController(
     applyTrackPreferences()
   }
 
+  fun setAudioLanguage(language: String?) = onMainThread {
+    audioLanguage = language?.takeIf { it.isNotBlank() && it.length <= 64 }
+    applyTrackPreferences()
+  }
+
   private fun applyTrackPreferences() {
     val builder = player.trackSelectionParameters.buildUpon()
       .setMaxVideoSize(Int.MAX_VALUE, if (qualityHeight == 0) maxQualityHeight else minOf(qualityHeight, maxQualityHeight))
+      .setPreferredAudioLanguage(audioLanguage)
       .clearOverridesOfType(C.TRACK_TYPE_TEXT)
       .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, captionTrack == null)
     val selection = captionTrack?.split(":")?.mapNotNull { it.toIntOrNull() }
@@ -357,6 +484,10 @@ class ExoPlayerController(
 
   fun stop() = onMainThread {
     diagnostic("stop")
+    samplePlayback()
+    emit("onProgress", event())
+    mainHandler.removeCallbacks(budgetStop)
+    stopMediaSession()
     wantsPlayback = false
     offlinePlayback = false
     cancelPendingRetry()
@@ -367,9 +498,9 @@ class ExoPlayerController(
     retryAttempt = 0
     recovering = false
     resumePositionMs = 0L
+    currentVideoId = null
     player.playWhenReady = false
     player.stop()
-    currentVideoId = null
   }
 
   /**
@@ -380,7 +511,20 @@ class ExoPlayerController(
    */
   fun onActivityBackground() {
     if (destroyed) return
-    pause()
+    inBackground = true
+    if (!backgroundAudioEnabled && !inPictureInPicture) pause()
+    else if (backgroundAudioEnabled && !inPictureInPicture) {
+      player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true).build()
+      attachedView?.keepScreenOn = false
+    }
+    enforceBudget()
+  }
+
+  fun onActivityForeground() {
+    inBackground = false
+    inPictureInPicture = false
+    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false).build()
+    enforceBudget()
   }
 
   /** Idempotent: repeated calls must not create a second progress stream. */
@@ -395,6 +539,8 @@ class ExoPlayerController(
   fun release() {
     if (destroyed) return
     diagnostic("release")
+    samplePlayback()
+    stopMediaSession()
     destroyed = true
     ticking = false
     cancelPendingRetry()
@@ -414,6 +560,7 @@ class ExoPlayerController(
       emitError("offline_unavailable")
       stop()
     }
+    enforceBudget()
     updatePositionTracking()
     emit("onProgress", event())
     mainHandler.postDelayed({ progressTick() }, progressIntervalMs)
@@ -430,6 +577,7 @@ class ExoPlayerController(
     val saved = try { OfflineDownloads.mediaSource(context, videoId) }
       catch (error: Exception) { emitError("offline_unavailable"); return }
     if (saved != null) {
+      chapters = emptyList()
       offlinePlayback = true
       player.setMediaSource(saved, startPositionMs.coerceAtLeast(0L))
       player.prepare()
@@ -476,13 +624,14 @@ class ExoPlayerController(
   }
 
   private fun prepare(info: PlaybackInfo, startPositionMs: Long) {
-    diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) "hls" else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
+    diagnostic("prepare", mapOf("positionMs" to startPositionMs, "source" to if (info.manifestUrl != null) { if (info.mimeType == "application/dash+xml") "dash" else "hls" } else if (info.audioUrl != null && info.videoUrl != null) "merged" else "progressive"))
     val source = createMediaSource(info)
     if (source == null) {
       Log.w(TAG, "prepare(${info.videoId}) resolved but no playable source: $info")
       emitError(PlaybackCodes.UNSUPPORTED_FORMAT)
       return
     }
+    chapters = info.chapters
     // Each preparation gets a fresh MediaSource; resolved URLs stay in the bounded memory cache.
     player.setMediaSource(source, startPositionMs.coerceAtLeast(0L))
     player.prepare()
@@ -512,6 +661,7 @@ class ExoPlayerController(
     }
 
     retryAttempt += 1
+    retryPreferAdaptive = retryPolicy.preferAdaptive(code, retryAttempt)
     recovering = true
     val delayMs = retryPolicy.delayForAttempt(retryAttempt)
     emit(
@@ -534,9 +684,8 @@ class ExoPlayerController(
     if (destroyed || !recovering || !wantsPlayback) return
     val videoId = currentVideoId ?: return
     emit("onBuffer", event())
-    // The adaptive stream is what just failed, so recovery takes the plain progressive route:
-    // 360p and throttled-proof, and better than a retry loop that re-requests a dead manifest.
-    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, preferAdaptive = false)
+    // An expired URL needs fresh HD streams; repeated failures still get the progressive fallback.
+    resolveAndPrepare(videoId, ++requestGeneration, resumePositionMs, preferAdaptive = retryPreferAdaptive)
   }
 
   private fun cancelPendingRetry() {
@@ -626,6 +775,7 @@ class ExoPlayerController(
   private fun mediaItem(info: PlaybackInfo, uri: String, mimeType: String?, withCaptions: Boolean = true): MediaItem {
     val builder = MediaItem.Builder()
       .setMediaId(info.videoId)
+      .setMediaMetadata(MediaMetadata.Builder().setTitle(mediaTitle).build())
       .setUri(uri)
     if (withCaptions) builder.setSubtitleConfigurations(info.captions.map { caption ->
       MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(caption.url))
@@ -667,6 +817,8 @@ class ExoPlayerController(
 
   private fun event(extra: Map<String, Any> = emptyMap()): Map<String, Any> = buildMap {
     currentVideoId?.let { put("videoId", it) }
+    put("inPictureInPicture", inPictureInPicture)
+    put("playedMs", budget.playedMs)
     put("position", player.currentPosition)
     player.duration.takeUnless { it == C.TIME_UNSET }?.let { put("duration", it) }
     put("bufferedPosition", player.bufferedPosition)

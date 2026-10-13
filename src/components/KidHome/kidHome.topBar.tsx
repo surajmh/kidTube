@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Image, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ChildProfile } from '../../types';
 import { FocusablePressable } from '../tv';
 import { ChannelAvatar } from '../youtube/VideoCard';
-import { ICON, KID_COPY } from './kidHome.constant';
-import styles from './kidHome.style';
+import { KID_COPY } from './kidHome.constant';
+import useStyles from './kidHome.style';
 
 export function TopBar({
   searching,
@@ -26,6 +27,8 @@ export function TopBar({
   toggleSwitcher: () => void;
   onParentPress: () => void;
 }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   return (
     <View style={styles.topBar}>
       {searching ? (
@@ -93,6 +96,7 @@ export function ProfileSwitcher({
   onSelectProfile: (profileId: string) => void;
   closeSwitcher: () => void;
 }) {
+  const styles = useStyles();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcher}>
       {profiles.map((profile) => (

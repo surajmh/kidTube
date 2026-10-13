@@ -1,3 +1,4 @@
+import { themes } from '../theme';
 /**
  * Kid Mode design tokens.
  *
@@ -5,25 +6,7 @@
  * so thumbnails carry the screen. Parent Mode's palette in `../theme` mirrors these values under
  * its own token names, so the two halves of the app read as one product.
  */
-export const yt = {
-  /** Page background. Near-black rather than pure black so elevated surfaces can still read. */
-  bg: '#0F0F0F',
-  /** Cards, sheets and the search field. */
-  surface: '#212121',
-  /** Chips and pressed states. */
-  surfaceAlt: '#272727',
-  /** An inverted chip: light fill, dark label. */
-  chipActive: '#F1F1F1',
-  chipActiveText: '#0F0F0F',
-  text: '#F1F1F1',
-  textDim: '#AAAAAA',
-  /** Brand accent. Used for the mark and destructive/live affordances only. */
-  accent: '#FF0033',
-  line: '#303030',
-  /** Duration pill over a thumbnail. */
-  badge: 'rgba(0,0,0,0.8)',
-  onAccent: '#FFFFFF',
-} as const;
+export const yt = themes.dark.yt;
 
 /** A channel avatar with no artwork falls back to a tinted initial. */
 export const avatarTints = ['#3D5AFE', '#00897B', '#8E24AA', '#F4511E', '#5E6BC0', '#00838F'] as const;

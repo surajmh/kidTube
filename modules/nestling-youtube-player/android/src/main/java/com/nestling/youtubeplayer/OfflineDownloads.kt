@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
@@ -33,7 +34,8 @@ object OfflineDownloads {
   private var instance: DownloadManager? = null
   private val preparingPromises = mutableMapOf<String, Promise>()
   private val preparing = mutableMapOf<String, DownloadHelper>()
-  private val http = DefaultHttpDataSource.Factory().setConnectTimeoutMs(15_000).setReadTimeoutMs(20_000)
+  private val http by lazy { DefaultDataSource.Factory(context,
+    DefaultHttpDataSource.Factory().setConnectTimeoutMs(15_000).setReadTimeoutMs(20_000)) }
   // Serial decoding/download selection keeps small tablets responsive.
   private val executor = Executors.newSingleThreadExecutor()
   private val main = Handler(Looper.getMainLooper())

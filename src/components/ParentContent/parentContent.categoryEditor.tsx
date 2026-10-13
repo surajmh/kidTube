@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import type { ContentCategory } from '../../types';
 import { FocusablePressable } from '../tv';
-import styles from './parentContent.style';
+import useStyles from './parentContent.style';
 
 /** The category-toggle chips shown under an expanded channel or video row. */
 export function CategoryEditor<T extends { categoryIds?: string[] }>({
@@ -14,6 +14,7 @@ export function CategoryEditor<T extends { categoryIds?: string[] }>({
   categories: ContentCategory[];
   onToggle: (item: T, categoryId: string, assigned: boolean) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.categoryEditor}>
       {categories.map((category) => {

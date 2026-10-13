@@ -1,5 +1,5 @@
 import { applyFetchFailure,applyFetchResult } from './channelSyncRules';
-import { classifyProviderError } from './youtubeContentProvider';
+import { classifyProviderError, YouTubeProviderError } from './youtubeContentProvider';
 import type { ChannelPageFetchInput,ChannelPageFetchResult } from './channelPageFetcher.type';
 
 export async function fetchChannelPage(input: ChannelPageFetchInput): Promise<ChannelPageFetchResult> {
@@ -15,6 +15,9 @@ export async function fetchChannelPage(input: ChannelPageFetchInput): Promise<Ch
       // `more` continues from the stored token; everything else starts at page one.
       pageToken: mode === 'more' ? state.nextPageToken : undefined,
     });
+    if (page.channelId !== input.channelId || (metadata && metadata.youtubeChannelId !== input.channelId)) {
+      throw new YouTubeProviderError('MALFORMED_RESPONSE', 'Channel response did not match the requested channel.');
+    }
 
     const outcome = applyFetchResult({
       existingVideos: input.existingVideos,
@@ -32,6 +35,7 @@ export async function fetchChannelPage(input: ChannelPageFetchInput): Promise<Ch
       added: outcome.result.added,
       updated: outcome.result.updated,
       metadata,
+      uploads: page.videos.map((video) => ({ ...video, youtubeChannelId: input.channelId })),
     };
   } catch (caught) {
     const error = classifyProviderError(caught);

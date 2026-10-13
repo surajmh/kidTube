@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../theme';
 
-export default StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   thumbWrap: { backgroundColor: yt.surfaceAlt, overflow: 'hidden', position: 'relative', width: '100%' },
   thumb: { aspectRatio: 16 / 9, width: '100%' },
   badge: {
@@ -27,3 +28,10 @@ export default StyleSheet.create({
   compactTitle: { color: yt.text, fontSize: 13.5, fontWeight: '600', lineHeight: 18 },
   compactMeta: { color: yt.textDim, fontSize: 12 },
 });
+
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

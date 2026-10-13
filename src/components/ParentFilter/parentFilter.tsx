@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, ScrollView, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ChildProfile } from '../../types';
 import type { ContentCategory } from '../../types';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
-import styles from './parentFilter.style';
+
+import useStyles from './parentFilter.style';
 import { ParentFilters } from './parentFilter.type';
 import { emptyParentFilters } from './parentFilter.constant';
 import { activeFilterCount } from './parentFilter.helper';
@@ -19,6 +20,8 @@ import { activeFilterCount } from './parentFilter.helper';
 
 /** The button that opens the drawer, with a count of what is currently applied. */
 export function ParentFilterButton({ filters, onPress }: { filters: ParentFilters; onPress: () => void }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   const count = activeFilterCount(filters);
   return (
     <FocusablePressable accessibilityLabel="Filters" style={styles.trigger} onPress={onPress}>
@@ -51,6 +54,8 @@ export function ParentFilterDrawer({
   onChange: (filters: ParentFilters) => void;
   onClose: () => void;
 }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.scrim}>
@@ -127,6 +132,7 @@ export function ParentFilterDrawer({
 }
 
 function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <FocusablePressable
       accessibilityLabel={label}

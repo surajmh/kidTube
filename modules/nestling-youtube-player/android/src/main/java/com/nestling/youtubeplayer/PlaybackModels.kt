@@ -14,6 +14,7 @@ data class PlaybackInfo(
   val width: Int? = null,
   val height: Int? = null,
   val captions: List<CaptionStream> = emptyList(),
+  val chapters: List<PlaybackChapter> = emptyList(),
 )
 
 data class PlaybackResult(
@@ -36,3 +37,5 @@ object PlaybackCodes {
 }
 
 data class CaptionStream(val url: String, val mimeType: String, val language: String, val label: String)
+
+data class PlaybackChapter(val title: String, val startMs: Long)

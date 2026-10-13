@@ -5,11 +5,12 @@ import { ApprovedVideo } from '../../../types';
 import { FocusablePressable } from '../../tv';
 import { KID_COPY, MONOGRAM_TINTS } from '../../KidHome/kidHome.constant';
 import { monogramTint } from '../../KidHome/kidHome.helper';
-import styles from './videoCard.style';
-import { useChannelAvatarFailure, useThumbnail } from './videoCard.hook';
+import useStyles from './videoCard.style';
+import { useChannelAvatar, useThumbnail } from './videoCard.hook';
 
 /** A 16:9 thumbnail that quietly falls back when the preferred rendition is missing. */
 export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?: number }) {
+  const styles = useStyles();
   const { primary, source, duration, onError } = useThumbnail(video);
   return (
     <View style={[styles.thumbWrap, { borderRadius: radius }]}>
@@ -29,13 +30,14 @@ export function Thumbnail({ video, radius = 0 }: { video: ApprovedVideo; radius?
   );
 }
 
-/** A circular channel monogram for channels with no artwork of their own. */
-export function ChannelAvatar({ name, uri, size = 36 }: { name: string; uri?: string; size?: number }) {
-  const { failed, onError } = useChannelAvatarFailure();
+/** Channel artwork, with a monogram when artwork is missing or cannot load. */
+export function ChannelAvatar({ name, uri, channelId, size = 36 }: { name: string; uri?: string; channelId?: string; size?: number }) {
+  const styles = useStyles();
+  const { source, failed, onError } = useChannelAvatar(uri, channelId);
   const box = { width: size, height: size, borderRadius: size / 2 };
 
-  if (uri && !failed) {
-    return <Image source={{ uri }} style={[styles.avatar, box]} onError={onError} />;
+  if (source && !failed) {
+    return <Image source={{ uri: source }} recyclingKey={source} style={[styles.avatar, box]} contentFit="cover" onError={onError} />;
   }
   return (
     <View style={[styles.avatar, box, { backgroundColor: monogramTint(name || '?', MONOGRAM_TINTS) }]}>
@@ -62,6 +64,7 @@ export const VideoCard = React.memo(function VideoCard({
   onPress: (video: ApprovedVideo) => void;
   compact?: boolean;
 }) {
+  const styles = useStyles();
   const channel = video.channelName?.trim() || KID_COPY.unknownChannel;
   const press = () => onPress(video);
 
@@ -79,7 +82,7 @@ export const VideoCard = React.memo(function VideoCard({
     <FocusablePressable accessibilityLabel={`Play ${video.title}`} style={styles.card} onPress={press}>
       <Thumbnail video={video} />
       <View style={styles.meta}>
-        <ChannelAvatar name={channel} />
+        <ChannelAvatar name={channel} channelId={video.channelId} />
         <View style={styles.metaText}>
           <Text style={styles.title} numberOfLines={2}>{video.title}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>{channel}</Text>

@@ -25,6 +25,8 @@ dependencies {
   implementation 'androidx.media3:media3-exoplayer-dash:1.11.0'
   implementation 'androidx.media3:media3-exoplayer-hls:1.11.0'
   implementation 'androidx.media3:media3-ui:1.11.0'
+  implementation 'androidx.media3:media3-session:1.11.0'
+  implementation 'androidx.activity:activity:1.8.1'
   implementation 'androidx.media3:media3-ui-leanback:1.11.0'
 
   // Stream resolution for approved videos. GPLv3: fine for a private family build,

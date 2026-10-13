@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { yt } from '../youtube/theme';
-import { colors } from '../theme';
 
-export default StyleSheet.create({
-  wrap: { marginTop: 14 },
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
+  wrap: { flexShrink: 1 },
+  saved: { backgroundColor: colors.mint, minHeight: 52 },
+  savedMeta: { color: colors.muted, fontSize: 11, marginTop: 2 },
   button: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: yt.surfaceAlt, borderRadius: 22, flexDirection: 'row', gap: 9, minHeight: 44, paddingHorizontal: 18 },
   disabled: { opacity: 0.7 },
   label: { color: yt.text, fontSize: 15, fontWeight: '700' },
@@ -16,3 +18,10 @@ export default StyleSheet.create({
   cancel: { alignItems: 'center', height: 46, justifyContent: 'center', marginTop: 4 },
   cancelText: { color: colors.muted, fontSize: 14, fontWeight: '700' },
 });
+
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

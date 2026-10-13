@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
+import { useTheme, type Palette, type VideoPalette } from '../theme';
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
 /** Parent requests styles. */
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
   intro: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 },
   title: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
@@ -51,4 +52,9 @@ const styles = StyleSheet.create({
   footerHint: { color: colors.muted, fontSize: 12, marginTop: 22, textAlign: 'center' },
 });
 
-export default styles;
+export function useStyles() {
+  const { colors, yt } = useTheme();
+  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+}
+
+export default useStyles;

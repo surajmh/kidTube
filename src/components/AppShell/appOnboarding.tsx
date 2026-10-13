@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { PinEntry } from '../PinEntry';
 import { avatarIcons, avatarOptions } from '../Avatar';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
-import { styles } from './appShell.style';
+import { useStyles as useStyles } from './appShell.style';
 import { Brand } from './loadingScreen';
 import { PrimaryButton } from './appFormControls';
 import { usePinSetup, useProfileSetup } from './appOnboarding.hook';
@@ -13,19 +14,25 @@ import type { PinSetupProps, ProfileSetupProps } from './appOnboarding.type';
 
 /** Self-contained PIN creation step: keystrokes never reach the app shell. */
 export function PinSetup({ onSubmit }: PinSetupProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { pin, setPin, error, busy, submit } = usePinSetup(onSubmit);
+  const { width, height } = useWindowDimensions();
+  const twoColumns = width >= 720 && width > height;
   return (
     <KeyboardAvoidingView style={styles.setupFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.setupScreen} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.setupScreen, twoColumns && styles.pinSetupScreen]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Brand />
-      <View style={styles.setupHero}>
+      <View style={[styles.pinSetupBody, twoColumns && styles.pinSetupColumns]}>
+      <View style={[styles.setupHero, twoColumns && styles.pinSetupIntro]}>
         <View style={styles.heroOrb}><Feather name="lock" size={38} color={colors.ink} /></View>
         <Text style={styles.eyebrow}>A little grown-up setup</Text>
         <Text style={styles.heroTitle}>Make this nest{`\n`}just for them.</Text>
       </View>
-      <View style={styles.formCard}>
+      <View style={[styles.formCard, twoColumns && styles.pinSetupCard]}>
         <Text style={styles.inputLabel}>Your private PIN</Text>
         <PinEntry pin={pin} onChange={setPin} onSubmit={submit} error={error} busy={busy} helper="Keep it somewhere safe — kids won’t see this screen." submitLabel="Create parent PIN" />
+      </View>
       </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -33,6 +40,8 @@ export function PinSetup({ onSubmit }: PinSetupProps) {
 }
 
 export function ProfileSetup({ onSubmit }: ProfileSetupProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { name, setName, avatar, setAvatar, error, submit } = useProfileSetup(onSubmit);
   return (
     <KeyboardAvoidingView style={styles.setupFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

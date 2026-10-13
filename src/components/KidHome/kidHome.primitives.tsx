@@ -1,11 +1,13 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { FocusablePressable } from '../tv';
-import { ICON } from './kidHome.constant';
-import styles from './kidHome.style';
+
+import useStyles from './kidHome.style';
 
 export function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <FocusablePressable
       accessibilityLabel={label}
@@ -18,6 +20,8 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
 }
 
 export function Notice({ notice, action }: { notice: string; action?: { label: string; onPress: () => void } | null }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   return (
     <View style={styles.notice}>
       <Feather name="info" size={16} color={ICON.ink} />
@@ -36,6 +40,8 @@ export function Notice({ notice, action }: { notice: string; action?: { label: s
 }
 
 export function Empty({ icon, title, body }: { icon: keyof typeof Feather.glyphMap; title: string; body: string }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   return (
     <View style={styles.empty}>
       <Feather name={icon} size={30} color={ICON.inkDim} />

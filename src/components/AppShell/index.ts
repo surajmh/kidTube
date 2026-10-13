@@ -4,4 +4,4 @@ export { ProfileManager } from './profileManager';
 export { AddContentModal } from './addContentModal';
 export { ParentPinModal } from './parentPinModal';
 export { PrimaryButton, SecondaryButton, Field, FormCard } from './appFormControls';
-export { styles as appShellStyles } from './appShell.style';
+export { useStyles as useAppShellStyles } from './appShell.style';

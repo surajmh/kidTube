@@ -1,16 +1,19 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Avatar } from '../Avatar';
 import { FocusablePressable } from '../tv';
-import { yt } from '../youtube/theme';
-import styles from './parentDashboard.style';
+
+import useStyles from './parentDashboard.style';
 import { DASHBOARD_COPY, LIBRARY_TILES, MANAGE_TILES, OVERVIEW_STATS } from './parentDashboard.constant';
 import type { DashboardTile } from './parentDashboard.constant';
 import type { ParentDashboardProps } from './parentDashboard.type';
 
 /** The Parent Mode home: who is being managed, a family summary, and the way into every other page. */
 export function ParentDashboard({ profile, counts, onOpen }: ParentDashboardProps) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   return (
     <View>
       {profile ? (
@@ -55,6 +58,8 @@ export function ParentDashboard({ profile, counts, onOpen }: ParentDashboardProp
 }
 
 function TileSection({ title, body, tiles, onOpen }: { title: string; body: string; tiles: DashboardTile[]; onOpen: ParentDashboardProps['onOpen'] }) {
+  const styles = useStyles();
+  const { yt } = useTheme();
   return (
     <View>
       <Text style={styles.sectionTitle}>{title}</Text>

@@ -13,6 +13,12 @@ export type ScheduleWindow = {
 
 export type PlaybackSettings = {
   autoplay: boolean;
+  themeMode?: 'light' | 'dark' | 'system';
+  backgroundAudioEnabled?: boolean;
+  deArrowEnabled?: boolean;
+  /** Exact replacements previewed and accepted by a parent. */
+  deArrowReplacements?: Record<string, { title?: string; thumbnailUrl?: string }>;
+
   /** Parent-set ceiling for adaptive video quality. */
   maxQualityHeight?: number;
   /** Whether a child may save videos for offline viewing. */

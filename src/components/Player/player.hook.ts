@@ -1,12 +1,14 @@
 import { useEffect,useRef,useState } from 'react';
-import { AppState } from 'react-native';
+import NativeYouTubePlayer from '../../native/YouTubePlayerModule';
+import { playbackAuthorization } from '../../services/playbackAuthorization';
+import { AppState, Platform } from 'react-native';
 import { isNativeYouTubePlayerAvailable } from '../../native';
 import { normalizePlayerError,playerErrorCodeOf } from '../../services/playerErrors';
 import type { PlayerError } from '../../services/playerErrors.type';
 import { playerAdapter } from '../../services/playerAdapterInstance';
 import type { ResumablePlayerAdapter } from '../../services/playerAdapter.type';
 import type { PlaybackDecision } from '../../types';
-import { describePlaybackDecision,isTimeRelatedReason,playbackPolicy } from '../../services/playbackPolicyService';
+import { describePlaybackDecision,isTimeRelatedReason,playbackPolicy,localDayKey } from '../../services/playbackPolicyService';
 import { screenTimeService } from '../../services/screenTimeService';
 import { accountPlayheadSample } from '../../services/screenTimeAccounting';
 import {
@@ -38,6 +40,35 @@ export function usePlayer({
   onPlaybackCompleted,
   onParentOverride,
 }: PlayerScreenProps) {
+  const pictureInPicture = useRef(false);
+  const backgroundAudio = useRef(Boolean(settings.backgroundAudioEnabled));
+  backgroundAudio.current = Boolean(settings.backgroundAudioEnabled);
+  const nativePlayedMs = useRef(0);
+  const acknowledgedMs = useRef(0);
+  const nativeDeadline = useRef(0);
+  const accountingVideoId = useRef(video.youtubeVideoId);
+  if (accountingVideoId.current !== video.youtubeVideoId) {
+    accountingVideoId.current = video.youtubeVideoId;
+    nativePlayedMs.current = 0;
+    acknowledgedMs.current = 0;
+    nativeDeadline.current = 0;
+  }
+  function setPictureInPicture(value: boolean) { pictureInPicture.current = value; if (value) wasPlayingBeforeBackground.current = false; }
+  function canPlayOutsideApp() { return backgroundAudio.current || pictureInPicture.current; }
+  function syncAuthorization(refreshDeadline = false) {
+    if (!profile || !NativeYouTubePlayer?.setPlaybackAuthorization) return Promise.resolve();
+    const authorization = refreshDeadline || !nativeDeadline.current ? playbackAuthorization(profile.id, video) : {
+      date: localDayKey(),
+      stopAt: nativeDeadline.current, usedMs: playbackPolicy.getUsage(profile.id) * 1000,
+      remainingMs: (playbackPolicy.getRemainingSeconds(profile.id) ?? 86400) * 1000,
+    };
+    if (refreshDeadline || !nativeDeadline.current) nativeDeadline.current = authorization.stopAt;
+    return NativeYouTubePlayer.setPlaybackAuthorization(video.youtubeVideoId, profile.id, authorization.date,
+      authorization.usedMs, acknowledgedMs.current, authorization.remainingMs, Math.min(authorization.stopAt, nativeDeadline.current), backgroundAudio.current);
+  }
+  useEffect(() => {
+    void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
+  }, [video.youtubeVideoId, settings, profile?.id, retrySignal]);
   const [isOffline, setIsOffline] = useState(offlineExpected);
   const [isPlaying, setIsPlaying] = useState(false);
   const [wantsPlayback, setWantsPlayback] = useState(true);
@@ -80,6 +111,10 @@ export function usePlayer({
     : ({ allowed: false, reason: 'VIDEO_NOT_APPROVED' } as PlaybackDecision);
   const isAllowed = accessDecision.allowed;
   const resumableAdapter = playerAdapter as ResumablePlayerAdapter;
+  async function resumePlayback() {
+    await syncAuthorization(true);
+    if (accountingVideoId.current === video.youtubeVideoId && wantsPlaybackRef.current) await resumableAdapter.resume(video.youtubeVideoId);
+  }
 
   useEffect(() => {
     wantsPlaybackRef.current = true;
@@ -150,7 +185,7 @@ export function usePlayer({
     setTimeBlocked(isTimeRelatedReason(decision));
   }
 
-  function accountPlayback(seconds: number) {
+  function accountPlayback(seconds: number, nativeTotal?: number) {
     if (!profile || seconds <= 0) return;
     const remaining = playbackPolicy.getRemainingSeconds(profile.id);
     if (remaining !== null && remaining <= 0) {
@@ -167,6 +202,10 @@ export function usePlayer({
         return;
       }
       screenTimeService.recordPlaybackSeconds(profile.id, currentCounted);
+      if (nativeTotal !== undefined && accountingVideoId.current === video.youtubeVideoId) {
+        acknowledgedMs.current = nativeTotal;
+        void syncAuthorization().catch(() => { void playerAdapter.pause().catch(() => undefined); });
+      }
       onUsageChange();
       const nextRemaining = playbackPolicy.getRemainingSeconds(profile.id);
       if (nextRemaining !== null) {
@@ -219,24 +258,26 @@ export function usePlayer({
     if (!isAllowed || !isNativeYouTubePlayerAvailable) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background' || nextState === 'inactive') {
-        wasPlayingBeforeBackground.current = wantsPlaybackRef.current;
+        wasPlayingBeforeBackground.current = wantsPlaybackRef.current && !canPlayOutsideApp();
+        if (canPlayOutsideApp()) void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
         if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
         recoveryTimer.current = null;
-        if (wantsPlaybackRef.current) {
+        if (wantsPlaybackRef.current && !canPlayOutsideApp()) {
           lastPlayheadMs.current = null;
-          void playerAdapter.pause().catch(() => undefined);
+          // Native owns the Home/PiP transition; pausing here races the system animation.
+          if (!NativeYouTubePlayer?.managesBackgroundPlayback) void playerAdapter.pause().catch(() => undefined);
           persistProgress();
         }
         // Never leave pending watch time or history in memory when the app may be killed.
         void screenTimeService.flush();
       }
+      if (nextState === 'active') void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
       if (nextState === 'active' && wasPlayingBeforeBackground.current) {
         wasPlayingBeforeBackground.current = false;
         const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
         if (!decision.allowed) stopForPolicy(decision);
         else
-          void resumableAdapter
-            .resume(video.youtubeVideoId)
+          void resumePlayback()
             .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
       }
     });
@@ -287,8 +328,7 @@ export function usePlayer({
     setShowThumbnailCover(true);
     stoppedByPolicy.current = false;
     lastPlayheadMs.current = null;
-    void resumableAdapter
-      .resume(video.youtubeVideoId)
+    void resumePlayback()
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
   }
 
@@ -317,7 +357,7 @@ export function usePlayer({
     recoveryTimer.current = null;
     setRecoveryMessage('');
     if (!nextPlaying) showControls(true);
-    const command = nextPlaying ? resumableAdapter.resume(video.youtubeVideoId) : playerAdapter.pause();
+    const command = nextPlaying ? resumePlayback() : playerAdapter.pause();
     void command
       .then(() => { setError(null); if (nextPlaying) recoveryAttempt.current = 0; })
       .catch((caught) => handlePlayerError(normalizePlayerError({ code: playerErrorCodeOf(caught) ?? 'playback_failure' })));
@@ -328,7 +368,7 @@ export function usePlayer({
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
     controlsTimer.current = null;
     setControlsVisible(true);
-    if (!sticky) controlsTimer.current = setTimeout(() => setControlsVisible(false), 4000);
+    if (!sticky && !Platform.isTV) controlsTimer.current = setTimeout(() => setControlsVisible(false), 4000);
   }
 
   function toggleControls() {
@@ -384,8 +424,11 @@ export function usePlayer({
           : 'Trying again…',
       );
     },
-    onPlay: () => {
-      if (!wantsPlaybackRef.current || AppState.currentState === 'background' || AppState.currentState === 'inactive') {
+    onPlay: (event?: { nativeEvent: { remote?: boolean; videoId?: string; inPictureInPicture?: boolean } }) => {
+      if (event?.nativeEvent.videoId && event.nativeEvent.videoId !== video.youtubeVideoId) return;
+      if (event?.nativeEvent.inPictureInPicture) setPictureInPicture(true);
+      if (event?.nativeEvent.remote) { wantsPlaybackRef.current = true; setWantsPlayback(true); }
+      if (!wantsPlaybackRef.current || (!NativeYouTubePlayer?.managesBackgroundPlayback && !canPlayOutsideApp() && (AppState.currentState === 'background' || AppState.currentState === 'inactive'))) {
         void playerAdapter.pause().catch(() => undefined);
         return;
       }
@@ -408,15 +451,21 @@ export function usePlayer({
       setIsBuffering(false);
       showControls(false);
     },
-    onPause: () => { lastPlayheadMs.current = null; isPlayingRef.current = false; setIsPlaying(false); showControls(true); },
+    onPause: (event?: { nativeEvent: { remote?: boolean } }) => { if (event?.nativeEvent.remote) { wantsPlaybackRef.current = false; setWantsPlayback(false); } lastPlayheadMs.current = null; isPlayingRef.current = false; setIsPlaying(false); showControls(true); },
     onBuffer: () => { lastPlayheadMs.current = null; setIsBuffering(true); },
-    onProgress: (event: { nativeEvent: { duration?: number; position?: number; isPlaying?: boolean; bufferedPosition?: number; playbackSpeed?: number; offline?: boolean } }) => {
+    onProgress: (event: { nativeEvent: { videoId?: string; playedMs?: number; duration?: number; position?: number; isPlaying?: boolean; bufferedPosition?: number; playbackSpeed?: number; offline?: boolean } }) => {
+      if (event.nativeEvent.videoId && event.nativeEvent.videoId !== video.youtubeVideoId) return;
       const nativeDuration = event.nativeEvent.duration;
       const nextDuration = nativeDuration && nativeDuration > 0 ? nativeDuration : durationMs;
       const positionMs = event.nativeEvent.position ?? 0;
       const playing = Boolean(event.nativeEvent.isPlaying && !stoppedByPolicy.current);
       setIsOffline(Boolean(event.nativeEvent.offline));
-      accountPlayhead(positionMs, playing, event.nativeEvent.playbackSpeed ?? 1);
+      const total = event.nativeEvent.playedMs;
+      if (total !== undefined && Number.isFinite(total) && total >= nativePlayedMs.current) {
+        const seconds = (total - nativePlayedMs.current) / 1000;
+        nativePlayedMs.current = total;
+        accountPlayback(seconds, total);
+      } else if (total === undefined) accountPlayhead(positionMs, playing, event.nativeEvent.playbackSpeed ?? 1);
       if (nextDuration <= 0) return;
       const nextProgress = Math.min(positionMs / nextDuration, 1);
       progressRef.current = nextProgress;
@@ -445,7 +494,8 @@ export function usePlayer({
       const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
       if (!decision.allowed && playing) stopForPolicy(decision);
     },
-    onEnd: () => {
+    onEnd: (event?: { nativeEvent: { videoId?: string } }) => {
+      if (event?.nativeEvent.videoId && event.nativeEvent.videoId !== video.youtubeVideoId) return;
       lastPlayheadMs.current = null;
       isPlayingRef.current = false;
       wantsPlaybackRef.current = false;
@@ -462,7 +512,23 @@ export function usePlayer({
       onPlaybackCompleted();
       if (profile && nextVideo && playbackPolicy.shouldAutoplay(profile.id)) onNextVideo(nextVideo);
     },
-    onError: (event: { nativeEvent: { code?: string; message?: string } }) => {
+    onError: (event: { nativeEvent: { code?: string; message?: string; videoId?: string } }) => {
+      if (event.nativeEvent.videoId && event.nativeEvent.videoId !== video.youtubeVideoId) return;
+      if (event.nativeEvent.code === 'authorization_expired') {
+        void accountingQueue.current.then(async () => {
+          const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'VIDEO_NOT_APPROVED' as const };
+          if (!decision.allowed) { stopForPolicy(decision); return; }
+          if (accountingVideoId.current !== video.youtubeVideoId) return;
+          await syncAuthorization(true);
+          if (wantsPlaybackRef.current && (AppState.currentState === 'active' || canPlayOutsideApp())) await resumableAdapter.resume(video.youtubeVideoId);
+        }).catch(() => { void playerAdapter.pause().catch(() => undefined); });
+        return;
+      }
+      if (event.nativeEvent.code === 'policy_blocked') {
+        const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'VIDEO_NOT_APPROVED' as const };
+        stopForPolicy(decision.allowed ? { allowed: false, reason: 'SCREEN_TIME_EXCEEDED' } : decision);
+        return;
+      }
       lastPlayheadMs.current = null;
       isPlayingRef.current = false;
       setIsPlaying(false);
@@ -473,6 +539,8 @@ export function usePlayer({
   };
 
   return {
+    setPictureInPicture,
+    authorizePlayback: () => syncAuthorization(true),
     isOffline,
     isPlaying,
     wantsPlayback,

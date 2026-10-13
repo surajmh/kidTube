@@ -1,10 +1,11 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../theme';
+
 import { FocusablePressable } from '../tv';
 import { usePagedGrid } from './pagedGrid.hook';
-import styles from './pagedGrid.style';
+import useStyles from './pagedGrid.style';
 import type { PagedGridProps } from './pagedGrid.type';
 
 /**
@@ -23,6 +24,8 @@ export function PagedGrid<T>({
   moreStyle,
   moreLabel = 'Show more',
 }: PagedGridProps<T>) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { visible, remaining, showMore } = usePagedGrid(items, pageSize);
 
   return (

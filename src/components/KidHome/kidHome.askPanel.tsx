@@ -1,11 +1,12 @@
+import { useTheme } from '../theme';
 import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { ApprovedChannel, ApprovedVideo, ChildProfile } from '../../types';
 import type { ContentRequest, RequestType } from '../../types';
 import { FocusablePressable } from '../tv';
-import { ICON } from './kidHome.constant';
+
 import { useAskPanel } from './kidHome.askPanel.hook';
-import styles from './kidHome.style';
+import useStyles from './kidHome.style';
 
 /** Ask a Parent. No browsing and no search: saved-but-unapproved items, or the child's own words. */
 export function AskPanel({
@@ -25,6 +26,8 @@ export function AskPanel({
   onRequestVideo: (video: ApprovedVideo) => Promise<void>;
   onRequestChannel: (channel: ApprovedChannel) => Promise<void>;
 }) {
+  const styles = useStyles();
+  const { ICON } = useTheme();
   const { title, setTitle, message, busy, mine, run } = useAskPanel(activeProfile, requests);
 
   return (
@@ -106,6 +109,7 @@ export function AskPanel({
 }
 
 function AskRow({ label, busy, onPress }: { label: string; busy: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.askRow}>
       <Text style={styles.askRowLabel} numberOfLines={2}>{label}</Text>
