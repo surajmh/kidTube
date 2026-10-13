@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider, themes, resolveTheme } from '../theme';
 import { PlaybackSettingsPanel } from '../PlaybackSettings/playbackSettings';
@@ -9,7 +9,7 @@ import { sanitizeSettings } from '../../services/contentValidation';
 
 jest.mock('@expo/vector-icons', () => ({ Feather: () => null }));
 
-it('updates both parent settings and memoized child cards without remounting', () => {
+it('updates both parent settings and memoized child cards without remounting', async () => {
   const onChange = jest.fn();
   const video = { id: 'a', youtubeVideoId: 'aaaaaaaaaaa', title: 'Approved song', approved: true };
   const content = <><PlaybackSettingsPanel settings={defaultPlaybackSettings} usage={[]} profiles={[]} onChange={onChange} /><VideoCard video={video} onPress={jest.fn()} /></>;
@@ -20,7 +20,9 @@ it('updates both parent settings and memoized child cards without remounting', (
   view.rerender(<ThemeProvider value={themes.light}>{content}</ThemeProvider>);
   expect(color('Appearance')).toBe(themes.light.colors.ink);
   expect(color('Approved song')).toBe(themes.light.yt.text);
-  fireEvent.press(view.getByLabelText('dark theme'));
+  fireEvent.press(view.getByLabelText('Appearance'));
+  fireEvent.press(view.getByLabelText('Theme'));
+  await act(async () => fireEvent.press(view.getByLabelText('Theme: Dark')));
   expect(onChange).toHaveBeenCalledWith({ ...defaultPlaybackSettings, themeMode: 'dark' });
 });
 

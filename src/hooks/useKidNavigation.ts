@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Platform } from 'react-native';
+import { AppState, BackHandler, Platform } from 'react-native';
 import { describePlaybackDecision, isTimeRelatedReason, playbackPolicy } from '../services/playbackPolicyService';
 import { ApprovedVideo, ChildProfile } from '../types';
 import type { PlaybackDecision } from '../types';
@@ -45,6 +45,16 @@ export function useKidNavigation({
   useEffect(() => { if (screen === 'parent') setSelectedVideo(null); }, [screen]);
   const [kidNotice, setKidNotice] = useState('');
   const [kidNoticeAction, setKidNoticeAction] = useState<'override' | null>(null);
+  useEffect(() => {
+    if (!kidNoticeAction || !activeProfile) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const decision = playbackPolicy.canContinuePlayback(activeProfile.id);
+      setKidNotice(describePlaybackDecision(decision));
+      setKidNoticeAction(isTimeRelatedReason(decision) ? 'override' : null);
+    });
+    return () => subscription.remove();
+  }, [kidNoticeAction, activeProfile?.id]);
   const [contentTab, setContentTab] = useState<ContentTab>('channels');
   /** Which channel's own page is open in Parent Mode, if any. */
   const [parentChannelId, setParentChannelId] = useState<string | null>(null);

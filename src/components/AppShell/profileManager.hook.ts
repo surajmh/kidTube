@@ -20,7 +20,8 @@ export function useProfileManager(profiles: ChildProfile[], onChange: (profiles:
     const next = editingId
       ? profiles.map((profile) => profile.id === editingId ? { ...profile, name: name.trim(), avatar } : profile)
       : [...profiles, { id: id('profile'), name: name.trim(), avatar }];
-    await onChange(next);
+    try { await onChange(next); }
+    catch { setError('Could not save profile. Try again.'); return; }
     setName(''); setEditingId(null); setError('');
   }
   return { name, setName, avatar, setAvatar, editingId, error, beginEdit, cancelEdit, save };

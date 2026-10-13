@@ -1,3 +1,4 @@
+import { SettingsGroup, SettingsRow } from '../SettingsMenu';
 import { useTheme } from '../theme';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Platform, ScrollView, Share, StyleSheet, Switch, Text, View } from 'react-native';
@@ -103,9 +104,10 @@ export function PlayerScreen(props: PlayerScreenProps) {
             setCaptionTrack((current) => nativeEvent.captions?.some((track) => track.id === current) ? current : null);
           }} style={styles.nativePlayer} />);
   const settingsPanel = (<ScrollView style={[optionStyles.panel, gestures.fullscreen && { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }]} contentContainerStyle={{ gap: 10 }}>
-          <FocusablePressable accessibilityLabel="Close player settings" hasTVPreferredFocus={Platform.isTV} focusStyle={Platform.isTV ? { borderColor: '#fff' } : undefined} style={optionStyles.choice} onPress={() => setOptionsOpen(false)}><Text style={optionStyles.text}>Close settings</Text></FocusablePressable>
-          <Text style={optionStyles.label}>Chapters</Text>
+          <SettingsRow label="Close player settings" preferred onPress={() => setOptionsOpen(false)} />
+          <SettingsGroup label="Chapters">
           {chapters.length ? chapters.map((chapter) => <FocusablePressable key={chapter.startMs} accessibilityLabel={`Chapter: ${chapter.title}, ${formatDuration(chapter.startMs / 1000)}`} accessibilityState={{ selected: activeChapter?.startMs === chapter.startMs }} style={[optionStyles.choice, activeChapter?.startMs === chapter.startMs && optionStyles.selected]} onPress={() => { player.seekToPosition(chapter.startMs); setOptionsOpen(false); }}><Text style={optionStyles.text}>{formatDuration(chapter.startMs / 1000)} · {chapter.title}</Text></FocusablePressable>) : <Text style={optionStyles.hint}>No chapters available for this video.</Text>}
+          </SettingsGroup>
           <ChoiceRow label="Audio language" value={tracks.audio.find((track) => track.selected)?.language ?? ''} options={[{ value: '', label: 'Video default' }, ...tracks.audio.map((track) => ({ value: track.language, label: track.label }))]} onChange={(value) => setAudioLanguage(value || null)} />
           {audioLanguage && !tracks.audio.some((track) => track.language === audioLanguage) ? <Text style={optionStyles.hint}>Your preferred language is unavailable. Using the video default.</Text> : null}
           {tracks.audio.some((track) => track.selected) ? <Text style={optionStyles.hint}>Playing: {tracks.audio.find((track) => track.selected)?.label}</Text> : null}

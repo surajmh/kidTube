@@ -2,9 +2,8 @@ import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Avatar } from '../Avatar';
+import { SettingsChoice, SettingsGroup } from '../SettingsMenu';
 
-import { FocusablePressable } from '../tv';
 import useStyles from './parentChildren.style';
 import { useParentChildren } from './parentChildren.hook';
 import { PARENT_CHILDREN_COPY } from './parentChildren.constant';
@@ -78,19 +77,7 @@ export function ParentChildrenPanel({
         <Feather name="users" size={22} color={colors.ink} />
       </View>
 
-      <View style={styles.profileRow}>
-        {profiles.map((item) => (
-          <FocusablePressable
-            key={item.id}
-            accessibilityLabel={`Configure ${item.name}`}
-            style={[styles.profileChip, item.id === profileId && styles.profileChipActive]}
-            onPress={() => setSelectedId(item.id)}
-          >
-            <Avatar profile={item} size={30} />
-            <Text style={[styles.profileChipText, item.id === profileId && styles.profileChipTextActive]}>{item.name}</Text>
-          </FocusablePressable>
-        ))}
-      </View>
+      <SettingsChoice label="Configure child" value={profileId} options={profiles.map((item) => ({ value: item.id, label: item.name }))} onChange={setSelectedId} />
 
       <LimitsCard
         profile={profile}
@@ -131,7 +118,7 @@ export function ParentChildrenPanel({
 
       <ApprovalsCard profile={profile} childApprovals={childApprovals} onRevokeApproval={onRevokeApproval} />
 
-      {profilesSlot}
+      <SettingsGroup label="Manage child profiles">{profilesSlot}</SettingsGroup>
     </View>
   );
 }

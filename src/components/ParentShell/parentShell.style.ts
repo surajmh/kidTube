@@ -1,70 +1,17 @@
 import { useMemo } from 'react';
-import { useTheme, type Palette, type VideoPalette } from '../theme';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+import { useTheme } from '../theme';
 
-/** Parent shell styles. */
-const makeStyles = (colors: Palette, yt: VideoPalette) => StyleSheet.create({
-  screen: { backgroundColor: yt.bg, flex: 1 },
-  content: { paddingBottom: 32, paddingHorizontal: 16 },
-
-  topBar: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingTop: 14 },
-  heading: { flex: 1 },
-  kicker: { color: yt.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 1.1 },
-  title: { color: yt.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.4, marginTop: 2 },
-  subtitle: { color: yt.textDim, fontSize: 13.5, lineHeight: 19, marginTop: 4 },
-  exitButton: {
-    flexShrink: 0,
-    alignItems: 'center',
-    backgroundColor: yt.surfaceAlt,
-    borderRadius: 18,
-    flexDirection: 'row',
-    gap: 7,
-    minHeight: 36,
-    paddingHorizontal: 14,
-  },
-  exitText: { color: yt.text, fontSize: 13, fontWeight: '600' },
-
-  // Filter-chip navigation, matching Kid Mode: inverted pill for the active section.
-  tabStrip: { gap: 8, marginTop: 18, paddingRight: 16 },
-  tab: {
-    alignItems: 'center',
-    backgroundColor: yt.surfaceAlt,
-    borderRadius: 8,
-    flexDirection: 'row',
-    gap: 7,
-    minHeight: 34,
-    paddingHorizontal: 12,
-  },
-  tabActive: { backgroundColor: yt.chipActive },
-  tabText: { color: yt.text, fontSize: 13, fontWeight: '600' },
-  tabTextActive: { color: yt.chipActiveText },
-  badge: {
-    alignItems: 'center',
-    backgroundColor: yt.accent,
-    borderRadius: 9,
-    minWidth: 18,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  badgeText: { color: yt.onAccent, fontSize: 11, fontWeight: '700' },
-
-  notice: {
-    alignItems: 'center',
-    backgroundColor: yt.surface,
-    borderRadius: 10,
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-    padding: 12,
-  },
-  noticeText: { color: yt.text, flex: 1, fontSize: 13, lineHeight: 18 },
-
-  bottomSpace: { height: 28 },
-});
-
-export function useStyles() {
-  const { colors, yt } = useTheme();
-  return useMemo(() => makeStyles(colors, yt), [colors, yt]);
+export default function useStyles() {
+  const { yt, dark } = useTheme();
+  return useMemo(() => StyleSheet.create({
+    screen: { backgroundColor: dark ? '#0F1724' : '#F8FAFC', flex: 1 },
+    content: { paddingBottom: 32, paddingHorizontal: Platform.isTV ? 36 : 16, width: '100%', maxWidth: 1040, alignSelf: 'center' },
+    title: { color: yt.text, fontSize: Platform.isTV ? 30 : 24, fontWeight: '700', letterSpacing: -0.4, marginTop: 16, marginBottom: 20 },
+    notice: { alignItems: 'center', backgroundColor: dark ? '#2A251B' : '#FFF8E8', borderColor: dark ? '#57401D' : '#F5E4BC', borderWidth: 1, borderRadius: 12, flexDirection: 'row', gap: 10, marginTop: 8, paddingVertical: 8, paddingLeft: 14, paddingRight: 4 },
+    noticeIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: dark ? '#483518' : '#FFF0CC', alignItems: 'center', justifyContent: 'center' },
+    noticeText: { color: dark ? '#E2D9C3' : '#66501F', flex: 1, fontSize: Platform.isTV ? 16 : 12, lineHeight: Platform.isTV ? 23 : 17 },
+    dismissNotice: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+    bottomSpace: { height: 20 },
+  }), [yt, dark]);
 }
-
-export default useStyles;

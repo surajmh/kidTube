@@ -37,6 +37,38 @@ const props: PlayerScreenProps = {
   onSaveHistory: jest.fn(), onPlaybackCompleted: jest.fn(),
 };
 
+it('rechecks an exhausted player on foreground the next day', async () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date(2026, 9, 12, 12));
+  const { PlaybackPolicyService } = jest.requireActual('../../../services/playbackPolicyService');
+  const policy = new PlaybackPolicyService();
+  policy.hydrate({ settings: { ...props.settings, dailyLimitMinutes: 1 }, profiles: [props.profile!],
+    screenTime: [{ profileId: 'kid', date: '2026-10-12', secondsWatched: 60 }] });
+  policy.setContentAccessResolver(() => 'allowed');
+  const spies = [
+    jest.spyOn(playbackPolicy, 'canPlay').mockImplementation(policy.canPlay.bind(policy)),
+    jest.spyOn(playbackPolicy, 'canContinuePlayback').mockImplementation(policy.canContinuePlayback.bind(policy)),
+  ];
+  const subscription = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
+  const view = renderHook(() => usePlayer(props));
+  try {
+    expect(view.result.current.isAllowed).toBe(false);
+    act(() => view.result.current.nativeHandlers.onPlay());
+    expect(view.result.current.policyMessage).toContain('finished your screen time');
+    const listener = subscription.mock.calls.at(-1)![1];
+    await act(async () => listener('active'));
+    expect(view.result.current.isAllowed).toBe(false);
+    jest.setSystemTime(new Date(2026, 9, 13, 12));
+    await act(async () => listener('active'));
+    expect(view.result.current.isAllowed).toBe(true);
+    expect(view.result.current.policyMessage).toBe('');
+    expect(view.result.current.timeBlocked).toBe(false);
+    expect(policy.getUsage('kid', '2026-10-12')).toBe(60);
+  } finally {
+    view.unmount(); spies.forEach((spy) => spy.mockRestore()); subscription.mockRestore(); jest.useRealTimers();
+  }
+});
+
 it('pause cancels recovery, rejects late play, and a switch cancels the old retry', async () => {
   jest.useFakeTimers();
   const subscription = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
@@ -127,13 +159,14 @@ it('resumes rather than restarts after the final native failure, with one JS ret
 describe.each(['bedtime', 'screen-time'] as const)('%s enforcement with the real policy', (restriction) => {
   it('does not mount a native player when starting with a blocked policy', () => {
     jest.clearAllMocks();
+    const subscription = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
     const decision = { allowed: false as const, reason: restriction === 'bedtime' ? 'BEDTIME' as const : 'SCREEN_TIME_EXCEEDED' as const };
     const check = jest.spyOn(playbackPolicy, 'canPlay').mockReturnValue(decision);
     const view = render(<PlayerScreen {...props} />);
     try {
       expect(view.getByText(restriction === 'bedtime' ? 'It’s bedtime. Come back in the morning!' : 'You’ve finished your screen time for today. Come back tomorrow!')).toBeTruthy();
       expect(YouTubePlayer).not.toHaveBeenCalled();
-    } finally { view.unmount(); check.mockRestore(); }
+    } finally { view.unmount(); check.mockRestore(); subscription.mockRestore(); }
   });
 
   it.each(['progress', 'late-play', 'foreground', 'retry', 'manual-resume'] as const)('blocks %s and subsequent autoplay', async (transition) => {
@@ -207,7 +240,7 @@ it('counts playback but excludes seeks, pauses and recovery from screen time', a
   } finally { view.unmount(); subscription.mockRestore(); }
 });
 
-it('exposes available tracks, applies player choices, and clears captions on video switches', () => {
+it('exposes available tracks, applies player choices, and clears captions on video switches', async () => {
   const subscription = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }));
   jest.useFakeTimers();
   const view = render(<PlayerScreen {...props} settings={{ ...props.settings, maxQualityHeight: 720 }} />);
@@ -215,10 +248,14 @@ it('exposes available tracks, applies player choices, and clears captions on vid
   try {
     act(() => nativeProps().onTracksChanged({ nativeEvent: { videoId: props.video.youtubeVideoId, captions: [{ id: '1:0', label: 'English' }], qualityHeights: [360, 720, 1080] } }));
     fireEvent.press(view.getByLabelText('Player settings'));
-    fireEvent.press(view.getByLabelText('Speed: 2×'));
-    fireEvent.press(view.getByLabelText('Quality: Up to 720p'));
-    fireEvent.press(view.getByLabelText('Captions: English'));
-    fireEvent.press(view.getByLabelText('Caption size: Large'));
+    fireEvent.press(view.getByLabelText('Speed'));
+    await act(async () => fireEvent.press(view.getByLabelText('Speed: 2×')));
+    fireEvent.press(view.getByLabelText('Quality'));
+    await act(async () => fireEvent.press(view.getByLabelText('Quality: Up to 720p')));
+    fireEvent.press(view.getByLabelText('Captions'));
+    await act(async () => fireEvent.press(view.getByLabelText('Captions: English')));
+    fireEvent.press(view.getByLabelText('Caption size'));
+    await act(async () => fireEvent.press(view.getByLabelText('Caption size: Large')));
     expect(nativeProps()).toMatchObject({ playbackSpeed: 2, qualityHeight: 720, maxQualityHeight: 720, captionTrack: '1:0', captionScale: 1.5 });
     expect(view.queryByLabelText('Quality: Up to 1080p')).toBeNull();
     view.rerender(<PlayerScreen {...props} video={{ ...props.video, youtubeVideoId: 'bbbbbbbbbbb' }} />);
@@ -293,8 +330,10 @@ it('seeks chapters through the policy-aware player and exposes audio and fullscr
     audio: [{ language: 'en', label: 'English (original)', selected: true }, { language: 'es', label: 'Spanish (dubbed)', selected: false }],
   } }));
   fireEvent.press(view.getByLabelText('Player settings'));
-  fireEvent.press(view.getByLabelText('Audio language: Spanish (dubbed)'));
+  fireEvent.press(view.getByLabelText('Audio language'));
+    await act(async () => fireEvent.press(view.getByLabelText('Audio language: Spanish (dubbed)')));
   expect(latestNativeProps().audioLanguage).toBe('es');
+  fireEvent.press(view.getByLabelText('Chapters'));
   fireEvent.press(view.getByLabelText('Chapter: Story, 1:00'));
   expect(playerAdapter.seek).toHaveBeenLastCalledWith(60_000);
   expect(view.queryByLabelText('Close player settings')).toBeNull();
@@ -306,7 +345,9 @@ it('seeks chapters through the policy-aware player and exposes audio and fullscr
   expect(view.getByLabelText('Exit fullscreen')).toBeTruthy();
   expect(view.queryByText('Approved by your parent')).toBeNull();
   fireEvent.press(view.getByLabelText('Player settings'));
+  fireEvent.press(view.getByLabelText('Chapters'));
   expect(view.getByLabelText('Chapter: Story, 1:00')).toBeTruthy();
+  fireEvent.press(view.getByLabelText('Back from Chapters'));
   fireEvent.press(view.getByLabelText('Close player settings'));
   fireEvent.press(view.getByLabelText('Exit fullscreen'));
   expect(latestNativeProps().fullscreen).toBe(false);

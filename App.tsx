@@ -286,7 +286,7 @@ function AppContent() {
                 settings={library.playbackSettings}
                 usage={library.screenTimeUsage}
                 profiles={library.profiles}
-                onChange={(next) => void library.savePlaybackSettings(next)}
+                onChange={library.savePlaybackSettings}
               />
             }
           />

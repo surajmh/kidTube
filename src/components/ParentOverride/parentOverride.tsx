@@ -1,3 +1,4 @@
+import { SettingsChoice, SettingsToggle } from '../SettingsMenu';
 import { useTheme } from '../theme';
 import React from 'react';
 import { Modal, Text, View } from 'react-native';
@@ -50,29 +51,9 @@ export function ParentOverrideSheet({
             <PinEntry pin={pin} onChange={setPin} onSubmit={() => void verify()} error={error} busy={busy} submitLabel="Unlock override" />
           ) : (
             <>
-              <View style={styles.presets}>
-                {overridePresets.map((preset) => (
-                  <FocusablePressable
-                    key={preset.id}
-                    accessibilityLabel={preset.label}
-                    style={styles.preset}
-                    disabled={busy}
-                    onPress={() => void grant(preset)}
-                  >
-                    <Text style={styles.presetText}>{preset.label}</Text>
-                  </FocusablePressable>
-                ))}
-              </View>
-              <FocusablePressable
-                accessibilityLabel="Also allow outside allowed hours"
-                style={[styles.scheduleToggle, scheduleAccess && styles.scheduleToggleActive]}
-                onPress={() => setScheduleAccess(!scheduleAccess)}
-              >
-                <Feather name={scheduleAccess ? 'check-square' : 'square'} size={15} color={scheduleAccess ? colors.ink : colors.muted} />
-                <Text style={[styles.scheduleText, scheduleAccess && styles.scheduleTextActive]}>
-                  Also allow outside allowed hours and bedtime
-                </Text>
-              </FocusablePressable>
+              <SettingsToggle label="Also allow outside allowed hours" value={scheduleAccess} onChange={setScheduleAccess} />
+              <SettingsChoice label="Add extra time" value="" options={overridePresets.map((preset) => ({ value: preset.id, label: preset.label }))}
+                onChange={(value) => { const preset = overridePresets.find((item) => item.id === value); if (preset && !busy) return grant(preset); }} />
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <Text style={styles.helper}>An override is temporary and expires automatically. It never changes the saved limit.</Text>
             </>

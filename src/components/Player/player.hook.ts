@@ -89,6 +89,7 @@ export function usePlayer({
   const [segments, setSegments] = useState<SponsorSegment[]>([]);
   const [policyMessage, setPolicyMessage] = useState('');
   const [timeBlocked, setTimeBlocked] = useState(false);
+  const [, refreshAccess] = useState(0);
   const [warningMessage, setWarningMessage] = useState('');
   const [recoveryMessage, setRecoveryMessage] = useState('');
   const wasPlayingBeforeBackground = useRef(false);
@@ -255,9 +256,9 @@ export function usePlayer({
   }
 
   useEffect(() => {
-    if (!isAllowed || !isNativeYouTubePlayerAvailable) return;
+    if (!isNativeYouTubePlayerAvailable) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'background' || nextState === 'inactive') {
+      if (isAllowed && (nextState === 'background' || nextState === 'inactive')) {
         wasPlayingBeforeBackground.current = wantsPlaybackRef.current && !canPlayOutsideApp();
         if (canPlayOutsideApp()) void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
         if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
@@ -271,7 +272,18 @@ export function usePlayer({
         // Never leave pending watch time or history in memory when the app may be killed.
         void screenTimeService.flush();
       }
-      if (nextState === 'active') void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
+      if (nextState === 'active') {
+        refreshAccess((value) => value + 1);
+        const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'VIDEO_NOT_APPROVED' as const };
+        if (decision.allowed && (stoppedByPolicy.current || !isAllowed)) {
+          stoppedByPolicy.current = false;
+          setPolicyMessage('');
+          setTimeBlocked(false);
+          setWarningMessage('');
+          warnedThreshold.current = null;
+        } else if (!decision.allowed) explainDecision(decision);
+        void syncAuthorization(true).catch(() => { void playerAdapter.pause().catch(() => undefined); });
+      }
       if (nextState === 'active' && wasPlayingBeforeBackground.current) {
         wasPlayingBeforeBackground.current = false;
         const decision = profile ? playbackPolicy.canContinuePlayback(profile.id, new Date(), { videoId: video.youtubeVideoId, channelId: video.channelId, categoryIds: video.categoryIds }) : { allowed: false as const, reason: 'SCREEN_TIME_EXCEEDED' as const };
@@ -283,6 +295,7 @@ export function usePlayer({
     });
     return () => {
       subscription.remove();
+      if (!isAllowed) return;
       persistProgress();
       void playerAdapter.stop().catch(() => undefined);
       // Leaving the player must not strand pending watch time in memory.

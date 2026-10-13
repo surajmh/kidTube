@@ -1,3 +1,4 @@
+import { SettingsChoice } from '../SettingsMenu';
 import { useTheme } from '../theme';
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -150,21 +151,7 @@ export function ParentRequestsPanel({
 
               {isOpen && hasTarget ? (
                 <View style={styles.sheet}>
-                  <Text style={styles.sheetLabel}>APPROVE FOR</Text>
-                  <View style={styles.chipRow}>
-                    {approvalDurationOrder.map((option) => (
-                      <FocusablePressable
-                        key={option}
-                        accessibilityLabel={approvalDurationLabels[option]}
-                        style={[styles.chip, duration === option && styles.chipActive]}
-                        onPress={() => setDuration(request.id, option)}
-                      >
-                        <Text style={[styles.chipText, duration === option && styles.chipTextActive]}>
-                          {option === 'once' ? 'One playback' : approvalDurationLabels[option]}
-                        </Text>
-                      </FocusablePressable>
-                    ))}
-                  </View>
+                  <SettingsChoice label="Approval duration" value={duration} options={approvalDurationOrder.map((value) => ({ value, label: approvalDurationLabels[value] }))} onChange={(value) => setDuration(request.id, value)} />
                   <Text style={styles.helper}>
                     {duration === 'once' && 'Playable one time. The approval expires as soon as playback finishes.'}
                     {duration === 'today' && 'Available until the end of today, then it expires automatically.'}
@@ -174,23 +161,7 @@ export function ParentRequestsPanel({
                       : 'Added to the approved library until you remove it.')}
                   </Text>
 
-                  <Text style={styles.sheetLabel}>WHO CAN WATCH IT</Text>
-                  <View style={styles.chipRow}>
-                    <FocusablePressable
-                      accessibilityLabel={`Only ${profileName(request.profileId)}`}
-                      style={[styles.chip, scope === 'child' && styles.chipActive]}
-                      onPress={() => setScope(request.id, 'child')}
-                    >
-                      <Text style={[styles.chipText, scope === 'child' && styles.chipTextActive]}>Only {profileName(request.profileId)}</Text>
-                    </FocusablePressable>
-                    <FocusablePressable
-                      accessibilityLabel="All children"
-                      style={[styles.chip, scope === 'family' && styles.chipActive]}
-                      onPress={() => setScope(request.id, 'family')}
-                    >
-                      <Text style={[styles.chipText, scope === 'family' && styles.chipTextActive]}>All children</Text>
-                    </FocusablePressable>
-                  </View>
+                  <SettingsChoice<'child' | 'family'> label="Who can watch" value={scope} options={[{ value: 'child', label: `Only ${profileName(request.profileId)}` }, { value: 'family', label: 'All children' }]} onChange={(value) => setScope(request.id, value)} />
 
                   <FocusablePressable
                     accessibilityLabel="Confirm approval"

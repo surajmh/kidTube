@@ -1,5 +1,6 @@
+import { FocusablePressable } from '../tv';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import type { ApprovedVideo, PlaybackSettings } from '../../types';
 import { previewDeArrow } from '../../services/deArrowService';
 import useStyles from './playbackSettings.style';
@@ -46,10 +47,10 @@ export function DeArrowPreview({ videos, settings, onChange }: { videos: Approve
     <Text style={styles.cardTitle}>DeArrow previews</Text>
     <Text style={styles.helper}>Community suggestions can contain unsuitable text or images. Preview each replacement before approving it. Approved choices stay fixed until you review them again.</Text>
     {!videos.length && <Text style={styles.helper}>Add videos to preview replacements.</Text>}
-    {videos.slice(page * 10, page * 10 + 10).map((item) => <View key={item.id}><Pressable accessibilityRole="button" accessibilityLabel={`Preview replacements for ${item.title}`} disabled={busy} onPress={() => void load(item)} style={styles.toggleRow}><Text style={styles.rowLabel}>{item.title}{settings.deArrowReplacements?.[item.youtubeVideoId] ? ' · Replacement approved' : ''}</Text></Pressable>{settings.deArrowReplacements?.[item.youtubeVideoId] && <Pressable accessibilityRole="button" accessibilityLabel={`Restore original for ${item.title}`} onPress={() => restore(item)} style={styles.toggleRow}><Text>Restore original</Text></Pressable>}</View>)}
+    {videos.slice(page * 10, page * 10 + 10).map((item) => <View key={item.id}><FocusablePressable accessibilityRole="button" accessibilityLabel={`Preview replacements for ${item.title}`} disabled={busy} onPress={() => void load(item)} style={styles.toggleRow}><Text style={styles.rowLabel}>{item.title}{settings.deArrowReplacements?.[item.youtubeVideoId] ? ' · Replacement approved' : ''}</Text></FocusablePressable>{settings.deArrowReplacements?.[item.youtubeVideoId] && <FocusablePressable accessibilityRole="button" accessibilityLabel={`Restore original for ${item.title}`} onPress={() => restore(item)} style={styles.toggleRow}><Text>Restore original</Text></FocusablePressable>}</View>)}
     <View style={styles.limitWrap}>
-      {page > 0 && <Pressable accessibilityRole="button" onPress={() => setPage(page - 1)}><Text>Previous videos</Text></Pressable>}
-      {(page + 1) * 10 < videos.length && <Pressable accessibilityRole="button" onPress={() => setPage(page + 1)}><Text>More videos</Text></Pressable>}
+      {page > 0 && <FocusablePressable accessibilityRole="button" onPress={() => setPage(page - 1)}><Text>Previous videos</Text></FocusablePressable>}
+      {(page + 1) * 10 < videos.length && <FocusablePressable accessibilityRole="button" onPress={() => setPage(page + 1)}><Text>More videos</Text></FocusablePressable>}
     </View>
     {busy && <Text style={styles.helper}>Loading preview…</Text>}
     {!!message && <Text accessibilityRole="alert" style={styles.helper}>{message}</Text>}
@@ -58,9 +59,9 @@ export function DeArrowPreview({ videos, settings, onChange }: { videos: Approve
       {!!video.thumbnailUrl && <Image source={{ uri: video.thumbnailUrl }} style={{ width: 240, height: 135 }} />}
       <Text style={styles.cardTitle}>Replacement</Text><Text>{preview.replacement.title || video.title}</Text>
       {!!preview.replacement.thumbnailUrl && <Image source={{ uri: preview.replacement.thumbnailUrl }} style={{ width: 240, height: 135 }} onLoad={() => setThumbnailReady(true)} onError={() => { setPreview((current) => current ? { ...current, replacement: { title: current.replacement.title } } : current); setThumbnailReady(true); setMessage('Replacement image unavailable. You can still approve the title.'); }} />}
-      <Pressable accessibilityRole="button" disabled={!thumbnailReady || (!preview.replacement.title && !preview.replacement.thumbnailUrl)} style={styles.toggleRow} onPress={() => save(preview.replacement)}><Text>Approve this replacement</Text></Pressable>
-      <Pressable accessibilityRole="button" style={styles.toggleRow} onPress={() => save()}><Text>Use original title and thumbnail</Text></Pressable>
-      <Pressable accessibilityRole="button" style={styles.toggleRow} onPress={() => setPreview(undefined)}><Text>Cancel preview</Text></Pressable>
+      <FocusablePressable accessibilityRole="button" disabled={!thumbnailReady || (!preview.replacement.title && !preview.replacement.thumbnailUrl)} style={styles.toggleRow} onPress={() => save(preview.replacement)}><Text>Approve this replacement</Text></FocusablePressable>
+      <FocusablePressable accessibilityRole="button" style={styles.toggleRow} onPress={() => save()}><Text>Use original title and thumbnail</Text></FocusablePressable>
+      <FocusablePressable accessibilityRole="button" style={styles.toggleRow} onPress={() => setPreview(undefined)}><Text>Cancel preview</Text></FocusablePressable>
     </>}
   </View>;
 }

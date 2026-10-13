@@ -14,16 +14,32 @@ kidTube plays YouTube content inside a walled garden: parents approve channels a
 children browse only what has been approved, and every play attempt passes a single policy gate.
 No accounts, no ads, no recommendations, no tracking, no server — everything lives on the device.
 
+## Screenshots
+
+Actual app screenshots captured on 13 October 2026 from a Samsung Galaxy S20 FE
+(SM-G780G) and an Android TV emulator, both running kidTube 1.0.0.
+
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/assets/screen-kid-home.svg" alt="Kid Mode home" width="240"/></td>
-    <td align="center" width="33%"><img src="docs/assets/screen-player.svg" alt="Native player" width="240"/></td>
-    <td align="center" width="33%"><img src="docs/assets/screen-parent.svg" alt="Parent Mode dashboard" width="240"/></td>
+    <td align="center" width="33%"><img src="docs/assets/screen-kid-home.png" alt="Kid Mode library running on a Samsung Galaxy S20 FE" width="240"/></td>
+    <td align="center" width="33%"><img src="docs/assets/screen-player.png" alt="Saved video playing on the phone with native player controls" width="240"/></td>
+    <td align="center" width="33%"><img src="docs/assets/screen-parent.png" alt="Parent settings menu running on the phone" width="240"/></td>
   </tr>
   <tr>
     <td align="center"><b>Kid Mode</b><br/>curated library, per-child profiles</td>
-    <td align="center"><b>Player</b><br/>adaptive HLS, SponsorBlock skips, screen-time aware</td>
-    <td align="center"><b>Parent Mode</b><br/>PIN-gated approvals, rules and activity</td>
+    <td align="center"><b>Player</b><br/>saved-video playback, controls and approved up-next videos</td>
+    <td align="center"><b>Parent Mode</b><br/>children, family settings and content management</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/assets/screen-tv-home.png" alt="Android TV Kid Mode home with remote focus on the Home tab" width="480"/></td>
+    <td align="center" width="50%"><img src="docs/assets/screen-tv-player.png" alt="Android TV player paused during streamed playback with remote focus on Play video" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Android TV home</b><br/>featured video, continue watching and D-pad navigation</td>
+    <td align="center"><b>Android TV player</b><br/>fullscreen playback, seeking and remote-friendly controls</td>
   </tr>
 </table>
 

@@ -1,6 +1,6 @@
 import { useTheme } from '../theme';
-import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { BackHandler, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ParentRequestsPanel } from '../ParentRequests';
 import { ParentContentPanel } from '../ParentContent';
@@ -8,12 +8,12 @@ import { ParentActivityPanel } from '../ParentActivity';
 import { ParentChildrenPanel } from '../ParentChildren';
 import { ParentCategoriesPanel } from '../ParentCategories';
 import { ParentSecurityPanel } from '../ParentSecurity';
-import { ParentDashboard } from '../ParentDashboard';
+import { SettingsRow } from '../SettingsMenu';
 
-import { FocusablePressable } from '../tv';
 import useStyles from './parentShell.style';
 import { useParentShell } from './parentShell.hook';
-import { SECTIONS } from './parentShell.constant';
+import { SETTINGS_SECTIONS } from './parentShell.constant';
+import { FocusablePressable } from '../tv';
 import { ParentSection, ParentShellProps } from './parentShell.type';
 
 export type { ParentSection };
@@ -34,13 +34,25 @@ export function ParentShell({
   notice,
 }: ParentShellProps) {
   const styles = useStyles();
-  const { colors, yt } = useTheme();
+  const { dark } = useTheme();
+  const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
   const { pendingCount, contentPage, contentMode, handleScroll } = useParentShell({
     data,
     actions,
     section,
     selectedChannelId,
   });
+
+  const lastSection = useRef<ParentSection>('children');
+  useEffect(() => {
+    if (section === 'home') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selectedChannelId) actions.onSelectChannel(null);
+      else setSection('home');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [section, selectedChannelId, actions, setSection]);
 
   const requestsPanel = (
     <ParentRequestsPanel
@@ -62,51 +74,17 @@ export function ParentShell({
       onScroll={handleScroll}
       scrollEventThrottle={64}
     >
-      <View style={styles.topBar}>
-        <View style={styles.heading}>
-          <Text style={styles.kicker}>PARENT MODE</Text>
-          <Text style={styles.title}>Your family nest</Text>
-        </View>
-        <FocusablePressable accessibilityLabel="Back to kid mode" style={styles.exitButton} onPress={actions.onExit}>
-          <Feather name="log-out" size={16} color={colors.ink} />
-          <Text style={styles.exitText}>Back to kid mode</Text>
-        </FocusablePressable>
-      </View>
+      <Text accessibilityRole="header" style={styles.title}>{section === 'home' ? 'Parent settings' : SETTINGS_SECTIONS.find((item) => item.id === section)?.label}</Text>
+      <SettingsRow label={section === 'home' ? 'Back to kid mode' : 'Back to parent settings'} onPress={section === 'home' ? actions.onExit : () => setSection('home')} preferred={section !== 'home'} icon={section === 'home' ? 'home' : 'arrow-left'} tone="cyan" highlighted description={dark && section === 'home' ? 'Exit settings and return to the kid experience' : undefined} />
 
-      {notice ? (
-        <View style={styles.notice} accessibilityLabel={notice}>
-          <Feather name="tool" size={14} color={colors.yellow} />
-          <Text style={styles.noticeText}>{notice}</Text>
-        </View>
-      ) : null}
+      {section === 'home' ? SETTINGS_SECTIONS.map((item) => (
+        <SettingsRow key={item.id} label={item.label} icon={item.icon} tone={item.tone} description={dark ? item.description : undefined} badge={item.id === 'requests'} preferred={lastSection.current === item.id}
+          value={item.id === 'requests' ? `${pendingCount} pending` : undefined}
+          onPress={() => { lastSection.current = item.id; setSection(item.id); }} />
+      )) : null}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabStrip}>
-        {SECTIONS.map((item) => (
-          <FocusablePressable
-            key={item.id}
-            accessibilityLabel={item.label}
-            style={[styles.tab, section === item.id && styles.tabActive]}
-            onPress={() => setSection(item.id)}
-          >
-            <Feather name={item.icon} size={16} color={section === item.id ? yt.chipActiveText : colors.muted} />
-            <Text style={[styles.tabText, section === item.id && styles.tabTextActive]}>{item.label}</Text>
-            {item.id === 'requests' && pendingCount > 0 ? (
-              <View style={styles.badge}><Text style={styles.badgeText}>{pendingCount}</Text></View>
-            ) : null}
-          </FocusablePressable>
-        ))}
-      </ScrollView>
-
-      {contentPage ? (
+      {contentPage && section !== 'home' ? (
         <>
-          {section === 'home' ? (
-            <ParentDashboard
-              profile={data.profiles.find((item) => item.id === data.activeProfileId) ?? data.profiles[0]}
-              counts={{ channels: data.channels.length, videos: data.videos.length, categories: data.categories.length, pending: pendingCount }}
-              onOpen={setSection}
-            />
-          ) : null}
-
           <ParentContentPanel
             mode={contentMode}
             profiles={data.profiles}
@@ -187,6 +165,14 @@ export function ParentShell({
       {section === 'settings' ? settingsSlot : null}
       {section === 'playlists' ? playlistsSlot : null}
       {section === 'downloads' ? downloadsSlot : null}
+
+      {section === 'home' && notice && notice !== dismissedNotice ? (
+        <View style={styles.notice} accessibilityLabel={notice}>
+          <View style={styles.noticeIcon}><Feather name="tool" size={21} color={dark ? '#F4BD43' : '#B56800'} /></View>
+          <Text style={styles.noticeText}>{notice}</Text>
+          <FocusablePressable accessibilityLabel="Dismiss repair message" style={styles.dismissNotice} onPress={() => setDismissedNotice(notice)}><Feather name="x" size={18} color={dark ? '#E0C68C' : '#956000'} /></FocusablePressable>
+        </View>
+      ) : null}
 
       <View style={styles.bottomSpace} />
     </ScrollView>

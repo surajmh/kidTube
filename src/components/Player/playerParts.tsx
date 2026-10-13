@@ -1,3 +1,4 @@
+import { SettingsChoice } from '../SettingsMenu';
 import { useTheme } from '../theme';
 import React from 'react';
 import { Platform, Text, View } from 'react-native';
@@ -6,7 +7,6 @@ import { FocusablePressable } from '../tv';
 
 import { useStyles as useStyles } from '../AppShell/appShell.style';
 import { SecondaryButton } from '../AppShell/appFormControls';
-import useOptionStyles from './player.style';
 import { usePlayerScrubber } from './playerScrubber.hook';
 
 /** YouTube-style scrubber: buffered track, played bar, thumb appears only while dragging. */
@@ -59,10 +59,5 @@ export function BlockedPlayer({ onBack, message }: { onBack: () => void; message
 export function ChoiceRow<T extends string | number>({ label, value, options, onChange }: {
   label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void;
 }) {
-  const optionStyles = useOptionStyles();
-  return <View><Text style={optionStyles.label}>{label}</Text><View style={optionStyles.row}>
-    {options.map((option) => <FocusablePressable key={option.value} focusStyle={Platform.isTV ? { borderColor: '#fff', transform: [{ scale: 1 }] } : undefined} accessibilityRole="radio" accessibilityLabel={`${label}: ${option.label}`} accessibilityState={{ selected: option.value === value }} onPress={() => onChange(option.value)} style={[optionStyles.choice, option.value === value && optionStyles.selected]}>
-      <Text style={optionStyles.text}>{option.label}</Text>
-    </FocusablePressable>)}
-  </View></View>;
+  return <SettingsChoice label={label} value={value} options={options} onChange={onChange} />;
 }

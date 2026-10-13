@@ -1,21 +1,22 @@
-import React from 'react';
-import { Pressable } from 'react-native';
+import React, { forwardRef } from 'react';
+import { Pressable, View } from 'react-native';
 import { useFocusablePressable } from './tv.hook';
 import useStyles from './tv.style';
 import type { FocusablePressableProps } from './tv.type';
 
-export function FocusablePressable({
+export const FocusablePressable = forwardRef<View, FocusablePressableProps>(function FocusablePressable({
   style,
   focusStyle,
   pressedStyle,
   onFocusChange,
   children,
   ...rest
-}: FocusablePressableProps) {
+}, ref) {
   const styles = useStyles();
   const { focused, setFocused } = useFocusablePressable();
   return (
     <Pressable
+      ref={ref}
       {...rest}
       focusable={rest.focusable ?? !rest.disabled}
       accessibilityRole={rest.accessibilityRole ?? 'button'}
@@ -40,4 +41,4 @@ export function FocusablePressable({
       {children}
     </Pressable>
   );
-}
+});
